@@ -89,6 +89,8 @@ export function Lobby() {
         </div>
       )}
 
+      <CirclePanel />
+
       <div className="lobby-tables">
         {tables.map((t, i) => {
           const unlocked = isTableUnlocked(t.id, peakBalance);
@@ -192,8 +194,6 @@ export function Lobby() {
           </div>
         </div>
       )}
-
-      <CirclePanel />
 
       <div className="lobby-foot">
         <p>

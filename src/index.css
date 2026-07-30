@@ -364,21 +364,68 @@ button:disabled {
 
 .circle-panel {
   width: min(520px, 100%);
-  margin: 28px auto 0;
-  padding: 18px 18px 14px;
+  margin: -8px auto clamp(18px, 3vh, 28px);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 12px;
   background: rgba(14, 13, 11, 0.72);
+  overflow: hidden;
 }
-.circle-head h2 {
+.circle-toggle {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  text-align: left;
+}
+.circle-toggle:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+.circle-toggle-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.circle-toggle-title {
   font-family: var(--font-display);
-  font-weight: 420;
-  font-size: 22px;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brass);
 }
-.circle-head p {
+.circle-toggle-meta {
+  font-size: 12px;
   color: var(--ink-dim);
-  font-size: 13px;
-  margin: 4px 0 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  justify-self: end;
+}
+.circle-chevron {
+  color: var(--ink-faint);
+  font-size: 12px;
+  line-height: 1;
+}
+.circle-badge {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--ink-faint);
+}
+.circle-badge.on {
+  border-color: rgba(126, 180, 150, 0.4);
+  color: #9fc9b0;
+}
+.circle-body {
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--line);
+}
+.circle-form {
+  padding-top: 12px;
 }
 .circle-form label,
 .circle-form input {
@@ -402,6 +449,9 @@ button:disabled {
 }
 .circle-form .btn {
   margin-top: 4px;
+}
+.circle-meta {
+  padding-top: 10px;
 }
 .circle-meta {
   display: flex;
