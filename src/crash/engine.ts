@@ -19,6 +19,8 @@ export interface CrashRound {
   payout: number
   /** Durée de vol jusqu’au crash (ms). */
   crashDurationMs: number
+  /** L’avion vole encore (même après cashout, jusqu’au crash). */
+  flightActive: boolean
 }
 
 export function createIdleRound(): CrashRound {
@@ -30,6 +32,7 @@ export function createIdleRound(): CrashRound {
     autoCashout: null,
     payout: 0,
     crashDurationMs: 0,
+    flightActive: false,
   }
 }
 
@@ -53,71 +56,88 @@ export function startRound(
     autoCashout: auto,
     payout: 0,
     crashDurationMs: elapsedForMultiplier(crashAt),
+    flightActive: crashAt > 1,
   }
 }
 
 export type TickResult = {
   round: CrashRound
-  /** Multiplicateur affiché (borné au crash). */
+  /** Multiplicateur affiché (borné au crash) — continue après cashout. */
   displayMult: number
   justCrashed: boolean
   justAutoCashed: boolean
+  /** Vol terminé (crash atteint), que le joueur ait encaissé ou non. */
+  justFlightEnded: boolean
 }
 
 /** Avance la manche à `elapsedMs` depuis le décollage. */
 export function tickRound(round: CrashRound, elapsedMs: number): TickResult {
-  if (round.phase !== 'flying') {
+  if (!round.flightActive) {
     return {
       round,
-      displayMult: round.cashoutAt ?? round.crashAt,
+      displayMult: round.crashAt > 1 || round.phase === 'crashed' ? round.crashAt : 1,
       justCrashed: false,
       justAutoCashed: false,
+      justFlightEnded: false,
     }
   }
 
   const raw = multiplierAtElapsed(elapsedMs)
   const displayMult = Math.min(raw, round.crashAt)
 
-  // Auto-cashout avant le crash
-  if (round.autoCashout != null && round.autoCashout < round.crashAt && displayMult >= round.autoCashout) {
-    const cashAt = round.autoCashout
-    return {
-      justCrashed: false,
-      justAutoCashed: true,
-      displayMult: cashAt,
-      round: {
-        ...round,
-        phase: 'cashed',
-        cashoutAt: cashAt,
-        payout: payoutCents(round.bet, cashAt),
-      },
+  let next = round
+  let justAutoCashed = false
+
+  // Auto-cashout pendant le vol (une seule fois)
+  if (
+    next.phase === 'flying' &&
+    next.autoCashout != null &&
+    next.autoCashout < next.crashAt &&
+    displayMult >= next.autoCashout
+  ) {
+    const cashAt = next.autoCashout
+    next = {
+      ...next,
+      phase: 'cashed',
+      cashoutAt: cashAt,
+      payout: payoutCents(next.bet, cashAt),
     }
+    justAutoCashed = true
   }
 
   if (raw >= round.crashAt) {
+    const ended: CrashRound = {
+      ...next,
+      flightActive: false,
+      // Si déjà encaissé, on reste « cashed » ; sinon crash perdu.
+      phase: next.phase === 'cashed' || next.cashoutAt != null ? 'cashed' : 'crashed',
+      payout: next.phase === 'cashed' || next.cashoutAt != null ? next.payout : 0,
+    }
     return {
-      justCrashed: true,
-      justAutoCashed: false,
+      round: ended,
       displayMult: round.crashAt,
-      round: {
-        ...round,
-        phase: 'crashed',
-        cashoutAt: null,
-        payout: 0,
-      },
+      justCrashed: ended.phase === 'crashed',
+      justAutoCashed,
+      justFlightEnded: true,
     }
   }
 
-  return { round, displayMult, justCrashed: false, justAutoCashed: false }
+  return {
+    round: next,
+    displayMult,
+    justCrashed: false,
+    justAutoCashed,
+    justFlightEnded: false,
+  }
 }
 
 export type CashResult =
   | { ok: true; round: CrashRound; payout: number }
   | { ok: false; error: string }
 
-/** Encaissement manuel si encore en vol et avant le crash. */
+/** Encaissement manuel si encore en vol et avant le crash. Le vol continue. */
 export function cashOut(round: CrashRound, currentMult: number): CashResult {
-  if (round.phase !== 'flying') {
+  if (round.phase !== 'flying' || !round.flightActive) {
     return { ok: false, error: 'Plus rien à encaisser.' }
   }
   const m = Math.floor(currentMult * 100 + 1e-9) / 100
@@ -136,6 +156,7 @@ export function cashOut(round: CrashRound, currentMult: number): CashResult {
       phase: 'cashed',
       cashoutAt: m,
       payout,
+      flightActive: true,
     },
   }
 }

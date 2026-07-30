@@ -5,6 +5,7 @@
 - Mise débitée au **Décoller**.
 - Un multiplicateur part de **1,00×** et croît de façon exponentielle.
 - **Encaisser** à tout moment pendant le vol → gain = `mise × multiplicateur`.
+- Après encaissement, **l’avion continue** jusqu’au crash (comme Stake) pour voir le point final.
 - Si l’avion **crash** avant l’encaissement → mise perdue.
 - **Auto cashout** optionnel à un seuil (ex. 2,00×).
 

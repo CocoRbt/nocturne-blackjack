@@ -7,7 +7,7 @@ import {
   tickRound,
   type CrashRound,
 } from '../crash/engine';
-import { CRASH_RTP, payoutCents, reachChance } from '../crash/math';
+import { CRASH_RTP, elapsedForMultiplier, payoutCents, reachChance } from '../crash/math';
 import { fmt, fmtMult } from '../lib/format';
 import { useGame } from '../store/gameStore';
 import { RulesGuide } from './RulesGuide';
@@ -77,14 +77,17 @@ export function CrashScreen() {
   const [round, setRound] = useState<CrashRound>(() => createIdleRound());
   const [displayMult, setDisplayMult] = useState(1);
   const [points, setPoints] = useState<Array<{ x: number; y: number }>>([]);
+  const [cashMark, setCashMark] = useState<{ x: number; y: number } | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [flash, setFlash] = useState<'win' | 'lose' | null>(null);
+  const [flightOverBanner, setFlightOverBanner] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
 
   const startTs = useRef(0);
   const raf = useRef(0);
   const roundRef = useRef(round);
   const credited = useRef(false);
+  const histPushed = useRef(false);
   const histIdRef = useRef(0);
 
   useEffect(() => {
@@ -92,14 +95,14 @@ export function CrashScreen() {
   }, [round]);
 
   useEffect(() => {
-    if (round.phase === 'idle' || round.phase === 'cashed' || round.phase === 'crashed') {
+    if (!round.flightActive) {
       if (bet > balance) {
         const c = Math.max(1_00, balance);
         setBet(c);
         setBetDraft(String(c / 100));
       }
     }
-  }, [balance, bet, round.phase]);
+  }, [balance, bet, round.flightActive]);
 
   const stopLoop = useCallback(() => {
     if (raf.current) cancelAnimationFrame(raf.current);
@@ -109,10 +112,17 @@ export function CrashScreen() {
   useEffect(() => () => stopLoop(), [stopLoop]);
 
   const pushHistory = useCallback((crashAt: number, cashed?: number) => {
+    if (histPushed.current) return;
+    histPushed.current = true;
     histIdRef.current += 1;
     setHistory((h) =>
       [{ id: histIdRef.current, crashAt, cashed }, ...h].slice(0, HISTORY_MAX),
     );
+  }, []);
+
+  const markCashPoint = useCallback((cashAt: number, crashAt: number) => {
+    const tNorm = Math.min(1, elapsedForMultiplier(cashAt) / Math.max(16, elapsedForMultiplier(crashAt)));
+    setCashMark(multToPoint(cashAt, tNorm, Math.max(crashAt, 1.5)));
   }, []);
 
   const runLoop = useCallback(() => {
@@ -122,7 +132,6 @@ export function CrashScreen() {
       const result = tickRound(current, elapsed);
       const crashDur = Math.max(16, current.crashDurationMs);
       const tNorm = Math.min(1, elapsed / crashDur);
-      // Échelle Y = point de crash (connu au décollage) → l’avion monte vraiment.
       const maxMult = Math.max(current.crashAt, 1.5);
       const pt = multToPoint(result.displayMult, tNorm, maxMult);
 
@@ -137,50 +146,61 @@ export function CrashScreen() {
           credited.current = true;
           crashCredit(result.round.payout);
         }
-        setRound(result.round);
-        roundRef.current = result.round;
         setFlash('win');
-        pushHistory(result.round.crashAt, result.round.cashoutAt ?? undefined);
-        stopLoop();
-        return;
+        if (result.round.cashoutAt != null) {
+          markCashPoint(result.round.cashoutAt, result.round.crashAt);
+        }
       }
 
-      if (result.justCrashed) {
+      if (result.justFlightEnded) {
         setRound(result.round);
         roundRef.current = result.round;
-        setFlash('lose');
-        pushHistory(result.round.crashAt);
+        setFlightOverBanner(true);
+        if (result.round.phase === 'cashed') {
+          setFlash('win');
+          pushHistory(result.round.crashAt, result.round.cashoutAt ?? undefined);
+        } else {
+          setFlash('lose');
+          pushHistory(result.round.crashAt);
+        }
         stopLoop();
         return;
       }
 
       setRound(result.round);
+      roundRef.current = result.round;
       raf.current = requestAnimationFrame(step);
     };
     raf.current = requestAnimationFrame(step);
-  }, [crashCredit, stopLoop, pushHistory]);
+  }, [crashCredit, stopLoop, pushHistory, markCashPoint]);
 
-  const flying = round.phase === 'flying';
-  const canConfigure = !flying;
+  const inFlight = round.flightActive;
+  const canBet = !inFlight;
+  const canCash = round.phase === 'flying' && inFlight;
 
   const onStart = () => {
+    if (inFlight) return;
     const stake = Math.min(bet, balance);
-    if (stake < 1_00 || flying) return;
+    if (stake < 1_00) return;
     if (!crashDebit(stake)) return;
     credited.current = false;
+    histPushed.current = false;
     setFlash(null);
+    setFlightOverBanner(false);
     setPoints([]);
+    setCashMark(null);
     setDisplayMult(1);
     const next = startRound(stake, autoOn ? autoAt : null);
-    // Instant crash: still run a tiny beat then settle
     setRound(next);
     roundRef.current = next;
     startTs.current = performance.now();
     if (next.crashAt <= 1) {
-      const crashed = { ...next, phase: 'crashed' as const, payout: 0 };
+      const crashed = { ...next, phase: 'crashed' as const, payout: 0, flightActive: false };
       setRound(crashed);
+      roundRef.current = crashed;
       setDisplayMult(1);
       setFlash('lose');
+      setFlightOverBanner(true);
       pushHistory(1);
       return;
     }
@@ -190,7 +210,6 @@ export function CrashScreen() {
   const onCash = () => {
     const res = cashOut(roundRef.current, displayMult);
     if (!res.ok) return;
-    stopLoop();
     if (!credited.current && res.payout > 0) {
       credited.current = true;
       crashCredit(res.payout);
@@ -198,13 +217,24 @@ export function CrashScreen() {
     setRound(res.round);
     roundRef.current = res.round;
     setFlash('win');
-    pushHistory(res.round.crashAt, res.round.cashoutAt ?? undefined);
+    if (res.round.cashoutAt != null) {
+      markCashPoint(res.round.cashoutAt, res.round.crashAt);
+    }
+    // Vol continue jusqu’au crash — pas de stopLoop / pas d’historique tout de suite.
   };
 
   const path = buildPath(points);
   const tip = points[points.length - 1];
-  const potential = payoutCents(flying ? round.bet : bet, flying ? displayMult : autoOn ? autoAt : 2);
-  const leaveBlocked = flying;
+  const potential = payoutCents(
+    canCash || (round.phase === 'cashed' && inFlight) ? round.bet : bet,
+    canCash ? displayMult : autoOn ? autoAt : 2,
+  );
+  const stageClass =
+    round.phase === 'cashed' && inFlight
+      ? 'cashed flying'
+      : round.flightActive
+        ? 'flying'
+        : round.phase;
 
   return (
     <div className="crash-screen grain">
@@ -213,11 +243,11 @@ export function CrashScreen() {
           type="button"
           className="icon-btn"
           onClick={() => {
-            if (!leaveBlocked) leaveCrash();
+            if (!inFlight) leaveCrash();
           }}
           aria-label="Retour lobby"
-          disabled={leaveBlocked}
-          title={leaveBlocked ? 'Attends la fin du vol' : 'Retour'}
+          disabled={inFlight}
+          title={inFlight ? 'Attends la fin du vol' : 'Retour'}
         >
           ←
         </button>
@@ -246,7 +276,11 @@ export function CrashScreen() {
             <span
               key={h.id}
               className={`crash-pill ${h.crashAt < 2 ? 'low' : h.crashAt < 10 ? 'mid' : 'high'}`}
-              title={h.cashed ? `Encaissé ${fmtMult(h.cashed)} · crash ${fmtMult(h.crashAt)}` : `Crash ${fmtMult(h.crashAt)}`}
+              title={
+                h.cashed
+                  ? `Encaissé ${fmtMult(h.cashed)} · crash ${fmtMult(h.crashAt)}`
+                  : `Crash ${fmtMult(h.crashAt)}`
+              }
             >
               {fmtMult(h.crashAt)}
             </span>
@@ -264,7 +298,7 @@ export function CrashScreen() {
               <button
                 type="button"
                 className="btn ghost"
-                disabled={!canConfigure}
+                disabled={!canBet}
                 onClick={() => {
                   const n = Math.max(1_00, bet - 1_00);
                   setBet(n);
@@ -278,8 +312,12 @@ export function CrashScreen() {
                 className="crash-bet-input"
                 type="text"
                 inputMode="decimal"
-                disabled={!canConfigure}
-                value={canConfigure ? betDraft : String((round.bet / 100).toFixed(round.bet % 100 ? 2 : 0)).replace('.', ',')}
+                disabled={!canBet}
+                value={
+                  canBet
+                    ? betDraft
+                    : String((round.bet / 100).toFixed(round.bet % 100 ? 2 : 0)).replace('.', ',')
+                }
                 onChange={(e) => {
                   const raw = e.target.value;
                   if (!/^[0-9\s.,]*$/.test(raw)) return;
@@ -300,7 +338,7 @@ export function CrashScreen() {
               <button
                 type="button"
                 className="btn ghost"
-                disabled={!canConfigure}
+                disabled={!canBet}
                 onClick={() => {
                   const n = Math.min(balance, bet + 1_00);
                   setBet(n);
@@ -316,7 +354,7 @@ export function CrashScreen() {
                   key={p}
                   type="button"
                   className={`crash-chip ${bet === p ? 'on' : ''}`}
-                  disabled={!canConfigure || p > balance}
+                  disabled={!canBet || p > balance}
                   onClick={() => {
                     setBet(p);
                     setBetDraft(String(p / 100));
@@ -328,7 +366,7 @@ export function CrashScreen() {
               <button
                 type="button"
                 className="crash-chip"
-                disabled={!canConfigure || balance < 1_00}
+                disabled={!canBet || balance < 1_00}
                 onClick={() => {
                   setBet(Math.max(1_00, balance));
                   setBetDraft(String(Math.max(1_00, balance) / 100));
@@ -344,7 +382,7 @@ export function CrashScreen() {
               <input
                 type="checkbox"
                 checked={autoOn}
-                disabled={!canConfigure}
+                disabled={!canBet}
                 onChange={(e) => setAutoOn(e.target.checked)}
               />
               Auto cashout
@@ -355,7 +393,7 @@ export function CrashScreen() {
                 type="number"
                 min={1.01}
                 step={0.01}
-                disabled={!canConfigure || !autoOn}
+                disabled={!canBet || !autoOn}
                 value={autoAt}
                 onChange={(e) => setAutoAt(Math.max(1.01, Number(e.target.value) || 1.01))}
               />
@@ -371,6 +409,12 @@ export function CrashScreen() {
               <span className="k">Gain potentiel</span>
               <span className="v win">{fmt(potential)}</span>
             </div>
+            {round.cashoutAt != null && (
+              <div>
+                <span className="k">Encaissé</span>
+                <span className="v win">{fmtMult(round.cashoutAt)}</span>
+              </div>
+            )}
             <div>
               <span className="k">RTP</span>
               <span className="v brass">{(CRASH_RTP * 100).toFixed(0)}&nbsp;%</span>
@@ -378,30 +422,23 @@ export function CrashScreen() {
           </div>
 
           <div className="crash-actions">
-            {canConfigure && (
+            {canBet && (
               <button
                 type="button"
                 className="btn primary crash-cta"
                 disabled={bet < 1_00 || bet > balance}
                 onClick={onStart}
               >
-                Décoller · {fmt(Math.min(bet, balance))}
+                {round.phase === 'idle' ? 'Décoller' : 'Relancer'} · {fmt(Math.min(bet, balance))}
               </button>
             )}
-            {flying && (
+            {canCash && (
               <button type="button" className="btn primary crash-cta cashout" onClick={onCash}>
                 Encaisser · {fmt(payoutCents(round.bet, displayMult))}
               </button>
             )}
-            {(round.phase === 'cashed' || round.phase === 'crashed') && (
-              <button
-                type="button"
-                className="btn primary crash-cta"
-                disabled={bet < 1_00 || bet > balance}
-                onClick={onStart}
-              >
-                Relancer · {fmt(Math.min(bet, balance))}
-              </button>
+            {round.phase === 'cashed' && inFlight && (
+              <p className="crash-waiting">Encaissé — l’avion continue jusqu’au crash…</p>
             )}
           </div>
 
@@ -410,19 +447,29 @@ export function CrashScreen() {
           </p>
         </aside>
 
-        <main className={`crash-stage ${round.phase}`}>
+        <main className={`crash-stage ${stageClass}`}>
           <AnimatePresence mode="wait">
-            {flash && !flying && (
+            {flash === 'win' && round.cashoutAt != null && (
               <motion.div
-                key={flash + displayMult}
-                className={`crash-banner ${flash}`}
+                key={`win-${round.cashoutAt}`}
+                className="crash-banner win"
                 initial={{ opacity: 0, y: -10, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0 }}
               >
-                {flash === 'win'
-                  ? `Encaissé ${fmtMult(round.cashoutAt ?? displayMult)} · ${fmt(round.payout)}`
-                  : `Crashed @ ${fmtMult(round.crashAt)}`}
+                Encaissé {fmtMult(round.cashoutAt)} · {fmt(round.payout)}
+                {flightOverBanner ? ` · crash @ ${fmtMult(round.crashAt)}` : ''}
+              </motion.div>
+            )}
+            {flash === 'lose' && !inFlight && (
+              <motion.div
+                key={`lose-${round.crashAt}`}
+                className="crash-banner lose"
+                initial={{ opacity: 0, y: -10, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                Crashed @ {fmtMult(round.crashAt)}
               </motion.div>
             )}
           </AnimatePresence>
@@ -440,7 +487,7 @@ export function CrashScreen() {
                   <stop
                     offset="100%"
                     stopColor={
-                      round.phase === 'crashed'
+                      !inFlight && round.phase === 'crashed'
                         ? 'rgba(207,143,143,0.55)'
                         : round.phase === 'cashed'
                           ? 'rgba(143,207,168,0.55)'
@@ -452,15 +499,16 @@ export function CrashScreen() {
                   <stop
                     offset="0%"
                     stopColor={
-                      round.phase === 'crashed'
+                      !inFlight && round.phase === 'crashed'
                         ? 'rgba(207,143,143,0.22)'
-                        : 'rgba(194,161,95,0.2)'
+                        : round.phase === 'cashed'
+                          ? 'rgba(143,207,168,0.18)'
+                          : 'rgba(194,161,95,0.2)'
                     }
                   />
                   <stop offset="100%" stopColor="rgba(194,161,95,0)" />
                 </linearGradient>
               </defs>
-              {/* grid */}
               {[0.25, 0.5, 0.75].map((g) => (
                 <line
                   key={g}
@@ -477,30 +525,60 @@ export function CrashScreen() {
                     d={`${path} L ${tip!.x} ${GRAPH_H - 36} L ${points[0].x} ${GRAPH_H - 36} Z`}
                     fill="url(#crash-fill)"
                   />
-                  <path d={path} fill="none" stroke="url(#crash-trail)" strokeWidth="3.2" strokeLinecap="round" />
+                  <path
+                    d={path}
+                    fill="none"
+                    stroke="url(#crash-trail)"
+                    strokeWidth="3.2"
+                    strokeLinecap="round"
+                  />
                 </>
+              )}
+              {cashMark && (
+                <g className="crash-cash-mark">
+                  <circle cx={cashMark.x} cy={cashMark.y} r="5" fill="#8fcfa8" stroke="#e9e4d8" strokeWidth="1.5" />
+                </g>
               )}
             </svg>
 
-            {tip && (flying || round.phase === 'cashed' || round.phase === 'crashed') && (
+            {tip && (inFlight || round.phase === 'cashed' || round.phase === 'crashed') && (
               <div
-                className={`crash-plane ${round.phase}`}
+                className={`crash-plane ${inFlight ? (round.phase === 'cashed' ? 'cashed flying' : 'flying') : round.phase}`}
                 style={{
                   left: `${(tip.x / GRAPH_W) * 100}%`,
                   top: `${(tip.y / GRAPH_H) * 100}%`,
                 }}
               >
-                <PlaneIcon crashed={round.phase === 'crashed'} />
-                {round.phase === 'crashed' && <span className="crash-boom" />}
+                <PlaneIcon crashed={!inFlight && round.phase !== 'idle'} />
+                {!inFlight && round.phase !== 'idle' && <span className="crash-boom" />}
               </div>
             )}
 
-            <div className={`crash-mult ${round.phase}`}>
+            <div
+              className={`crash-mult ${
+                round.phase === 'cashed' && inFlight
+                  ? 'cashed'
+                  : inFlight
+                    ? 'flying'
+                    : round.phase
+              }`}
+            >
               <span className="crash-mult-value">{fmtMult(displayMult)}</span>
-              {flying && <span className="crash-mult-sub">En vol…</span>}
+              {round.phase === 'flying' && inFlight && (
+                <span className="crash-mult-sub">En vol…</span>
+              )}
+              {round.phase === 'cashed' && inFlight && (
+                <span className="crash-mult-sub">
+                  Encaissé @ {fmtMult(round.cashoutAt!)} · vol en cours
+                </span>
+              )}
               {round.phase === 'idle' && <span className="crash-mult-sub">En attente du décollage</span>}
-              {round.phase === 'crashed' && <span className="crash-mult-sub">Crash</span>}
-              {round.phase === 'cashed' && <span className="crash-mult-sub">Encaissé</span>}
+              {!inFlight && round.phase === 'crashed' && (
+                <span className="crash-mult-sub">Crash</span>
+              )}
+              {!inFlight && round.phase === 'cashed' && (
+                <span className="crash-mult-sub">Crash @ {fmtMult(round.crashAt)}</span>
+              )}
             </div>
           </div>
         </main>

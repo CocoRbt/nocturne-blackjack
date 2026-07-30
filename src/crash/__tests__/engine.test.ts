@@ -47,9 +47,10 @@ describe('crash engine', () => {
     const b = startRound(5_00, null, mulberry32(42));
     expect(a.crashAt).toBe(b.crashAt);
     expect(a.phase).toBe('flying');
+    expect(a.flightActive).toBe(true);
   });
 
-  it('cashout avant crash crédite mise × mult', () => {
+  it('cashout avant crash crédite mais le vol continue', () => {
     const round = startRound(100_00, null, mulberry32(7));
     expect(round.crashAt).toBeGreaterThan(1.5);
     const res = cashOut(round, 1.5);
@@ -57,31 +58,53 @@ describe('crash engine', () => {
     if (!res.ok) return;
     expect(res.payout).toBe(payoutCents(100_00, 1.5));
     expect(res.round.phase).toBe('cashed');
+    expect(res.round.flightActive).toBe(true);
+
+    const mid = tickRound(res.round, elapsedForMultiplier(1.8));
+    expect(mid.round.phase).toBe('cashed');
+    expect(mid.round.flightActive).toBe(true);
+    expect(mid.displayMult).toBeGreaterThan(1.5);
+
+    const end = tickRound(res.round, res.round.crashDurationMs + 50);
+    expect(end.justFlightEnded).toBe(true);
+    expect(end.round.flightActive).toBe(false);
+    expect(end.round.phase).toBe('cashed');
+    expect(end.displayMult).toBe(res.round.crashAt);
+    expect(end.round.payout).toBe(payoutCents(100_00, 1.5));
   });
 
   it('refuse cashout après crash', () => {
     const round = startRound(50_00, null, () => 0.999);
     expect(round.crashAt).toBe(1);
-    const t = tickRound(round, 1);
-    expect(t.justCrashed).toBe(true);
+    expect(round.flightActive).toBe(false);
+    const t = tickRound({ ...round, flightActive: true }, 1);
+    expect(t.justCrashed || t.justFlightEnded).toBe(true);
     const res = cashOut(t.round, 1.2);
     expect(res.ok).toBe(false);
   });
 
-  it('auto-cashout avant crash', () => {
+  it('auto-cashout puis vol jusqu’au crash', () => {
     const round = startRound(20_00, 2, mulberry32(3));
-    if (round.crashAt <= 2) return; // rare selon seed
+    if (round.crashAt <= 2) return;
     const t = tickRound(round, elapsedForMultiplier(2) + 1);
     expect(t.justAutoCashed).toBe(true);
     expect(t.round.phase).toBe('cashed');
+    expect(t.round.flightActive).toBe(true);
     expect(t.round.payout).toBe(payoutCents(20_00, 2));
+
+    const end = tickRound(t.round, t.round.crashDurationMs + 10);
+    expect(end.justFlightEnded).toBe(true);
+    expect(end.round.phase).toBe('cashed');
+    expect(end.displayMult).toBe(round.crashAt);
   });
 
-  it('tick atteint crashAt → crashed', () => {
+  it('tick atteint crashAt sans cashout → crashed', () => {
     const round = startRound(10_00, null, mulberry32(99));
     const t = tickRound(round, round.crashDurationMs + 50);
     expect(t.justCrashed).toBe(true);
+    expect(t.justFlightEnded).toBe(true);
     expect(t.round.phase).toBe('crashed');
+    expect(t.round.flightActive).toBe(false);
     expect(t.round.payout).toBe(0);
   });
 });
