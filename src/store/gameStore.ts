@@ -457,7 +457,7 @@ export const useGame = create<GameState>((set, get) => {
       for (const h of summary.hands) {
         flies.push({
           id: `hand-${h.seatIndex}-${h.handIndex}`,
-          amount: Math.abs(h.net || h.bet),
+          amount: h.net === 0 ? h.bet : Math.abs(h.net),
           won: h.net > 0,
           push: h.net === 0,
         });
@@ -466,7 +466,7 @@ export const useGame = create<GameState>((set, get) => {
         if (b.bet <= 0) continue;
         flies.push({
           id: `side-${b.seatIndex}-${b.id}`,
-          amount: Math.abs(b.net || b.bet),
+          amount: b.net === 0 ? b.bet : Math.abs(b.net),
           won: b.net > 0,
           push: b.net === 0,
         });

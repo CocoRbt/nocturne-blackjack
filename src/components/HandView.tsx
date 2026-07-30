@@ -71,7 +71,9 @@ export function PlayerHandView({
     >
       {result && (
         <div className={`hand-outcome ${OUTCOME_CLASS[result.outcome]}`}>
-          {OUTCOME_LABEL[result.outcome]}
+          {result.outcome === 'push'
+            ? 'Égalité · mise rendue'
+            : OUTCOME_LABEL[result.outcome]}
           {result.net !== 0 && ` ${result.net > 0 ? '+' : '−'}${fmt(Math.abs(result.net))}`}
         </div>
       )}
