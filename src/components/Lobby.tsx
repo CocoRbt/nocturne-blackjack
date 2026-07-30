@@ -11,6 +11,7 @@ import {
 } from '../engine/rules';
 import { fmt } from '../lib/format';
 import { useGame } from '../store/gameStore';
+import { CirclePanel } from './CirclePanel';
 
 export function Lobby() {
   const balance = useGame((s) => s.balance);
@@ -191,6 +192,8 @@ export function Lobby() {
           </div>
         </div>
       )}
+
+      <CirclePanel />
 
       <div className="lobby-foot">
         <p>

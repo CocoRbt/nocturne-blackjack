@@ -363,6 +363,88 @@ button:disabled {
   margin-top: 8px;
 }
 
+.circle-panel {
+  width: min(520px, 100%);
+  margin: 28px auto 0;
+  padding: 18px 18px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(14, 13, 11, 0.72);
+}
+.circle-head h2 {
+  font-family: var(--font-display);
+  font-weight: 420;
+  font-size: 22px;
+}
+.circle-head p {
+  color: var(--ink-dim);
+  font-size: 13px;
+  margin: 4px 0 14px;
+}
+.circle-form label,
+.circle-form input {
+  display: block;
+  width: 100%;
+}
+.circle-form label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 10px;
+}
+.circle-form input {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: #12100d;
+  color: var(--ink);
+}
+.circle-form .btn {
+  margin-top: 4px;
+}
+.circle-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: var(--brass);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+.circle-board {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.circle-board li {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+.circle-board li.me {
+  border-color: rgba(212, 175, 119, 0.35);
+  background: rgba(212, 175, 119, 0.06);
+}
+.circle-board .rank {
+  color: var(--ink-faint);
+  font-size: 12px;
+}
+.circle-board .nick {
+  font-size: 14px;
+}
+.circle-board .peak {
+  font-variant-numeric: tabular-nums;
+  color: var(--brass);
+}
+
 .lobby-foot {
   margin-top: clamp(28px, 5vh, 52px);
   color: var(--ink-faint);

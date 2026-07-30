@@ -47,8 +47,20 @@ Les micro-différences de règles (S17/H17, abandon, re-split As) sont **seconda
 
 ## Ordre d’implémentation
 
-1. Brief (ce fichier)
-2. Progression / unlock + lobby
-3. Table Privée + jetons adaptatifs
-4. Multi-spots 5/7 + side bets par spot
-5. Cercle + base de données
+1. Brief (ce fichier) — **fait**
+2. Progression / unlock + lobby — **fait**
+3. Table Privée + jetons adaptatifs — **fait**
+4. Multi-spots 5/7 + side bets par spot — **fait** (moteur `TableRound` + UI)
+5. Cercle + base de données — **socle local + migration SQL** ; sync Supabase quand le projet est branché
+
+### Seuils de déblocage (pic de crédit)
+
+| Table | Pic requis |
+| --- | --- |
+| Émeraude | 0 |
+| Onyx | 500 |
+| Impériale | 2 000 |
+| Privée | 10 000 |
+
+Solde de départ : **100** (force le Salon Émeraude).
+On peut toujours redescendre sur une table déjà accessible.
