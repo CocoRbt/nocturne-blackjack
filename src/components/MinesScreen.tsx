@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useCallback, useId, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { fmt, fmtMult, fmtNet } from '../lib/format';
 import {
   MINES_GRID,
@@ -79,10 +79,22 @@ export function MinesScreen() {
   const playing = round.phase === 'playing';
   const idle = round.phase === 'idle';
   const finished = round.phase === 'busted' || round.phase === 'cashed';
+  /** Entre deux manches : on peut régler mise / mines et relancer d’un clic. */
+  const canConfigure = idle || finished;
+
+  useEffect(() => {
+    if (canConfigure && bet > balance) {
+      setBet(Math.max(1_00, balance));
+    }
+  }, [canConfigure, balance, bet]);
 
   const potential = useMemo(
-    () => payoutCents(playing || finished ? round.bet : bet, round.multiplier > 1 ? round.multiplier : minesMultiplier(1, mines)),
-    [bet, mines, playing, finished, round.bet, round.multiplier],
+    () =>
+      payoutCents(
+        playing ? round.bet : bet,
+        playing && round.multiplier > 1 ? round.multiplier : minesMultiplier(1, mines),
+      ),
+    [bet, mines, playing, round.bet, round.multiplier],
   );
 
   const profitIfCash = playing && round.revealed.length > 0
@@ -126,14 +138,8 @@ export function MinesScreen() {
     setFlash('win');
   };
 
-  const onReset = () => {
-    setRound(createIdleRound(mines));
-    setFlash(null);
-    setLastPayout(0);
-  };
-
   const adjustBet = (delta: number) => {
-    if (!idle) return;
+    if (!canConfigure) return;
     setBet((b) => Math.max(1_00, Math.min(balance, b + delta)));
   };
 
@@ -159,11 +165,11 @@ export function MinesScreen() {
           <div className="mines-panel-block">
             <label className="mines-label">Mise</label>
             <div className="mines-bet-row">
-              <button type="button" className="btn ghost" disabled={!idle} onClick={() => adjustBet(-1_00)}>
+              <button type="button" className="btn ghost" disabled={!canConfigure} onClick={() => adjustBet(-1_00)}>
                 −
               </button>
-              <strong className="mines-bet-value">{fmt(idle ? bet : round.bet)}</strong>
-              <button type="button" className="btn ghost" disabled={!idle} onClick={() => adjustBet(1_00)}>
+              <strong className="mines-bet-value">{fmt(playing ? round.bet : bet)}</strong>
+              <button type="button" className="btn ghost" disabled={!canConfigure} onClick={() => adjustBet(1_00)}>
                 +
               </button>
             </div>
@@ -173,7 +179,7 @@ export function MinesScreen() {
                   key={p}
                   type="button"
                   className={`mines-chip ${bet === p ? 'on' : ''}`}
-                  disabled={!idle || p > balance}
+                  disabled={!canConfigure || p > balance}
                   onClick={() => setBet(p)}
                 >
                   {fmt(p)}
@@ -182,7 +188,7 @@ export function MinesScreen() {
               <button
                 type="button"
                 className="mines-chip"
-                disabled={!idle || balance < 1_00}
+                disabled={!canConfigure || balance < 1_00}
                 onClick={() => setBet(Math.max(1_00, balance))}
               >
                 Max
@@ -201,7 +207,7 @@ export function MinesScreen() {
               min={MINES_MIN}
               max={MINES_MAX}
               value={mines}
-              disabled={!idle}
+              disabled={!canConfigure}
               onChange={(e) => {
                 const v = Number(e.target.value);
                 setMines(v);
@@ -217,11 +223,17 @@ export function MinesScreen() {
           <div className="mines-stats">
             <div>
               <span className="k">Multiplicateur</span>
-              <span className="v brass">{fmtMult(round.multiplier)}</span>
+              <span className="v brass">{fmtMult(playing || finished ? round.multiplier : 1)}</span>
             </div>
             <div>
               <span className="k">Prochain diamant</span>
-              <span className="v">{fmtMult(round.nextMultiplier || minesMultiplier(1, mines))}</span>
+              <span className="v">
+                {fmtMult(
+                  playing
+                    ? round.nextMultiplier || minesMultiplier(1, mines)
+                    : minesMultiplier(1, mines),
+                )}
+              </span>
             </div>
             <div>
               <span className="k">Gain potentiel</span>
@@ -240,7 +252,7 @@ export function MinesScreen() {
           </div>
 
           <div className="mines-actions">
-            {idle && (
+            {canConfigure && (
               <button
                 type="button"
                 className="btn primary mines-cta"
@@ -258,11 +270,6 @@ export function MinesScreen() {
                 onClick={onCashOut}
               >
                 Encaisser · {fmt(payoutCents(round.bet, round.multiplier))}
-              </button>
-            )}
-            {finished && (
-              <button type="button" className="btn primary mines-cta" onClick={onReset}>
-                Nouvelle manche
               </button>
             )}
           </div>
