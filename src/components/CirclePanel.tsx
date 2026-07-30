@@ -118,13 +118,11 @@ export function CirclePanel() {
   return (
     <section className="circle-panel">
       <div className="circle-head">
-        <h2>Cercle</h2>
-        <p>
-          Deux classements : crédit en direct, et record personnel.
-          {cloud
-            ? ' Sync Supabase — pas besoin de créer un compte email : pseudo + code suffisent.'
-            : ' Mode local (ajoute VITE_SUPABASE_URL / ANON_KEY pour le cloud).'}
-        </p>
+        <div className="circle-head-row">
+          <h2>Cercle</h2>
+          {cloud ? <span className="circle-badge">en ligne</span> : <span className="circle-badge dim">local</span>}
+        </div>
+        <p>Classement live · record perso · pseudo + code</p>
       </div>
 
       {!circle?.circleCode ? (
