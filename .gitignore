@@ -12,6 +12,18 @@ dist
 dist-ssr
 *.local
 
+# Secrets — jamais committer (mdp, clés Supabase, etc.)
+.env
+.env.*
+!.env.example
+mdp.txt
+mdp
+*mdp*
+*password*
+*secret*
+secrets/
+supabase/.temp/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

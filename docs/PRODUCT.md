@@ -51,7 +51,8 @@ Les micro-différences de règles (S17/H17, abandon, re-split As) sont **seconda
 2. Progression / unlock + lobby — **fait**
 3. Table Privée + jetons adaptatifs — **fait**
 4. Multi-spots 5/7 + side bets par spot — **fait** (moteur `TableRound` + UI)
-5. Cercle + base de données — **socle local + migration SQL** ; sync Supabase quand le projet est branché
+5. Cercle + base de données — **client prêt** (2 classements live/record, auth anonyme).  
+   Appliquer la migration SQL + activer Anonymous Auth + renseigner `VITE_SUPABASE_*` (voir `docs/SUPABASE.md`).
 
 ### Seuils de déblocage (pic de crédit)
 
