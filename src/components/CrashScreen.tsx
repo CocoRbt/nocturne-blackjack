@@ -17,6 +17,7 @@ import {
   type FlightSample,
 } from '../crash/graph';
 import { CRASH_RTP, payoutCents, reachChance } from '../crash/math';
+import { notifyDefi } from '../defis/track';
 import { fmt, fmtMult } from '../lib/format';
 import { useGame } from '../store/gameStore';
 import { RulesGuide } from './RulesGuide';
@@ -129,6 +130,7 @@ export function CrashScreen() {
         setFlash('win');
         if (result.round.cashoutAt != null) {
           setCashSample({ elapsed, mult: result.round.cashoutAt });
+          notifyDefi({ type: 'crash_cashout', mult: result.round.cashoutAt });
         }
       }
 
@@ -203,6 +205,7 @@ export function CrashScreen() {
     if (res.round.cashoutAt != null) {
       const elapsed = performance.now() - startTs.current;
       setCashSample({ elapsed, mult: res.round.cashoutAt });
+      notifyDefi({ type: 'crash_cashout', mult: res.round.cashoutAt });
     }
     // Vol continue jusqu’au crash — pas de stopLoop.
   };

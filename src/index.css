@@ -768,6 +768,127 @@ button:disabled {
   color: var(--ink-dim);
   letter-spacing: 0.04em;
 }
+/* ---------- Défis du jour ---------- */
+.defis-du-jour {
+  margin: 0 0 16px;
+  padding: 12px 12px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(194, 161, 95, 0.28);
+  background:
+    linear-gradient(145deg, rgba(194, 161, 95, 0.1), transparent 55%),
+    rgba(0, 0, 0, 0.22);
+}
+.defis-du-jour.compact {
+  margin-bottom: 14px;
+}
+.defis-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.defis-eyebrow {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--brass);
+  margin-bottom: 2px;
+}
+.defis-head h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 420;
+  font-size: 18px;
+  letter-spacing: 0.06em;
+}
+.defis-score {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--ink-dim);
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+}
+.defis-score.done {
+  color: var(--win);
+  border-color: rgba(143, 207, 168, 0.4);
+  background: rgba(143, 207, 168, 0.1);
+}
+.defis-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.defis-list li {
+  padding: 8px 8px 7px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--line);
+}
+.defis-list li.done {
+  border-color: rgba(143, 207, 168, 0.28);
+  background: rgba(143, 207, 168, 0.08);
+}
+.defis-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: start;
+}
+.defis-game {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brass);
+  padding: 3px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(194, 161, 95, 0.3);
+  white-space: nowrap;
+}
+.defis-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.defis-body strong {
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--ink);
+}
+.defis-desc {
+  font-size: 11px;
+  color: var(--ink-dim);
+  line-height: 1.35;
+}
+.defis-prog {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+}
+.defis-list li.done .defis-prog {
+  color: var(--win);
+  font-size: 14px;
+}
+.defis-bar {
+  margin-top: 6px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(233, 228, 216, 0.08);
+  overflow: hidden;
+}
+.defis-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(194, 161, 95, 0.7), rgba(143, 207, 168, 0.85));
+  transition: width 0.35s var(--ease-lux);
+}
+
 .circle-leave-actions {
   display: flex;
   flex-wrap: wrap;

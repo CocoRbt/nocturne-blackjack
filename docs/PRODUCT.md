@@ -61,7 +61,8 @@ Les micro-différences de règles blackjack (S17/H17, etc.) sont **secondaires**
 
 - Pseudo + **code de cercle** (pas de matchmaking public).
 - Stats : solde, pic, table max, mains, BJ, séries, net session.
-- Challenges : classement du cercle, saison (bankroll partagée), défis 1v1 simples.
+- **Défis du jour** : 3 défis déterministes par date, visibles dans le panneau classement (local). BJ / Mines / Craps / Crash / gain.
+- Challenges futurs : saison (bankroll partagée), défis 1v1 cloud.
 - Pas de multiplayer temps réel sur la même table (trop lourd pour le besoin).
 - Stack cible : **Supabase** (auth légère + Postgres + leaderboard).
 

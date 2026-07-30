@@ -13,6 +13,7 @@ import { fmt } from '../lib/format';
 import { useGame } from '../store/gameStore';
 import { CircleDrawer } from './CircleDrawer';
 import { circleJoinedLabel, useCircleKeepalive } from './CirclePanel';
+import { useDefiSync } from './DailyChallenges';
 import { exitCircle } from '../cercle/circleStore';
 
 export function Lobby() {
@@ -36,6 +37,7 @@ export function Lobby() {
   const [joinedAs, setJoinedAs] = useState(() => circleJoinedLabel());
 
   useCircleKeepalive();
+  useDefiSync();
 
   useEffect(() => {
     if (!circleOpen) setJoinedAs(circleJoinedLabel());

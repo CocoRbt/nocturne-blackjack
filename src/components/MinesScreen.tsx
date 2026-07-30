@@ -13,6 +13,7 @@ import {
   startRound,
   type MinesRound,
 } from '../mines/engine';
+import { notifyDefi } from '../defis/track';
 import { minesMultiplier, payoutCents } from '../mines/math';
 import { useGame } from '../store/gameStore';
 import { RulesGuide } from './RulesGuide';
@@ -141,6 +142,7 @@ export function MinesScreen() {
     setFlash(null);
     setLastPayout(0);
     setRound(startRound(stake, mines));
+    notifyDefi({ type: 'mines_start' });
   };
 
   const onReveal = useCallback(
@@ -157,6 +159,7 @@ export function MinesScreen() {
         minesCredit(result.payout);
         setLastPayout(result.payout);
         setFlash('win');
+        notifyDefi({ type: 'mines_cashout', mult: result.round.multiplier });
       }
     },
     [round, minesCredit],
@@ -169,6 +172,7 @@ export function MinesScreen() {
     minesCredit(payout);
     setLastPayout(payout);
     setFlash('win');
+    notifyDefi({ type: 'mines_cashout', mult: next.multiplier });
   };
 
   const adjustBet = (delta: number) => {

@@ -14,6 +14,7 @@ import {
   type CrapsRound,
   type DieFace,
 } from '../craps/engine';
+import { notifyDefi } from '../defis/track';
 import { fmt } from '../lib/format';
 import { useGame } from '../store/gameStore';
 import { RulesGuide } from './RulesGuide';
@@ -299,6 +300,7 @@ export function CrapsScreen() {
             if (res.creditCents > 0) crapsCredit(res.creditCents);
             setRound(res.round);
             const kinds = res.round.settlements.map((s) => s.kind);
+            if (kinds.some((k) => k === 'pass_win')) notifyDefi({ type: 'craps_pass_win' });
             if (kinds.some((k) => k.endsWith('_win') || k === 'point_made')) setFlash('win');
             else if (kinds.some((k) => k === 'dont_pass_push' || k === 'point_set')) setFlash('push');
             else if (kinds.some((k) => k.endsWith('_lose') || k === 'seven_out')) setFlash('lose');

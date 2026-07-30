@@ -13,6 +13,7 @@ import {
   type LocalCircleState,
 } from '../cercle/circleStore';
 import { useGame } from '../store/gameStore';
+import { DailyChallenges } from './DailyChallenges';
 
 type BoardTab = 'live' | 'peak';
 
@@ -186,6 +187,7 @@ export function CirclePanel() {
 
       {showForm ? (
         <div className="circle-form">
+          <DailyChallenges compact />
           {switching && (
             <p className="circle-hint">
               Tu quittes <strong>{circle?.circleCode}</strong> pour rejoindre un autre code.
@@ -283,6 +285,8 @@ export function CirclePanel() {
               Changer de code
             </button>
           </div>
+
+          <DailyChallenges />
 
           <div className="circle-tabs" role="tablist">
             <button
