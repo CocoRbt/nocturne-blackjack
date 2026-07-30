@@ -91,10 +91,13 @@ html,
 body,
 #root {
   height: 100%;
+  width: 100%;
+  max-width: 100%;
 }
 
 html {
   overflow: hidden;
+  overflow-x: clip;
 }
 
 body {
@@ -105,6 +108,23 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
+  overflow-x: clip;
+  /* Évite le reflow / zoom parasite sur mobile. */
+  overscroll-behavior: none;
+}
+
+#root {
+  overflow-x: clip;
+  position: relative;
+}
+
+button,
+a,
+input,
+select,
+textarea,
+[role='button'] {
+  touch-action: manipulation;
 }
 
 button {
@@ -116,6 +136,15 @@ button {
 }
 button:disabled {
   cursor: default;
+}
+
+/* iOS zoome si un input focus a une font < 16px — plancher sans écraser les gros champs. */
+@media (max-width: 860px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
 }
 
 ::selection {
@@ -2151,7 +2180,7 @@ button:disabled {
   top: 0;
   right: 0;
   bottom: 0;
-  width: min(430px, 100vw);
+  width: min(430px, 100%);
   background: var(--bg-1);
   border-left: 1px solid var(--line-strong);
   z-index: 45;
@@ -2578,7 +2607,7 @@ button:disabled {
     padding-bottom: 2px;
   }
   .seat-tabs {
-    width: min(920px, 96vw);
+    width: min(920px, 100%);
     gap: 6px;
   }
   .seat-tab {
@@ -3942,10 +3971,47 @@ button:disabled {
   }
   .crash-stage {
     order: 1;
-    min-height: 300px;
+    min-height: 260px;
   }
   .crash-graph-wrap {
-    min-height: 300px;
+    min-height: 260px;
+  }
+  .crash-mult-value {
+    font-size: clamp(36px, 14vw, 64px);
+  }
+  .crash-topbar,
+  .mines-topbar,
+  .craps-topbar {
+    gap: 8px;
+    padding-inline: 0;
+  }
+  .crash-balance,
+  .mines-balance,
+  .craps-balance {
+    padding: 6px 10px;
+  }
+  .crash-balance .value,
+  .mines-balance .value,
+  .craps-balance .value {
+    font-size: 17px;
+  }
+  .crash-brand h1,
+  .mines-brand h1,
+  .craps-brand h1 {
+    font-size: clamp(22px, 7vw, 30px);
+  }
+  .crash-screen,
+  .mines-screen,
+  .craps-screen {
+    padding-inline: 12px;
+  }
+  .rules-guide-modal {
+    padding: 12px;
+    align-items: end;
+  }
+  .rules-guide-panel {
+    max-height: min(92dvh, 820px);
+    width: 100%;
   }
 }
 
