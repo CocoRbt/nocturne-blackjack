@@ -16,6 +16,36 @@ import { useGame } from '../store/gameStore';
 
 type BoardTab = 'live' | 'peak';
 
+/** Garde les scores cloud à jour même si le tiroir est fermé. */
+export function useCircleKeepalive() {
+  const balance = useGame((s) => s.balance);
+  const peakBalance = useGame((s) => s.peakBalance);
+  const stats = useGame((s) => s.stats);
+  const tableId = useGame((s) => s.tableId);
+
+  useEffect(() => {
+    const state = loadCircle();
+    if (!state?.circleCode) return;
+    let cancelled = false;
+    const seed = {
+      balance,
+      peakBalance,
+      handsPlayed: stats.handsPlayed,
+      blackjacks: stats.blackjacks,
+      bestStreak: stats.longestWinStreak,
+      highestTable: tableId,
+    };
+    const t = window.setTimeout(() => {
+      void pushScore(state, seed).catch(() => undefined);
+    }, 500);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+      void cancelled;
+    };
+  }, [balance, peakBalance, stats.handsPlayed, stats.blackjacks, stats.longestWinStreak, tableId]);
+}
+
 export function CirclePanel() {
   const balance = useGame((s) => s.balance);
   const peakBalance = useGame((s) => s.peakBalance);
@@ -32,7 +62,6 @@ export function CirclePanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [open, setOpen] = useState(true);
 
   const seed = {
     balance,
@@ -76,6 +105,7 @@ export function CirclePanel() {
         setBoards(r.boards);
       });
     };
+    tick();
     const id = window.setInterval(tick, 8_000);
     return () => window.clearInterval(id);
   }, [circle]);
@@ -92,7 +122,6 @@ export function CirclePanel() {
       const refreshed = await refreshLeaderboards(next);
       setCircle(refreshed.state);
       setBoards(refreshed.boards);
-      setOpen(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Impossible de rejoindre le cercle');
     } finally {
@@ -108,7 +137,6 @@ export function CirclePanel() {
       setBoards(null);
       setNickname('');
       setJoinCode('');
-      setOpen(true);
     } finally {
       setBusy(false);
     }
@@ -131,124 +159,113 @@ export function CirclePanel() {
   const joined = Boolean(circle?.circleCode);
 
   return (
-    <section className={`circle-panel ${open ? 'is-open' : ''} ${joined ? 'is-joined' : ''}`}>
-      <button
-        type="button"
-        className="circle-toggle"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span className="circle-toggle-main">
-          <span className="circle-toggle-title">Cercle d&rsquo;amis</span>
-          {cloud ? (
-            <span className="circle-badge on">en ligne</span>
-          ) : (
-            <span className="circle-badge">local</span>
-          )}
-        </span>
-        <span className="circle-toggle-meta">
-          {joined ? `${circle!.nickname} · ${circle!.circleCode}` : 'Pseudo + code'}
-        </span>
-        <span className="circle-chevron" aria-hidden>
-          {open ? '▴' : '▾'}
-        </span>
-      </button>
+    <div className={`circle-panel-in-drawer ${joined ? 'is-joined' : ''}`}>
+      <p className="circle-drawer-lead">
+        Classement entre potes — pseudo + code, sans compte.
+        {cloud ? (
+          <span className="circle-badge on">en ligne</span>
+        ) : (
+          <span className="circle-badge">local</span>
+        )}
+      </p>
 
-      {open && (
-        <div className="circle-body">
-          {!joined ? (
-            <div className="circle-form">
-              <p className="circle-hint">
-                Vide = tu crées un cercle. Sinon colle le code exact d&rsquo;un pote.
-              </p>
-              <div className="circle-form-row">
-                <label>
-                  Pseudo
-                  <input
-                    value={nickname}
-                    maxLength={16}
-                    placeholder="ex. Minuit"
-                    autoComplete="nickname"
-                    onChange={(e) => setNickname(e.target.value)}
-                  />
-                </label>
-                <label>
-                  Code cercle
-                  <input
-                    value={joinCode}
-                    maxLength={12}
-                    placeholder="NOC-XXXX"
-                    autoCapitalize="characters"
-                    spellCheck={false}
-                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                  />
-                </label>
-              </div>
-              {error && <p className="circle-error">{error}</p>}
-              <button
-                className="btn primary circle-join-btn"
-                onClick={() => void createOrJoin()}
-                disabled={busy || nickname.trim().length < 2}
-              >
-                {busy ? 'Connexion…' : joinCode.trim() ? 'Rejoindre' : 'Créer mon cercle'}
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="circle-code-row">
-                <div>
-                  <span className="circle-code-label">Code à partager</span>
-                  <strong className="circle-code-value">{circle!.circleCode}</strong>
-                </div>
-                <button type="button" className="btn ghost" onClick={() => void copyCode()}>
-                  {copied ? 'Copié' : 'Copier'}
-                </button>
-                <button className="btn ghost" onClick={() => void leave()} disabled={busy}>
-                  Quitter
-                </button>
-              </div>
-              <p className="circle-meta-line">
-                {circle!.nickname}
-                {circle!.cloud ? ' · cloud' : ' · local'}
-              </p>
-
-              <div className="circle-tabs" role="tablist">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === 'live'}
-                  className={tab === 'live' ? 'on' : ''}
-                  onClick={() => setTab('live')}
-                >
-                  Crédit actuel
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === 'peak'}
-                  className={tab === 'peak' ? 'on' : ''}
-                  onClick={() => setTab('peak')}
-                >
-                  Record
-                </button>
-              </div>
-
-              <ol className="circle-board">
-                {rows.length === 0 && <li className="empty">Aucun score pour l’instant</li>}
-                {rows.slice(0, 8).map((m) => (
-                  <li key={`${tab}-${m.nickname}`} className={m.is_me ? 'me' : ''}>
-                    <span className="rank">{m.rank}</span>
-                    <span className="nick">{m.nickname}</span>
-                    <span className="peak">
-                      {fmt(tab === 'live' ? m.balance : m.peak_balance)}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </>
-          )}
+      {!joined ? (
+        <div className="circle-form">
+          <p className="circle-hint">
+            Laisse le code vide pour créer un cercle. Sinon colle le code exact d&rsquo;un pote.
+          </p>
+          <div className="circle-form-row">
+            <label>
+              Pseudo
+              <input
+                value={nickname}
+                maxLength={16}
+                placeholder="ex. Minuit"
+                autoComplete="nickname"
+                onChange={(e) => setNickname(e.target.value)}
+              />
+            </label>
+            <label>
+              Code cercle
+              <input
+                value={joinCode}
+                maxLength={12}
+                placeholder="NOC-XXXX"
+                autoCapitalize="characters"
+                spellCheck={false}
+                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+              />
+            </label>
+          </div>
+          {error && <p className="circle-error">{error}</p>}
+          <button
+            className="btn primary circle-join-btn"
+            onClick={() => void createOrJoin()}
+            disabled={busy || nickname.trim().length < 2}
+          >
+            {busy ? 'Connexion…' : joinCode.trim() ? 'Rejoindre' : 'Créer mon cercle'}
+          </button>
         </div>
+      ) : (
+        <>
+          <div className="circle-code-row">
+            <div>
+              <span className="circle-code-label">Code à partager</span>
+              <strong className="circle-code-value">{circle!.circleCode}</strong>
+            </div>
+            <button type="button" className="btn ghost" onClick={() => void copyCode()}>
+              {copied ? 'Copié' : 'Copier'}
+            </button>
+            <button className="btn ghost" onClick={() => void leave()} disabled={busy}>
+              Quitter
+            </button>
+          </div>
+          <p className="circle-meta-line">
+            {circle!.nickname}
+            {circle!.cloud ? ' · cloud' : ' · local'}
+          </p>
+
+          <div className="circle-tabs" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'live'}
+              className={tab === 'live' ? 'on' : ''}
+              onClick={() => setTab('live')}
+            >
+              Crédit actuel
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'peak'}
+              className={tab === 'peak' ? 'on' : ''}
+              onClick={() => setTab('peak')}
+            >
+              Record
+            </button>
+          </div>
+
+          <ol className="circle-board">
+            {rows.length === 0 && <li className="empty">Aucun score pour l’instant</li>}
+            {rows.slice(0, 12).map((m) => (
+              <li key={`${tab}-${m.nickname}`} className={m.is_me ? 'me' : ''}>
+                <span className="rank">{m.rank}</span>
+                <span className="nick">{m.nickname}</span>
+                <span className="peak">
+                  {fmt(tab === 'live' ? m.balance : m.peak_balance)}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </>
       )}
-    </section>
+    </div>
   );
+}
+
+export function circleJoinedLabel(): string | null {
+  const c = loadCircle();
+  if (!c?.circleCode) return null;
+  return c.nickname;
 }
