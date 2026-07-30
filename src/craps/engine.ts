@@ -71,7 +71,7 @@ export function createCrapsRound(): CrapsRound {
     history: [],
     settlements: [],
     lastNetCents: 0,
-    message: 'Come-out — Pass / Don’t Pass / Field.',
+    message: 'Étape 1 — mise sur Pass Line (recommandé), puis lance.',
   }
 }
 
@@ -164,10 +164,12 @@ export function placeBet(
 
 function messageForBets(phase: CrapsPhase, point: PointNumber | null, bets: WorkingBets): string {
   if (phase === 'come_out') {
-    if (bets.pass + bets.dontPass + bets.field === 0) return 'Come-out — placez vos jetons.'
-    return 'Come-out — lancez les dés.'
+    if (bets.pass + bets.dontPass + bets.field === 0) {
+      return 'Étape 1 — mise sur Pass Line (recommandé), puis lance.'
+    }
+    return 'Étape 2 — lance les dés.'
   }
-  return `Point ${point} — Field / Odds / lancez.`
+  return `Point ${point} — refais ${point} avant un 7 pour gagner (Pass).`
 }
 
 export type RollResult =
@@ -205,10 +207,10 @@ export function resolveRoll(round: CrapsRound, roll: DiceRoll): RollResult {
       settlements.push({
         kind: 'field_win',
         amountCents: stake + profit,
-        label: `Field +${profit / 100}€ (mise rendue)`,
+        label: `Field gagné · +${(profit / 100).toFixed(profit % 100 === 0 ? 0 : 2)}€`,
       })
     } else {
-      settlements.push({ kind: 'field_lose', amountCents: 0, label: 'Field perdu' })
+      settlements.push({ kind: 'field_lose', amountCents: 0, label: 'Field perdu (5, 6, 7 ou 8)' })
     }
     bets.field = 0
   }
@@ -218,17 +220,32 @@ export function resolveRoll(round: CrapsRound, roll: DiceRoll): RollResult {
       if (bets.pass > 0) {
         const stake = bets.pass
         credit += stake * 2
-        settlements.push({ kind: 'pass_win', amountCents: stake * 2, label: 'Pass Line gagne (natural)' })
+        settlements.push({
+          kind: 'pass_win',
+          amountCents: stake * 2,
+          label: `Pass Line · natural ${total} · mise doublée`,
+        })
         bets.pass = 0
       }
       if (bets.dontPass > 0) {
-        settlements.push({ kind: 'dont_pass_lose', amountCents: 0, label: 'Don’t Pass perdu' })
+        settlements.push({
+          kind: 'dont_pass_lose',
+          amountCents: 0,
+          label: `Don’t Pass perdu (natural ${total})`,
+        })
         bets.dontPass = 0
       }
-      message = total === 7 ? 'Natural 7 — come-out.' : 'Natural 11 — come-out.'
+      message =
+        total === 7
+          ? 'Natural 7 ! Pass Line gagne tout de suite.'
+          : 'Natural 11 ! Pass Line gagne tout de suite.'
     } else if (total === 2 || total === 3) {
       if (bets.pass > 0) {
-        settlements.push({ kind: 'pass_lose', amountCents: 0, label: 'Pass Line craps' })
+        settlements.push({
+          kind: 'pass_lose',
+          amountCents: 0,
+          label: `Pass Line perdu (craps ${total})`,
+        })
         bets.pass = 0
       }
       if (bets.dontPass > 0) {
@@ -237,14 +254,18 @@ export function resolveRoll(round: CrapsRound, roll: DiceRoll): RollResult {
         settlements.push({
           kind: 'dont_pass_win',
           amountCents: stake * 2,
-          label: 'Don’t Pass gagne (craps)',
+          label: `Don’t Pass gagne (craps ${total})`,
         })
         bets.dontPass = 0
       }
-      message = `Craps ${total} — come-out.`
+      message = `Craps ${total} — Pass perd, Don’t Pass gagne.`
     } else if (total === 12) {
       if (bets.pass > 0) {
-        settlements.push({ kind: 'pass_lose', amountCents: 0, label: 'Pass Line craps (12)' })
+        settlements.push({
+          kind: 'pass_lose',
+          amountCents: 0,
+          label: 'Pass Line perdu (craps 12)',
+        })
         bets.pass = 0
       }
       if (bets.dontPass > 0) {
@@ -253,33 +274,37 @@ export function resolveRoll(round: CrapsRound, roll: DiceRoll): RollResult {
         settlements.push({
           kind: 'dont_pass_push',
           amountCents: stake,
-          label: 'Don’t Pass push (12)',
+          label: 'Don’t Pass égalité (bar 12) — mise rendue',
         })
         bets.dontPass = 0
       }
-      message = 'Craps 12 — Don’t Pass push.'
+      message = 'Craps 12 — Pass perd, Don’t Pass remboursé (bar).'
     } else if (isPointNumber(total) && (bets.pass > 0 || bets.dontPass > 0)) {
       phase = 'point'
       point = total
       settlements.push({
         kind: 'point_set',
         amountCents: 0,
-        label: `Point établi : ${total}`,
+        label: `Point ${total} établi — la partie continue`,
       })
-      message = `Point ${total}. Odds ouverts (Pass).`
+      message = `Point ${total} ! Refais ${total} avant un 7.`
     } else if (isPointNumber(total)) {
-      message = `${total} — pas de ligne ; nouveau come-out.`
+      message = `${total} — sans Pass / Don’t Pass, rien ne change.`
     }
   } else {
     // Point phase
     const p = point!
     if (total === 7) {
       if (bets.pass > 0) {
-        settlements.push({ kind: 'pass_lose', amountCents: 0, label: 'Seven-out — Pass perdu' })
+        settlements.push({
+          kind: 'pass_lose',
+          amountCents: 0,
+          label: 'Seven-out — Pass Line perdu',
+        })
         bets.pass = 0
       }
       if (bets.odds > 0) {
-        settlements.push({ kind: 'odds_lose', amountCents: 0, label: 'Odds perdues' })
+        settlements.push({ kind: 'odds_lose', amountCents: 0, label: 'Odds perdues avec le 7' })
         bets.odds = 0
       }
       if (bets.dontPass > 0) {
@@ -295,12 +320,16 @@ export function resolveRoll(round: CrapsRound, roll: DiceRoll): RollResult {
       settlements.push({ kind: 'seven_out', amountCents: 0, label: 'Seven-out' })
       phase = 'come_out'
       point = null
-      message = 'Seven-out — nouveau come-out.'
+      message = 'Seven-out ! Le 7 est sorti avant le point.'
     } else if (total === p) {
       if (bets.pass > 0) {
         const stake = bets.pass
         credit += stake * 2
-        settlements.push({ kind: 'pass_win', amountCents: stake * 2, label: 'Pass Line — point fait' })
+        settlements.push({
+          kind: 'pass_win',
+          amountCents: stake * 2,
+          label: `Pass Line · point ${p} fait`,
+        })
         bets.pass = 0
       }
       if (bets.odds > 0) {
@@ -310,20 +339,24 @@ export function resolveRoll(round: CrapsRound, roll: DiceRoll): RollResult {
         settlements.push({
           kind: 'odds_win',
           amountCents: stake + profit,
-          label: `Odds +${(profit / 100).toFixed(2)}€`,
+          label: `Odds · +${(profit / 100).toFixed(profit % 100 === 0 ? 0 : 2)}€ (cotes vraies)`,
         })
         bets.odds = 0
       }
       if (bets.dontPass > 0) {
-        settlements.push({ kind: 'dont_pass_lose', amountCents: 0, label: 'Don’t Pass perdu (point)' })
+        settlements.push({
+          kind: 'dont_pass_lose',
+          amountCents: 0,
+          label: `Don’t Pass perdu (point ${p})`,
+        })
         bets.dontPass = 0
       }
       settlements.push({ kind: 'point_made', amountCents: 0, label: `Point ${p} fait` })
       phase = 'come_out'
       point = null
-      message = `Point ${p} fait — nouveau come-out.`
+      message = `Point ${p} fait ! Pass Line gagne.`
     } else {
-      message = `Rien (${total}) — point ${p} toujours en jeu.`
+      message = `${total} — pas encore. Il faut ${p} (ou un 7 qui te fait perdre).`
     }
   }
 

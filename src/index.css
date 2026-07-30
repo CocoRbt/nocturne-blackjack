@@ -3027,10 +3027,81 @@ button:disabled {
   font-family: var(--font-display);
   font-size: 16px;
 }
+.craps-coach {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 14px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(194, 161, 95, 0.28);
+  background:
+    linear-gradient(145deg, rgba(194, 161, 95, 0.12), transparent 55%),
+    rgba(0, 0, 0, 0.28);
+}
+.craps-coach[data-phase='point'] {
+  border-color: rgba(143, 207, 168, 0.3);
+  background:
+    linear-gradient(145deg, rgba(143, 207, 168, 0.1), transparent 55%),
+    rgba(0, 0, 0, 0.28);
+}
+.craps-coach-step {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+.craps-coach[data-phase='point'] .craps-coach-step {
+  color: var(--win);
+}
+.craps-coach strong {
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  font-weight: 420;
+}
+.craps-coach p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+}
+.craps-hint {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.22);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-dim);
+}
+.craps-hint-k {
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+.craps-hint p {
+  margin: 0;
+}
+.craps-hint .win {
+  color: var(--win);
+}
+.craps-hint .lose {
+  color: var(--lose);
+}
 .craps-cta {
   width: 100%;
   min-height: 52px;
   font-size: 13px;
+}
+.craps-cta.pulse:not(:disabled) {
+  animation: craps-cta-pulse 1.8s var(--ease-lux) infinite;
+}
+@keyframes craps-cta-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(194, 161, 95, 0.25); }
+  50% { box-shadow: 0 0 0 8px rgba(194, 161, 95, 0); }
 }
 .craps-settle {
   list-style: none;
@@ -3041,6 +3112,12 @@ button:disabled {
   font-size: 12px;
   color: var(--ink-dim);
   min-height: 1.2em;
+}
+.craps-settle li.ok {
+  color: var(--win);
+}
+.craps-settle li.bad {
+  color: var(--lose);
 }
 .craps-footnote {
   font-size: 11px;
@@ -3105,28 +3182,44 @@ button:disabled {
     inset 0 0 0 1px rgba(194, 161, 95, 0.2),
     0 28px 70px rgba(0, 0, 0, 0.4);
 }
+.craps-felt.is-rolling {
+  box-shadow:
+    inset 0 0 40px rgba(194, 161, 95, 0.08),
+    0 28px 70px rgba(0, 0, 0, 0.4);
+}
 .craps-puck-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 22px;
+  margin-bottom: 16px;
   position: relative;
   z-index: 1;
 }
 .craps-puck {
-  min-width: 84px;
-  height: 84px;
+  min-width: 78px;
+  height: 78px;
   border-radius: 50%;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
   font-family: var(--font-display);
-  font-size: 18px;
   letter-spacing: 0.08em;
   border: 3px solid rgba(233, 228, 216, 0.35);
   background: radial-gradient(circle at 35% 30%, #3a3530, #12100e);
   color: var(--ink-dim);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  flex-shrink: 0;
+}
+.craps-puck .puck-label {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+}
+.craps-puck .puck-value {
+  font-size: 22px;
+  line-height: 1;
 }
 .craps-puck.on {
   color: #1a1208;
@@ -3138,14 +3231,49 @@ button:disabled {
   from { transform: scale(0.86); opacity: 0.5; }
   to { transform: scale(1); opacity: 1; }
 }
+.craps-throw {
+  flex: 1;
+  min-height: 130px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  perspective: 600px;
+}
 .craps-dice {
   display: flex;
-  gap: 14px;
+  gap: clamp(16px, 4vw, 28px);
+  align-items: flex-end;
+  min-height: 96px;
+}
+.craps-die-slot {
+  position: relative;
+  width: clamp(64px, 12vw, 84px);
+  height: clamp(64px, 12vw, 84px);
+}
+.craps-die-shadow {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: -6px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  filter: blur(4px);
+  pointer-events: none;
 }
 .craps-die {
-  width: clamp(56px, 10vw, 72px);
-  height: clamp(56px, 10vw, 72px);
-  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.4));
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 1;
+  transform-style: preserve-3d;
+  filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.35));
+}
+.craps-die.is-throwing {
+  filter: drop-shadow(0 22px 28px rgba(0, 0, 0, 0.45));
 }
 .craps-die-svg {
   width: 100%;
@@ -3159,6 +3287,45 @@ button:disabled {
 .craps-die-pip {
   fill: #2a2620;
 }
+.craps-total {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(194, 161, 95, 0.4);
+  background: rgba(10, 12, 10, 0.65);
+}
+.craps-total-k {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.craps-total strong {
+  font-family: var(--font-display);
+  font-size: 28px;
+  color: var(--brass);
+  line-height: 1;
+}
+.craps-goal {
+  text-align: center;
+  margin: 0 0 14px;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: var(--ink-dim);
+  position: relative;
+  z-index: 1;
+}
+.craps-goal strong {
+  font-family: var(--font-display);
+  font-size: 22px;
+  color: var(--brass);
+  padding: 0 4px;
+}
+.craps-goal strong.sev {
+  color: var(--lose);
+}
 .craps-spots {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -3170,8 +3337,8 @@ button:disabled {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
-  min-height: 96px;
+  gap: 6px;
+  min-height: 132px;
   padding: 14px 14px 12px;
   border-radius: 14px;
   border: 1.5px solid var(--craps-line);
@@ -3190,7 +3357,7 @@ button:disabled {
   box-shadow: inset 0 0 0 1px rgba(194, 161, 95, 0.2);
 }
 .craps-spot.locked {
-  opacity: 0.45;
+  opacity: 0.42;
 }
 .craps-spot.pass {
   grid-column: 1 / -1;
@@ -3199,30 +3366,70 @@ button:disabled {
 .craps-spot.field {
   border-color: rgba(207, 154, 108, 0.35);
 }
+.craps-spot .spot-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
 .craps-spot .spot-name {
   font-family: var(--font-display);
   font-size: 18px;
   letter-spacing: 0.06em;
 }
-.craps-spot .spot-pay {
-  font-size: 11px;
+.craps-spot .spot-badge {
+  font-size: 9px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: #0e1a14;
+  background: rgba(143, 207, 168, 0.85);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+.craps-spot .spot-pay {
+  font-size: 12px;
+  color: var(--ink-dim);
+  line-height: 1.35;
+}
+.craps-spot .spot-winlose {
+  display: grid;
+  gap: 3px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.craps-spot .spot-winlose .w {
+  color: rgba(143, 207, 168, 0.9);
+}
+.craps-spot .spot-winlose .l {
+  color: rgba(207, 143, 143, 0.9);
 }
 .craps-spot .spot-stake {
   margin-top: auto;
   font-variant-numeric: tabular-nums;
   color: var(--brass);
-  font-size: 15px;
+  font-size: 16px;
+  font-family: var(--font-display);
 }
 .craps-history {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
   margin-top: 18px;
   position: relative;
   z-index: 1;
+}
+.craps-history-label {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-right: 4px;
+  border: none !important;
+  background: transparent !important;
+  min-width: 0 !important;
+  height: auto !important;
 }
 .craps-history span {
   min-width: 28px;
@@ -3238,6 +3445,10 @@ button:disabled {
 .craps-history span.sev {
   color: var(--lose);
   border-color: rgba(207, 143, 143, 0.35);
+}
+.craps-history span.pt {
+  color: var(--brass);
+  border-color: rgba(194, 161, 95, 0.4);
 }
 
 @media (max-width: 860px) {
@@ -3255,6 +3466,16 @@ button:disabled {
   }
   .craps-spot.pass {
     grid-column: auto;
+  }
+  .craps-spot {
+    min-height: 0;
+  }
+  .craps-puck-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .craps-puck {
+    align-self: center;
   }
 }
 

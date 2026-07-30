@@ -246,26 +246,29 @@ function CrapsRules() {
     <>
       <IlluCraps />
       <p className="rules-lead">
-        Scraps — vous êtes toujours le shooter. Come-out, point, puis résolution des paris.
+        Scraps — tu lances toujours. Commence par Pass Line : 7 ou 11 = tu gagnes tout de suite.
+        Sinon un « point » est fixé, et tu dois le refaire avant un 7.
       </p>
       <section className="rules-section">
-        <h3>Phases</h3>
+        <h3>En 3 étapes</h3>
         <ol className="rules-steps">
           <li>
             <span className="n">1</span>
             <span>
-              <strong>Come-out</strong> (puck OFF) — Pass / Don’t Pass / Field, puis lancez.
+              <strong>Mise</strong> — pose un jeton sur Pass Line (le plus simple). Don’t Pass = l’inverse. Field = un seul lancer.
             </span>
           </li>
           <li>
             <span className="n">2</span>
             <span>
-              <strong>Point</strong> (4–6 / 8–10) — Odds derrière Pass, Field à chaque coup.
+              <strong>Come-out</strong> — 7/11 Pass gagne · 2/3/12 Pass perd · autre total = point établi.
             </span>
           </li>
           <li>
             <span className="n">3</span>
-            <span>Point avant 7 = Pass gagne · 7 avant point = seven-out.</span>
+            <span>
+              <strong>Point</strong> — refais le point avant un 7. Odds = cotes vraies derrière Pass.
+            </span>
           </li>
         </ol>
       </section>
