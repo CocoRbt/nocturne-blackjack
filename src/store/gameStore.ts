@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { sounds } from '../audio/sounds';
 import { handValue, isNaturalBlackjack } from '../engine/hand';
-import { Round } from '../engine/round';
 import {
   canSitAtTable,
   getTable,
@@ -10,6 +9,12 @@ import {
   type PrivateLimits,
 } from '../engine/rules';
 import { DealingShoe } from '../engine/shoe';
+import {
+  maxSeatsForOrientation,
+  TableRound,
+  type TableSeatInput,
+  type TableSeatRoundState,
+} from '../engine/tableRound';
 import type { BetLayout, PlayerActionType, SideBetId } from '../engine/types';
 import {
   ALL_CHIP_DENOMS,
@@ -29,6 +34,8 @@ import {
 import { TIMING, type GameSpeed } from './timing';
 
 export type BetSpot = 'main' | SideBetId;
+export type SeatStacks = Record<BetSpot, number[]>;
+export type ChipPlacement = { seatIndex: number; spot: BetSpot };
 
 /** @deprecated préférer ALL_CHIP_DENOMS / chipsForLimits — conservé pour imports existants. */
 export const CHIP_DENOMS = ALL_CHIP_DENOMS;
@@ -63,7 +70,7 @@ export interface DisplayState {
   payoutPhase: 'idle' | 'flying' | 'done';
   payoutFlies: PayoutFlyItem[];
   /** Side bets gagnants flashés dès la fin de donne. */
-  dealFlashIds: SideBetId[];
+  dealFlashIds: string[];
   /** Net animé affiché pendant le fly (0 → totalNet). */
   animatedNet: number;
 }
@@ -79,11 +86,13 @@ interface GameState {
   privateLimits: PrivateLimits;
 
   selectedChip: number;
-  stacks: Record<BetSpot, number[]>;
-  placementOrder: BetSpot[];
-  lastBets: Record<string, BetLayout>;
+  seatCapacity: 5 | 7;
+  selectedSeat: number;
+  stacks: SeatStacks[];
+  placementOrder: ChipPlacement[];
+  lastBets: SaveData['lastBets'];
 
-  round: Round | null;
+  round: TableRound | null;
   v: number;
   display: DisplayState;
   notice: string | null;
@@ -99,6 +108,8 @@ interface GameState {
   leaveTable(): void;
   configurePrivateLimits(limits: PrivateLimits): void;
   selectChip(denom: number): void;
+  selectSeat(seatIndex: number): void;
+  refreshSeatCapacity(): void;
   addChip(spot: BetSpot): void;
   undoLastChip(): void;
   clearBets(): void;
@@ -117,7 +128,7 @@ interface GameState {
   dismissNotice(): void;
 }
 
-const emptyStacks = (): Record<BetSpot, number[]> => ({
+const emptyStacks = (): SeatStacks => ({
   main: [],
   perfectPairs: [],
   twentyOnePlusThree: [],
@@ -125,6 +136,9 @@ const emptyStacks = (): Record<BetSpot, number[]> => ({
   bustIt: [],
   royalMatch: [],
 });
+
+const emptyTableStacks = (capacity: number): SeatStacks[] =>
+  Array.from({ length: capacity }, () => emptyStacks());
 
 const idleDisplay = (): DisplayState => ({
   dealing: false,
@@ -151,6 +165,40 @@ const freshSession = (balance: number, goalId: GoalId = 'hands20'): SessionState
 });
 
 const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
+
+function orientationSeatCapacity(): 5 | 7 {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return 5;
+  return maxSeatsForOrientation(window.matchMedia('(orientation: landscape)').matches);
+}
+
+function resizeTableStacks(stacks: SeatStacks[], capacity: number): SeatStacks[] {
+  return Array.from({ length: capacity }, (_, i) => stacks[i] ?? emptyStacks());
+}
+
+function seatStagedTotal(stacks: SeatStacks): number {
+  return sum(Object.values(stacks).flat());
+}
+
+function betLayoutFromStacks(stacks: SeatStacks, sideBetIds: readonly SideBetId[]): BetLayout {
+  const sideBets: BetLayout['sideBets'] = {};
+  for (const id of sideBetIds) {
+    const amount = sum(stacks[id]);
+    if (amount > 0) sideBets[id] = amount;
+  }
+  return { main: sum(stacks.main), sideBets };
+}
+
+function betLayoutTotal(bets: BetLayout): number {
+  return bets.main + sum(Object.values(bets.sideBets).filter((x): x is number => x !== undefined));
+}
+
+function cloneBetLayout(bets: BetLayout): BetLayout {
+  return { main: bets.main, sideBets: { ...bets.sideBets } };
+}
+
+function seatByIndex(round: TableRound, seatIndex: number): TableSeatRoundState | undefined {
+  return round.seats.find((seat) => seat.seatIndex === seatIndex);
+}
 
 export function decompose(amount: number, denoms: readonly number[] = ALL_CHIP_DENOMS): number[] {
   return decomposeAmount(amount, denoms);
@@ -193,6 +241,7 @@ const saved = loadSave();
 const initialBalance = saved?.balance ?? STARTING_BALANCE;
 const initialPeak = saved?.peakBalance ?? Math.max(initialBalance, STARTING_BALANCE);
 const initialPrivate = saved?.privateLimits ?? { minBet: 250_00, maxBet: 25_000_00 };
+const initialSeatCapacity = orientationSeatCapacity();
 setEnginePrivateLimits(initialPrivate);
 
 export const useGame = create<GameState>((set, get) => {
@@ -221,6 +270,18 @@ export const useGame = create<GameState>((set, get) => {
     persistSave(data);
   };
 
+  const refreshSeatCapacityState = () => {
+    const s = get();
+    if (s.round) return;
+    const seatCapacity = orientationSeatCapacity();
+    set({
+      seatCapacity,
+      selectedSeat: Math.min(s.selectedSeat, seatCapacity - 1),
+      stacks: resizeTableStacks(s.stacks, seatCapacity),
+      placementOrder: s.placementOrder.filter((p) => p.seatIndex < seatCapacity),
+    });
+  };
+
   const applySummary = () => {
     const s = get();
     const round = s.round;
@@ -243,7 +304,7 @@ export const useGame = create<GameState>((set, get) => {
           : 0;
     if (stats.currentStreak > stats.longestWinStreak) stats.longestWinStreak = stats.currentStreak;
 
-    summary.hands.forEach((h, i) => {
+    summary.hands.forEach((h) => {
       if (h.outcome === 'win' || h.outcome === 'evenMoney') stats.wins += 1;
       else if (h.outcome === 'blackjack') {
         stats.wins += 1;
@@ -251,14 +312,14 @@ export const useGame = create<GameState>((set, get) => {
       } else if (h.outcome === 'push') stats.pushes += 1;
       else if (h.outcome === 'surrender') stats.surrenders += 1;
       else stats.losses += 1;
-      if (round.hands[i]?.doubled) stats.doubles += 1;
+      if (seatByIndex(round, h.seatIndex)?.hands[h.handIndex]?.doubled) stats.doubles += 1;
     });
-    stats.splits += Math.max(0, round.hands.length - 1);
+    stats.splits += round.seats.reduce((total, seat) => total + Math.max(0, seat.hands.length - 1), 0);
 
-    if (summary.insurance) {
+    for (const insurance of summary.insurance) {
       stats.insuranceTaken += 1;
-      if (summary.insurance.won) stats.insuranceWon += 1;
-      stats.insuranceNet += summary.insurance.net;
+      if (insurance.won) stats.insuranceWon += 1;
+      stats.insuranceNet += insurance.net;
     }
     for (const sb of summary.sideBets) {
       const st = stats.sideBets[sb.id];
@@ -272,18 +333,29 @@ export const useGame = create<GameState>((set, get) => {
       id: Date.now(),
       at: Date.now(),
       tableId: s.tableId,
-      hands: summary.hands.map((h, i) => ({
-        outcome: h.outcome,
-        bet: h.bet,
-        net: h.net,
-        cards: round.hands[i].cards.map((c) => c.rank + c.suit),
-        total: handValue(round.hands[i].cards).total,
-      })),
+      hands: summary.hands.map((h) => {
+        const hand = seatByIndex(round, h.seatIndex)?.hands[h.handIndex];
+        return {
+          seatIndex: h.seatIndex,
+          outcome: h.outcome,
+          bet: h.bet,
+          net: h.net,
+          cards: hand?.cards.map((c) => c.rank + c.suit) ?? [],
+          total: hand ? handValue(hand.cards).total : 0,
+        };
+      }),
       dealerCards: summary.dealerCards.map((c) => c.rank + c.suit),
       dealerTotal: summary.dealerTotal,
       dealerBust: summary.dealerBust,
-      sideBets: summary.sideBets.map((b) => ({ id: b.id, bet: b.bet, label: b.label, net: b.net })),
-      insuranceNet: summary.insurance?.net ?? null,
+      sideBets: summary.sideBets.map((b) => ({
+        seatIndex: b.seatIndex,
+        id: b.id,
+        bet: b.bet,
+        label: b.label,
+        net: b.net,
+      })),
+      insuranceNet:
+        summary.insurance.length > 0 ? summary.insurance.reduce((total, i) => total + i.net, 0) : null,
       net: summary.totalNet,
       wagered: summary.totalWagered,
       balanceAfter: balance,
@@ -381,7 +453,7 @@ export const useGame = create<GameState>((set, get) => {
       const flies: PayoutFlyItem[] = [];
       for (const h of summary.hands) {
         flies.push({
-          id: `hand-${h.handIndex}`,
+          id: `hand-${h.seatIndex}-${h.handIndex}`,
           amount: Math.abs(h.net || h.bet),
           won: h.net > 0,
           push: h.net === 0,
@@ -390,7 +462,7 @@ export const useGame = create<GameState>((set, get) => {
       for (const b of summary.sideBets) {
         if (b.bet <= 0) continue;
         flies.push({
-          id: `side-${b.id}`,
+          id: `side-${b.seatIndex}-${b.id}`,
           amount: Math.abs(b.net || b.bet),
           won: b.net > 0,
           push: b.net === 0,
@@ -446,7 +518,9 @@ export const useGame = create<GameState>((set, get) => {
     gameSpeed: saved?.gameSpeed === 'fast' ? 'fast' : 'classic',
     privateLimits: initialPrivate,
     selectedChip: 5_00,
-    stacks: emptyStacks(),
+    seatCapacity: initialSeatCapacity,
+    selectedSeat: 0,
+    stacks: emptyTableStacks(initialSeatCapacity),
     placementOrder: [],
     lastBets: saved?.lastBets ?? {},
     round: null,
@@ -486,11 +560,14 @@ export const useGame = create<GameState>((set, get) => {
       const chip = defaultChipForLimits(table.rules.minBet, table.rules.maxBet);
       const goals: GoalId[] = ['hands20', 'reach6100', 'bj2'];
       const goalId = goals[Math.floor(Math.random() * goals.length)];
+      const seatCapacity = orientationSeatCapacity();
       set({
         screen: 'table',
         tableId,
         round: null,
-        stacks: emptyStacks(),
+        seatCapacity,
+        selectedSeat: 0,
+        stacks: emptyTableStacks(seatCapacity),
         placementOrder: [],
         display: idleDisplay(),
         selectedChip: chip,
@@ -499,6 +576,7 @@ export const useGame = create<GameState>((set, get) => {
         shoeDealt: 0,
         session: freshSession(s.balance, goalId),
       });
+      refreshSeatCapacityState();
       persist();
     },
 
@@ -517,11 +595,12 @@ export const useGame = create<GameState>((set, get) => {
       set({
         screen: 'lobby',
         round: null,
-        stacks: emptyStacks(),
+        stacks: emptyTableStacks(get().seatCapacity),
         placementOrder: [],
         display: idleDisplay(),
         session: null,
       });
+      refreshSeatCapacityState();
     },
 
     selectChip(denom) {
@@ -529,25 +608,44 @@ export const useGame = create<GameState>((set, get) => {
       set({ selectedChip: denom });
     },
 
+    selectSeat(seatIndex) {
+      const s = get();
+      if (s.round || seatIndex < 0 || seatIndex >= s.seatCapacity) return;
+      sounds.play('click');
+      set({ selectedSeat: seatIndex });
+    },
+
+    refreshSeatCapacity() {
+      refreshSeatCapacityState();
+    },
+
     addChip(spot) {
       const s = get();
       if (s.round) return;
       const table = getTable(s.tableId);
       const denom = s.selectedChip;
-      const staged = sum(Object.values(s.stacks).flat());
+      const seatIndex = Math.min(s.selectedSeat, s.seatCapacity - 1);
+      const seatStacks = s.stacks[seatIndex] ?? emptyStacks();
+      const staged = stagedTotal(s.stacks);
       if (staged + denom > s.balance) {
         set({ notice: 'Solde insuffisant pour ce jeton.' });
         return;
       }
       const max = spot === 'main' ? table.rules.maxBet : table.rules.sideBetMax;
-      if (sum(s.stacks[spot]) + denom > max) {
+      if (sum(seatStacks[spot]) + denom > max) {
         set({ notice: `Limite de mise atteinte sur cette zone.` });
         return;
       }
+      const stacks = resizeTableStacks(s.stacks, s.seatCapacity);
+      stacks[seatIndex] = {
+        ...stacks[seatIndex],
+        [spot]: [...stacks[seatIndex][spot], denom],
+      };
       sounds.play('chip');
       set({
-        stacks: { ...s.stacks, [spot]: [...s.stacks[spot], denom] },
-        placementOrder: [...s.placementOrder, spot],
+        stacks,
+        selectedSeat: seatIndex,
+        placementOrder: [...s.placementOrder, { seatIndex, spot }],
         notice: null,
       });
     },
@@ -555,10 +653,17 @@ export const useGame = create<GameState>((set, get) => {
     undoLastChip() {
       const s = get();
       if (s.round || s.placementOrder.length === 0) return;
-      const spot = s.placementOrder[s.placementOrder.length - 1];
+      const { seatIndex, spot } = s.placementOrder[s.placementOrder.length - 1];
+      if (!s.stacks[seatIndex]) return;
+      const stacks = resizeTableStacks(s.stacks, s.seatCapacity);
+      stacks[seatIndex] = {
+        ...stacks[seatIndex],
+        [spot]: stacks[seatIndex][spot].slice(0, -1),
+      };
       sounds.play('chip');
       set({
-        stacks: { ...s.stacks, [spot]: s.stacks[spot].slice(0, -1) },
+        stacks,
+        selectedSeat: Math.min(seatIndex, s.seatCapacity - 1),
         placementOrder: s.placementOrder.slice(0, -1),
       });
     },
@@ -567,32 +672,44 @@ export const useGame = create<GameState>((set, get) => {
       const s = get();
       if (s.round) return;
       sounds.play('chipStack');
-      set({ stacks: emptyStacks(), placementOrder: [] });
+      set({ stacks: emptyTableStacks(s.seatCapacity), placementOrder: [] });
     },
 
     rebet() {
       const s = get();
       if (s.round) return false;
       const last = s.lastBets[s.tableId];
-      if (!last) return false;
-      const total =
-        last.main + sum(Object.values(last.sideBets).filter((x): x is number => x !== undefined));
+      if (!last || last.length === 0) return false;
+      if (last.some((seatBet) => seatBet.seatIndex >= s.seatCapacity)) {
+        set({ notice: 'Passe en paysage pour rejouer les 7 places.' });
+        return false;
+      }
+      const total = last.reduce((acc, seatBet) => acc + betLayoutTotal(seatBet.bets), 0);
       if (total > s.balance) {
         set({ notice: 'Solde insuffisant pour rejouer la mise précédente.' });
         return false;
       }
       const table = getTable(s.tableId);
       const denoms = chipsForLimits(table.rules.minBet, table.rules.maxBet);
-      const stacks = emptyStacks();
-      stacks.main = decompose(last.main, denoms);
-      const order: BetSpot[] = stacks.main.map(() => 'main' as BetSpot);
-      for (const [id, amount] of Object.entries(last.sideBets)) {
-        if (!amount) continue;
-        stacks[id as SideBetId] = decompose(amount, denoms);
-        for (let i = 0; i < stacks[id as SideBetId].length; i++) order.push(id as SideBetId);
+      const stacks = emptyTableStacks(s.seatCapacity);
+      const order: ChipPlacement[] = [];
+      for (const { seatIndex, bets } of last) {
+        if (seatIndex < 0 || seatIndex >= s.seatCapacity) continue;
+        stacks[seatIndex].main = decompose(bets.main, denoms);
+        for (let i = 0; i < stacks[seatIndex].main.length; i++) {
+          order.push({ seatIndex, spot: 'main' });
+        }
+        for (const [id, amount] of Object.entries(bets.sideBets)) {
+          if (!amount) continue;
+          const spot = id as SideBetId;
+          stacks[seatIndex][spot] = decompose(amount, denoms);
+          for (let i = 0; i < stacks[seatIndex][spot].length; i++) {
+            order.push({ seatIndex, spot });
+          }
+        }
       }
       sounds.play('chipStack');
-      set({ stacks, placementOrder: order, notice: null });
+      set({ stacks, placementOrder: order, selectedSeat: last[0]?.seatIndex ?? 0, notice: null });
       return true;
     },
 
@@ -600,24 +717,40 @@ export const useGame = create<GameState>((set, get) => {
       const s = get();
       if (s.round || !shoe) return;
       const table = getTable(s.tableId);
-      const main = sum(s.stacks.main);
-      if (main < table.rules.minBet) {
+      const seats: TableSeatInput[] = [];
+      let total = 0;
+      for (let seatIndex = 0; seatIndex < s.seatCapacity; seatIndex++) {
+        const seatStacks = s.stacks[seatIndex] ?? emptyStacks();
+        const bets = betLayoutFromStacks(seatStacks, table.rules.sideBets);
+        const sideTotal = sum(Object.values(bets.sideBets).filter((x): x is number => x !== undefined));
+        if (bets.main === 0 && sideTotal > 0) {
+          set({ notice: `Place ${seatIndex + 1} : ajoute une mise principale.` });
+          return;
+        }
+        if (bets.main > 0 && bets.main < table.rules.minBet) {
+          set({ notice: `Place ${seatIndex + 1} : mise principale minimale ${table.rules.minBet / 100}.` });
+          return;
+        }
+        for (const [id, amount] of Object.entries(bets.sideBets)) {
+          if (!amount) continue;
+          if (amount < table.rules.sideBetMin) {
+            set({ notice: `Place ${seatIndex + 1} : side bet minimal ${table.rules.sideBetMin / 100}.` });
+            return;
+          }
+          if (!table.rules.sideBets.includes(id as SideBetId)) {
+            set({ notice: `Side bet non proposée à cette table.` });
+            return;
+          }
+        }
+        if (bets.main >= table.rules.minBet) {
+          seats.push({ seatIndex, bets });
+          total += betLayoutTotal(bets);
+        }
+      }
+      if (seats.length === 0) {
         set({ notice: `Mise principale minimale : ${table.rules.minBet / 100}.` });
         return;
       }
-      const sideBets: BetLayout['sideBets'] = {};
-      for (const id of table.rules.sideBets) {
-        const amount = sum(s.stacks[id]);
-        if (amount > 0) {
-          if (amount < table.rules.sideBetMin) {
-            set({ notice: `Side bet minimal : ${table.rules.sideBetMin / 100}.` });
-            return;
-          }
-          sideBets[id] = amount;
-        }
-      }
-      const bets: BetLayout = { main, sideBets };
-      const total = main + sum(Object.values(sideBets) as number[]);
       if (total > s.balance) {
         set({ notice: 'Solde insuffisant.' });
         return;
@@ -630,17 +763,27 @@ export const useGame = create<GameState>((set, get) => {
         set({ notice: null });
       }
 
-      const round = new Round(table.rules, shoe, bets);
+      const round = new TableRound(table.rules, shoe, seats);
       const token = ++presentToken;
       const t = timing();
-      const dealFlashIds = round.dealSideBetResults
-        .filter((r) => r.returned > 0)
-        .map((r) => r.id);
+      const dealCardCount = seats.length * 2 + 2;
+      const dealUnlock = t.dealUnlock + Math.max(0, dealCardCount - 4) * t.dealGap;
+      const dealFlashIds = round.seats.flatMap((seat) =>
+        seat.dealSideBetResults
+          .filter((r) => r.returned > 0)
+          .map((r) => `${seat.seatIndex}:${r.id}`),
+      );
 
       set({
         balance: s.balance - total,
         round,
-        lastBets: { ...s.lastBets, [s.tableId]: bets },
+        lastBets: {
+          ...s.lastBets,
+          [s.tableId]: seats.map((seatBet) => ({
+            seatIndex: seatBet.seatIndex,
+            bets: cloneBetLayout(seatBet.bets),
+          })),
+        },
         display: {
           dealing: true,
           holeShown: false,
@@ -656,8 +799,8 @@ export const useGame = create<GameState>((set, get) => {
       persist();
       bump();
 
-      // Chorégraphie : 4 battements synchronisés.
-      for (let i = 0; i < 4; i++) {
+      // Chorégraphie : une pulsation par carte distribuée sur la table.
+      for (let i = 0; i < dealCardCount; i++) {
         setTimeout(() => {
           if (presentToken !== token) return;
           sounds.play('card');
@@ -676,7 +819,7 @@ export const useGame = create<GameState>((set, get) => {
         bump();
         const r = get().round;
         if (r && r.phase === 'settled') presentSettlement();
-      }, t.dealUnlock);
+      }, dealUnlock);
     },
 
     rebetAndDeal() {
@@ -684,7 +827,13 @@ export const useGame = create<GameState>((set, get) => {
       if (!s.display.resultsShown) return;
       // Remet la manche, remiser, puis donner.
       presentToken++;
-      set({ round: null, stacks: emptyStacks(), placementOrder: [], display: idleDisplay() });
+      set({
+        round: null,
+        stacks: emptyTableStacks(get().seatCapacity),
+        placementOrder: [],
+        display: idleDisplay(),
+      });
+      refreshSeatCapacityState();
       bump();
       if (!get().rebet()) {
         // Solde insuffisant : rester en mode mise pour ajuster.
@@ -699,7 +848,8 @@ export const useGame = create<GameState>((set, get) => {
       if (!round || round.phase !== 'player' || s.display.dealing) return;
       const available = round.availableActions(s.balance);
       if (!available.includes(a)) return;
-      const hand = round.hands[round.activeHandIndex];
+      const hand = round.activeHand;
+      if (!hand) return;
       switch (a) {
         case 'hit':
           sounds.play('card');
@@ -762,7 +912,13 @@ export const useGame = create<GameState>((set, get) => {
       if (!s.round || !s.display.resultsShown) return;
       presentToken++;
       sounds.play('click');
-      set({ round: null, stacks: emptyStacks(), placementOrder: [], display: idleDisplay() });
+      set({
+        round: null,
+        stacks: emptyTableStacks(s.seatCapacity),
+        placementOrder: [],
+        display: idleDisplay(),
+      });
+      refreshSeatCapacityState();
       if (shoe?.needsShuffle()) {
         set({ notice: 'Fin de sabot : mélange à la prochaine donne.' });
       }
@@ -801,6 +957,7 @@ export const useGame = create<GameState>((set, get) => {
       presentToken++;
       shoe = null;
       const privateLimits = { minBet: 250_00, maxBet: 25_000_00 };
+      const seatCapacity = orientationSeatCapacity();
       setEnginePrivateLimits(privateLimits);
       set({
         balance: STARTING_BALANCE,
@@ -810,7 +967,9 @@ export const useGame = create<GameState>((set, get) => {
         tableId: 'emeraude',
         privateLimits,
         round: null,
-        stacks: emptyStacks(),
+        seatCapacity,
+        selectedSeat: 0,
+        stacks: emptyTableStacks(seatCapacity),
         placementOrder: [],
         display: idleDisplay(),
         history: [],
@@ -828,8 +987,10 @@ export const useGame = create<GameState>((set, get) => {
   };
 });
 
-export function stagedTotal(stacks: Record<BetSpot, number[]>): number {
-  return sum(Object.values(stacks).flat());
+export function stagedTotal(stacks: SeatStacks[] | SeatStacks): number {
+  return Array.isArray(stacks)
+    ? stacks.reduce((total, seatStacks) => total + seatStagedTotal(seatStacks), 0)
+    : seatStagedTotal(stacks);
 }
 
 export { isNaturalBlackjack };

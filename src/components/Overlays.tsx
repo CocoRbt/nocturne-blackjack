@@ -14,6 +14,7 @@ export function InsuranceOverlay() {
   const takeEvenMoney = useGame((s) => s.takeEvenMoney);
 
   const open = !!round && round.phase === 'insurance' && !dealing;
+  const activeSeat = round?.activeSeatIndex ?? null;
 
   return (
     <AnimatePresence>
@@ -26,6 +27,7 @@ export function InsuranceOverlay() {
           transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
         >
           <h3>Le croupier montre un As</h3>
+          {activeSeat !== null && <div className="insurance-seat-label">Place {activeSeat + 1}</div>}
           {round.canTakeEvenMoney ? (
             <p>
               Vous avez un blackjack. Prendre even money garantit un paiement 1:1,
@@ -73,6 +75,7 @@ export function ResultBanner() {
 
   const res = round.result;
   const net = resultsShown ? res.totalNet : animatedNet;
+  const insuranceNet = res.insurance.reduce((total, insurance) => total + insurance.net, 0);
 
   const headline =
     resultsShown && res.hands.some((h) => h.outcome === 'blackjack') && res.totalNet > 0
@@ -96,13 +99,13 @@ export function ResultBanner() {
           <div className="detail">
             Croupier{' '}
             {res.dealerBust ? 'sauté' : res.dealerBlackjack ? 'blackjack' : res.dealerTotal}
-            {res.insurance && ` · assurance ${fmtNet(res.insurance.net)}`}
+            {res.insurance.length > 0 && ` · assurance ${fmtNet(insuranceNet)}`}
           </div>
           {res.sideBets.length > 0 && (
             <div className="side-results">
               {res.sideBets.map((b) => (
-                <span key={b.id} className={b.net > 0 ? 'won' : ''}>
-                  {SIDE_BET_DEFS[b.id].shortName}
+                <span key={`${b.seatIndex}-${b.id}`} className={b.net > 0 ? 'won' : ''}>
+                  P{b.seatIndex + 1} · {SIDE_BET_DEFS[b.id].shortName}
                   {b.label ? ` — ${b.label}` : ''} {fmtNet(b.net)}
                 </span>
               ))}
@@ -124,14 +127,22 @@ export function ResultTray() {
   const balance = useGame((s) => s.balance);
   const lastBets = useGame((s) => s.lastBets);
   const tableId = useGame((s) => s.tableId);
+  const seatCapacity = useGame((s) => s.seatCapacity);
 
   if (!round || !resultsShown || !round.result) return null;
 
   const last = lastBets[tableId];
   const rebetTotal = last
-    ? last.main + Object.values(last.sideBets).reduce<number>((a, b) => a + (b ?? 0), 0)
+    ? last.reduce(
+        (total, seatBet) =>
+          total +
+          seatBet.bets.main +
+          Object.values(seatBet.bets.sideBets).reduce<number>((a, b) => a + (b ?? 0), 0),
+        0,
+      )
     : 0;
-  const canRebet = last !== undefined && balance >= rebetTotal;
+  const rebetFitsCapacity = !last?.some((seatBet) => seatBet.seatIndex >= seatCapacity);
+  const canRebet = last !== undefined && rebetFitsCapacity && balance >= rebetTotal;
 
   return (
     <div className="result-tray">

@@ -32,6 +32,8 @@ export function TableScreen() {
   const deal = useGame((s) => s.deal);
   const rebetAndDeal = useGame((s) => s.rebetAndDeal);
   const refill = useGame((s) => s.refill);
+  const seatCapacity = useGame((s) => s.seatCapacity);
+  const refreshSeatCapacity = useGame((s) => s.refreshSeatCapacity);
 
   const [drawer, setDrawer] = useState<DrawerTab | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -74,6 +76,15 @@ export function TableScreen() {
   }, [round]);
 
   useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const mq = window.matchMedia('(orientation: landscape)');
+    const onChange = () => refreshSeatCapacity();
+    mq.addEventListener('change', onChange);
+    refreshSeatCapacity();
+    return () => mq.removeEventListener('change', onChange);
+  }, [refreshSeatCapacity]);
+
+  useEffect(() => {
     const el = stageRef.current;
     if (!el) return;
     const check = () => setStageScrollable(el.scrollHeight > el.clientHeight + 2);
@@ -85,7 +96,8 @@ export function TableScreen() {
 
   const shoeRatio = shoeSize > 0 ? 1 - shoeDealt / shoeSize : 1;
   const broke = betting && balance < table.rules.minBet;
-  const splitCount = round?.hands.length ?? 0;
+  const occupiedSeatCount = round?.seats.length ?? 0;
+  const splitCount = round?.seats.reduce((max, seat) => Math.max(max, seat.hands.length), 0) ?? 0;
   const handScale = splitHandScale(splitCount);
 
   return (
@@ -109,6 +121,7 @@ export function TableScreen() {
           <div className="rules-hint">
             BJ 3:2 · {table.rules.dealerHitsSoft17 ? 'H17' : 'S17'} · {table.rules.decks} jeux
             {table.rules.lateSurrender ? ' · abandon' : ''}
+            {` · ${seatCapacity} places`}
           </div>
         </div>
         <div className="spacer" />
@@ -170,6 +183,7 @@ export function TableScreen() {
                 shown={display.holeShown ? display.dealerShown : 2}
                 holeShown={display.holeShown}
                 isInitialDeal={isInitialDeal}
+                dealIndexes={[occupiedSeatCount, occupiedSeatCount * 2 + 1]}
               />
             ) : (
               <div className="table-motto">{table.identity.motto}</div>
@@ -191,30 +205,67 @@ export function TableScreen() {
 
           {round && (
             <div
-              className="player-zone"
+              className="player-zone table-seats"
               data-zone="player-zone"
               data-split-count={splitCount}
+              data-seat-count={occupiedSeatCount}
             >
-              {round.hands.map((h, i) => (
-                <PlayerHandView
-                  key={i}
-                  handIndex={i}
-                  hand={h}
-                  active={round.phase === 'player' && i === round.activeHandIndex && !display.dealing}
-                  result={display.resultsShown ? round.result?.hands[i] : undefined}
-                  isInitialDeal={isInitialDeal}
-                />
-              ))}
+              {round.seats.map((seat, seatCursor) => {
+                const activeSeat = round.activeSeatIndex === seat.seatIndex;
+                return (
+                  <div
+                    key={seat.seatIndex}
+                    className={`table-seat ${activeSeat && !display.dealing ? 'active' : ''}`}
+                    data-seat-id={seat.seatIndex}
+                  >
+                    <div className="seat-round-label">Place {seat.seatIndex + 1}</div>
+                    <div className="seat-hands">
+                      {seat.hands.map((h, handIndex) => (
+                        <PlayerHandView
+                          key={handIndex}
+                          seatIndex={seat.seatIndex}
+                          handIndex={handIndex}
+                          hand={h}
+                          active={
+                            round.phase === 'player' &&
+                            activeSeat &&
+                            handIndex === seat.activeHandIndex &&
+                            !display.dealing
+                          }
+                          result={
+                            display.resultsShown
+                              ? round.result?.hands.find(
+                                  (result) =>
+                                    result.seatIndex === seat.seatIndex &&
+                                    result.handIndex === handIndex,
+                                )
+                              : undefined
+                          }
+                          isInitialDeal={isInitialDeal && handIndex === 0}
+                          dealIndexes={
+                            handIndex === 0
+                              ? [seatCursor, occupiedSeatCount + 1 + seatCursor]
+                              : undefined
+                          }
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 
           {!display.dealing && display.dealFlashIds.length > 0 && !display.resultsShown && (
             <div className="deal-flash-strip">
-              {display.dealFlashIds.map((id) => (
-                <span key={id} className="flash-pill">
-                  {id === 'perfectPairs' ? 'Paires' : '21+3'}
-                </span>
-              ))}
+              {display.dealFlashIds.map((flashId) => {
+                const [seatIndex, id] = flashId.split(':') as [string, 'perfectPairs' | 'twentyOnePlusThree'];
+                return (
+                  <span key={flashId} className="flash-pill">
+                    Place {Number(seatIndex) + 1} · {id === 'perfectPairs' ? 'Paires' : '21+3'}
+                  </span>
+                );
+              })}
             </div>
           )}
         </div>

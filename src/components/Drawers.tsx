@@ -42,7 +42,10 @@ function RoundItem({ e }: { e: HistoryEntry }) {
       </div>
       {e.hands.map((h, i) => (
         <div className="line" key={i}>
-          <span className="cards">{prettyCards(h.cards)} ({h.total})</span>
+          <span className="cards">
+            {h.seatIndex !== undefined && `P${h.seatIndex + 1} · `}
+            {prettyCards(h.cards)} ({h.total})
+          </span>
           <span>
             {OUTCOME_SHORT[h.outcome]} {fmtNet(h.net)}
           </span>
@@ -53,8 +56,11 @@ function RoundItem({ e }: { e: HistoryEntry }) {
         <span>Solde {fmt(e.balanceAfter)}</span>
       </div>
       {e.sideBets.map((b) => (
-        <div className="line" key={b.id}>
-          <span>{SIDE_BET_DEFS[b.id].shortName}{b.label ? ` — ${b.label}` : ''}</span>
+        <div className="line" key={`${b.seatIndex ?? 'x'}-${b.id}`}>
+          <span>
+            {b.seatIndex !== undefined && `P${b.seatIndex + 1} · `}
+            {SIDE_BET_DEFS[b.id].shortName}{b.label ? ` — ${b.label}` : ''}
+          </span>
           <span>{fmtNet(b.net)}</span>
         </div>
       ))}

@@ -27,10 +27,12 @@ const OUTCOME_CLASS: Record<string, string> = {
 
 interface Props {
   hand: PlayerHandState;
+  seatIndex?: number;
   handIndex: number;
   active: boolean;
   result?: HandResult;
   isInitialDeal: boolean;
+  dealIndexes?: number[];
 }
 
 function totalLabel(hand: PlayerHandState): { text: string; cls: string } {
@@ -49,12 +51,21 @@ function cardsStyle(count: number): CSSProperties {
   } as CSSProperties;
 }
 
-export function PlayerHandView({ hand, handIndex, active, result, isInitialDeal }: Props) {
+export function PlayerHandView({
+  hand,
+  seatIndex,
+  handIndex,
+  active,
+  result,
+  isInitialDeal,
+  dealIndexes,
+}: Props) {
   const t = totalLabel(hand);
   return (
     <div
       className={`hand player-hand ${active ? 'active' : 'inactive'}`}
       data-zone={ANIMATION_ZONES.playerHand}
+      data-seat-id={seatIndex}
       data-hand-index={handIndex}
       data-hand-active={active ? 'true' : 'false'}
     >
@@ -67,7 +78,7 @@ export function PlayerHandView({ hand, handIndex, active, result, isInitialDeal 
       <div className={`hand-focus ${active ? 'is-active' : ''}`}>
         <div className="cards" style={cardsStyle(hand.cards.length)}>
           {hand.cards.map((c, i) => (
-            <CardView key={c.id} card={c} dealIndex={isInitialDeal ? i * 2 : 0} />
+            <CardView key={c.id} card={c} dealIndex={isInitialDeal ? (dealIndexes?.[i] ?? i * 2) : 0} />
           ))}
         </div>
         <div className={`total-badge ${t.cls}`}>{t.text}</div>
@@ -95,9 +106,10 @@ interface DealerProps {
   shown: number;
   holeShown: boolean;
   isInitialDeal: boolean;
+  dealIndexes?: number[];
 }
 
-export function DealerHandView({ cards, shown, holeShown, isInitialDeal }: DealerProps) {
+export function DealerHandView({ cards, shown, holeShown, isInitialDeal, dealIndexes }: DealerProps) {
   const visible = cards.slice(0, Math.max(shown, 2));
   const revealed = holeShown ? visible : visible.slice(0, 2);
   const v = handValue(holeShown ? visible : [visible[0]]);
@@ -111,7 +123,7 @@ export function DealerHandView({ cards, shown, holeShown, isInitialDeal }: Deale
             key={c.id}
             card={c}
             faceDown={i === 1 && !holeShown}
-            dealIndex={isInitialDeal ? i * 2 + 1 : 0}
+            dealIndex={isInitialDeal ? (dealIndexes?.[i] ?? i * 2 + 1) : 0}
           />
         ))}
       </div>

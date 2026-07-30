@@ -1,10 +1,11 @@
-import type { HandOutcome, SideBetId } from '../engine/types';
+import type { BetLayout, HandOutcome, SideBetId } from '../engine/types';
 import type { PrivateLimits } from '../engine/rules';
 
 /** Solde de départ : assez pour Émeraude, sous le seuil Onyx (500). */
 export const STARTING_BALANCE = 100_00;
 
 export interface HistoryHand {
+  seatIndex?: number;
   outcome: HandOutcome;
   bet: number;
   cards: string[];
@@ -20,7 +21,7 @@ export interface HistoryEntry {
   dealerCards: string[];
   dealerTotal: number;
   dealerBust: boolean;
-  sideBets: { id: SideBetId; bet: number; net: number; label: string | null }[];
+  sideBets: { seatIndex?: number; id: SideBetId; bet: number; net: number; label: string | null }[];
   insuranceNet: number | null;
   net: number;
   wagered: number;
@@ -91,6 +92,11 @@ export interface CircleProfileLocal {
   circleCode: string | null;
 }
 
+export interface StoredSeatBet {
+  seatIndex: number;
+  bets: BetLayout;
+}
+
 export interface SaveData {
   version: 2;
   balance: number;
@@ -101,7 +107,7 @@ export interface SaveData {
   tableId: string;
   history: HistoryEntry[];
   stats: Stats;
-  lastBets: Record<string, { main: number; sideBets: Partial<Record<SideBetId, number>> }>;
+  lastBets: Record<string, StoredSeatBet[]>;
   gameSpeed?: 'classic' | 'fast';
   privateLimits?: PrivateLimits;
   /** Profil local du cercle (sync Supabase plus tard). */
@@ -109,6 +115,34 @@ export interface SaveData {
 }
 
 const KEY = 'nocturne-blackjack-save';
+
+function isBetLayout(value: unknown): value is BetLayout {
+  if (!value || typeof value !== 'object') return false;
+  const bet = value as Partial<BetLayout>;
+  return typeof bet.main === 'number' && !!bet.sideBets && typeof bet.sideBets === 'object';
+}
+
+function normalizeLastBets(value: unknown): SaveData['lastBets'] {
+  if (!value || typeof value !== 'object') return {};
+  const out: SaveData['lastBets'] = {};
+  for (const [tableId, rawTableBets] of Object.entries(value as Record<string, unknown>)) {
+    if (Array.isArray(rawTableBets)) {
+      const seats: StoredSeatBet[] = [];
+      rawTableBets.forEach((rawSeatBet, index) => {
+        if (!rawSeatBet || typeof rawSeatBet !== 'object') return;
+        const entry = rawSeatBet as Partial<StoredSeatBet>;
+        const seatIndex = typeof entry.seatIndex === 'number' ? entry.seatIndex : index;
+        if (Number.isInteger(seatIndex) && seatIndex >= 0 && isBetLayout(entry.bets)) {
+          seats.push({ seatIndex, bets: entry.bets });
+        }
+      });
+      if (seats.length > 0) out[tableId] = seats;
+    } else if (isBetLayout(rawTableBets)) {
+      out[tableId] = [{ seatIndex: 0, bets: rawTableBets }];
+    }
+  }
+  return out;
+}
 
 function migrate(raw: Record<string, unknown>): SaveData | null {
   const version = raw.version;
@@ -130,7 +164,7 @@ function migrate(raw: Record<string, unknown>): SaveData | null {
     tableId: typeof raw.tableId === 'string' ? raw.tableId : 'emeraude',
     history: Array.isArray(raw.history) ? (raw.history as HistoryEntry[]) : [],
     stats: (raw.stats as Stats) ?? emptyStats(),
-    lastBets: (raw.lastBets as SaveData['lastBets']) ?? {},
+    lastBets: normalizeLastBets(raw.lastBets),
     gameSpeed: raw.gameSpeed === 'fast' ? 'fast' : 'classic',
     privateLimits: raw.privateLimits as PrivateLimits | undefined,
     circle: (raw.circle as CircleProfileLocal | null | undefined) ?? null,

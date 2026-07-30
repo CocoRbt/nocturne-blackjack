@@ -25,9 +25,11 @@ export function ActionBar() {
   const available = round.availableActions(balance);
   const primary = PRIMARY.filter((id) => available.includes(id));
   const secondary = SECONDARY.filter((id) => available.includes(id));
+  const activeSeat = round.activeSeatIndex;
 
   return (
     <div className="action-bar">
+      {activeSeat !== null && <div className="action-seat-label">Place {activeSeat + 1}</div>}
       <div className="action-primary">
         {primary.map((id) => (
           <button key={id} className="btn primary xxl" onClick={() => action(id)}>
