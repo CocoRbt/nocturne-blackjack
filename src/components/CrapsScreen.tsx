@@ -14,6 +14,7 @@ import {
 } from '../craps/engine';
 import { fmt } from '../lib/format';
 import { useGame } from '../store/gameStore';
+import { RulesGuide } from './RulesGuide';
 
 const BET_PRESETS = [1_00, 5_00, 25_00, 100_00, 500_00] as const;
 
@@ -62,6 +63,7 @@ export function CrapsScreen() {
   const [rolling, setRolling] = useState(false);
   const [flash, setFlash] = useState<'win' | 'lose' | 'push' | null>(null);
   const [selected, setSelected] = useState<BetKind>('pass');
+  const [rulesOpen, setRulesOpen] = useState(false);
 
   useEffect(() => {
     if (chip > balance) setChip(Math.max(1_00, balance));
@@ -132,6 +134,14 @@ export function CrapsScreen() {
           <span className="mono">Salon des jeux · Scraps</span>
           <h1>Craps</h1>
         </div>
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => setRulesOpen(true)}
+          aria-label="Règles Craps"
+        >
+          ⓘ
+        </button>
         <div className="craps-balance">
           <span className="label">Crédit</span>
           <span className="value">{fmt(balance)}</span>
@@ -313,6 +323,8 @@ export function CrapsScreen() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <RulesGuide game="craps" open={rulesOpen} onClose={() => setRulesOpen(false)} />
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { SideDrawer, type DrawerTab } from './Drawers';
 import { DealerHandView, PlayerHandView } from './HandView';
 import { InsuranceOverlay, ResultBanner, ResultTray } from './Overlays';
 import { PayoutFly } from './PayoutFly';
+import { RulesGuide } from './RulesGuide';
 import { SessionHud } from './SessionHud';
 
 export function TableScreen() {
@@ -37,6 +38,7 @@ export function TableScreen() {
   const refreshSeatCapacity = useGame((s) => s.refreshSeatCapacity);
 
   const [drawer, setDrawer] = useState<DrawerTab | null>(null);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const [stageScrollable, setStageScrollable] = useState(false);
 
@@ -47,7 +49,7 @@ export function TableScreen() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (drawer) return;
+      if (drawer || rulesOpen) return;
       const k = e.key.toLowerCase();
       if (k === 't') action('hit');
       else if (k === 'r') action('stand');
@@ -63,7 +65,7 @@ export function TableScreen() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [action, deal, rebetAndDeal, drawer]);
+  }, [action, deal, rebetAndDeal, drawer, rulesOpen]);
 
   useEffect(() => {
     if (!notice) return;
@@ -156,7 +158,7 @@ export function TableScreen() {
         </button>
         <button
           className="icon-btn"
-          onClick={() => setDrawer('paytables')}
+          onClick={() => setRulesOpen(true)}
           aria-label="Règles et paiements"
         >
           ⓘ
@@ -298,6 +300,8 @@ export function TableScreen() {
         onTab={setDrawer}
         onClose={() => setDrawer(null)}
       />
+
+      <RulesGuide game="blackjack" open={rulesOpen} onClose={() => setRulesOpen(false)} />
     </div>
   );
 }

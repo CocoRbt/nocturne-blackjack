@@ -15,6 +15,7 @@ import {
 } from '../mines/engine';
 import { minesMultiplier, payoutCents } from '../mines/math';
 import { useGame } from '../store/gameStore';
+import { RulesGuide } from './RulesGuide';
 
 const BET_PRESETS = [1_00, 5_00, 25_00, 100_00, 500_00] as const;
 
@@ -93,6 +94,7 @@ export function MinesScreen() {
   const [round, setRound] = useState<MinesRound>(() => createIdleRound(3));
   const [flash, setFlash] = useState<'win' | 'lose' | null>(null);
   const [lastPayout, setLastPayout] = useState(0);
+  const [rulesOpen, setRulesOpen] = useState(false);
 
   const playing = round.phase === 'playing';
   const idle = round.phase === 'idle';
@@ -203,6 +205,14 @@ export function MinesScreen() {
           <span className="mono">Salon des jeux</span>
           <h1>Mines</h1>
         </div>
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => setRulesOpen(true)}
+          aria-label="Règles Mines"
+        >
+          ⓘ
+        </button>
         <div className="mines-balance">
           <span className="label">Crédit</span>
           <span className="value">{fmt(balance)}</span>
@@ -413,6 +423,8 @@ export function MinesScreen() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <RulesGuide game="mines" open={rulesOpen} onClose={() => setRulesOpen(false)} />
     </div>
   );
 }
