@@ -12,7 +12,9 @@
 ## Setup dashboard
 1. Projet Supabase `Nocturne_Blackjack`
 2. **Authentication → Providers → Anonymous** : activer
-3. **SQL Editor** : coller / exécuter `supabase/migrations/20260730140000_cercle.sql`
+3. **SQL Editor** : coller / exécuter dans l’ordre :
+   - `supabase/migrations/20260730140000_cercle.sql`
+   - `supabase/migrations/20260730190000_fix_join_leave.sql` (si la 1ʳᵉ a déjà été jouée)
 4. **Project Settings → API** : copier `Project URL` + `anon public` key
 5. Local : créer `.env` (gitignoré) :
    ```
@@ -21,6 +23,12 @@
    ```
 6. Vercel → Project → Settings → Environment Variables : mêmes clés (Production + Preview)
 7. Redeploy
+
+## Comportement important
+- **Créer** : laisser le code vide → génère `NOC-XXXX`.
+- **Rejoindre** : coller le code **exact** d’un pote. Un code inexistant renvoie une erreur (ne crée plus un 2ᵉ cercle par typo).
+- **Quitter** : retire vraiment ton profil + scores du cloud (`leave_circle`). Les autres appareils mettent ~8 s à rafraîchir.
+- Téléphone et PC = **2 joueurs séparés** (auth anonyme par appareil). Quitter sur le PC ne te sort pas du cercle sur le téléphone.
 
 ## Fichier mdp
 Le fichier texte `mdp` / `mdp.txt` avec les secrets **ne doit jamais être push** (déjà dans `.gitignore`).

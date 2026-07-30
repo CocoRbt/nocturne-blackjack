@@ -160,10 +160,7 @@ begin
   else
     select * into v_circle from public.circles where code = v_code;
     if not found then
-      -- Premier à utiliser ce code : crée le cercle
-      insert into public.circles (code, name)
-      values (v_code, 'Cercle Nocturne')
-      returning * into v_circle;
+      raise exception 'Code cercle introuvable — vérifie bien les lettres (ex. EVJ ≠ EJV)';
     end if;
   end if;
 
@@ -320,6 +317,33 @@ $$;
 
 revoke all on function public.get_leaderboards() from public;
 grant execute on function public.get_leaderboards() to authenticated, anon;
+
+-- ---------------------------------------------------------------------------
+-- RPC : quitter le cercle (retire profil + scores du cloud)
+-- ---------------------------------------------------------------------------
+
+create or replace function public.leave_circle()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+begin
+  if v_uid is null then
+    raise exception 'Non authentifié';
+  end if;
+
+  delete from public.player_scores where profile_id = v_uid;
+  update public.profiles
+    set circle_id = null
+  where id = v_uid;
+end;
+$$;
+
+revoke all on function public.leave_circle() from public;
+grant execute on function public.leave_circle() to authenticated, anon;
 
 -- Realtime (optionnel) : activer dans le dashboard pour public.player_scores
 -- comment: Dashboard → Database → Replication → player_scores
