@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { getTable } from '../engine/rules';
-import { fmt } from '../lib/format';
+import { SIDE_BET_DEFS } from '../engine/sidebets';
+import { fmt, fmtNet } from '../lib/format';
 import { ANIMATION_ZONES, splitHandScale } from '../lib/animationZones';
 import { resetSettledDeals } from '../lib/dealAnimation';
 import { useGame } from '../store/gameStore';
@@ -212,6 +213,10 @@ export function TableScreen() {
             >
               {round.seats.map((seat, seatCursor) => {
                 const activeSeat = round.activeSeatIndex === seat.seatIndex;
+                const sideWins =
+                  !display.dealing && !display.resultsShown
+                    ? seat.dealSideBetResults.filter((r) => r.returned > 0)
+                    : [];
                 return (
                   <div
                     key={seat.seatIndex}
@@ -250,20 +255,17 @@ export function TableScreen() {
                         />
                       ))}
                     </div>
+                    {sideWins.length > 0 && (
+                      <div className="seat-side-wins" aria-live="polite">
+                        {sideWins.map((r) => (
+                          <span key={`${seat.seatIndex}-${r.id}`} className="seat-side-win">
+                            {SIDE_BET_DEFS[r.id].shortName}
+                            {r.label ? ` · ${r.label}` : ''} {fmtNet(r.net)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                );
-              })}
-            </div>
-          )}
-
-          {!display.dealing && display.dealFlashIds.length > 0 && !display.resultsShown && (
-            <div className="deal-flash-strip">
-              {display.dealFlashIds.map((flashId) => {
-                const [seatIndex, id] = flashId.split(':') as [string, 'perfectPairs' | 'twentyOnePlusThree'];
-                return (
-                  <span key={flashId} className="flash-pill">
-                    Place {Number(seatIndex) + 1} · {id === 'perfectPairs' ? 'Paires' : '21+3'}
-                  </span>
                 );
               })}
             </div>

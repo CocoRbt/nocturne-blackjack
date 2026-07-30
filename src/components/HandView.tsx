@@ -61,6 +61,9 @@ export function PlayerHandView({
   dealIndexes,
 }: Props) {
   const t = totalLabel(hand);
+  // Pendant la donne, les 2 cartes sont déjà en state mais pas encore posées :
+  // on n’affiche le total qu’une fois la chorégraphie terminée.
+  const showTotal = !isInitialDeal && hand.cards.length > 0;
   return (
     <div
       className={`hand player-hand ${active ? 'active' : 'inactive'}`}
@@ -83,7 +86,7 @@ export function PlayerHandView({
             <CardView key={c.id} card={c} dealIndex={isInitialDeal ? (dealIndexes?.[i] ?? i * 2) : 0} />
           ))}
         </div>
-        <div className={`total-badge ${t.cls}`}>{t.text}</div>
+        {showTotal && <div className={`total-badge ${t.cls}`}>{t.text}</div>}
       </div>
       <div
         className="hand-bet-spot"
@@ -116,6 +119,8 @@ export function DealerHandView({ cards, shown, holeShown, isInitialDeal, dealInd
   const revealed = holeShown ? visible : visible.slice(0, 2);
   const v = handValue(holeShown ? visible : [visible[0]]);
   const isBj = holeShown && visible.length === 2 && handValue(visible).total === 21;
+  // Pas de total pendant la donne (la carte visible n’est pas encore posée).
+  const showTotal = !isInitialDeal && visible.length > 0;
 
   return (
     <div className="hand dealer-hand" data-zone={ANIMATION_ZONES.dealerHand}>
@@ -129,15 +134,17 @@ export function DealerHandView({ cards, shown, holeShown, isInitialDeal, dealInd
           />
         ))}
       </div>
-      <div className={`total-badge ${v.bust ? 'bust' : isBj ? 'bj' : ''}`}>
-        {isBj
-          ? 'Blackjack'
-          : v.bust
-            ? `${v.total} · sauté`
-            : holeShown && revealed.length > 1 && v.soft && v.total !== 21
-              ? `${v.total - 10} / ${v.total}`
-              : v.total}
-      </div>
+      {showTotal && (
+        <div className={`total-badge ${v.bust ? 'bust' : isBj ? 'bj' : ''}`}>
+          {isBj
+            ? 'Blackjack'
+            : v.bust
+              ? `${v.total} · sauté`
+              : holeShown && revealed.length > 1 && v.soft && v.total !== 21
+                ? `${v.total - 10} / ${v.total}`
+                : v.total}
+        </div>
+      )}
     </div>
   );
 }
