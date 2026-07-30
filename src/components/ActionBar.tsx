@@ -32,7 +32,11 @@ export function ActionBar() {
       {activeSeat !== null && <div className="action-seat-label">Place {activeSeat + 1}</div>}
       <div className="action-primary">
         {primary.map((id) => (
-          <button key={id} className="btn primary xxl" onClick={() => action(id)}>
+          <button
+            key={id}
+            className={`btn xxl action-${id}`}
+            onClick={() => action(id)}
+          >
             {LABELS[id].label}
             <span className="key">{LABELS[id].key}</span>
           </button>
