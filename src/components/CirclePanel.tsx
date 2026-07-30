@@ -31,6 +31,7 @@ export function CirclePanel() {
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
 
   const seed = {
     balance,
@@ -41,7 +42,6 @@ export function CirclePanel() {
     highestTable: tableId,
   };
 
-  // Sync scores → cloud / local quand le crédit bouge
   useEffect(() => {
     if (!circle?.circleCode) return;
     let cancelled = false;
@@ -67,7 +67,6 @@ export function CirclePanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [balance, peakBalance, stats.handsPlayed, stats.blackjacks, stats.longestWinStreak, tableId, circle?.circleCode, circle?.nickname]);
 
-  // Refresh périodique des classements cloud
   useEffect(() => {
     if (!circle?.cloud) return;
     const tick = () => {
@@ -92,6 +91,7 @@ export function CirclePanel() {
       const refreshed = await refreshLeaderboards(next);
       setCircle(refreshed.state);
       setBoards(refreshed.boards);
+      setOpen(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Impossible de rejoindre le cercle');
     } finally {
@@ -107,6 +107,7 @@ export function CirclePanel() {
       setBoards(null);
       setNickname('');
       setJoinCode('');
+      setOpen(true);
     } finally {
       setBusy(false);
     }
@@ -114,92 +115,111 @@ export function CirclePanel() {
 
   const rows: LeaderboardRow[] = tab === 'live' ? boards?.live ?? [] : boards?.peak ?? [];
   const cloud = isSupabaseConfigured();
+  const joined = Boolean(circle?.circleCode);
 
   return (
-    <section className="circle-panel">
-      <div className="circle-head">
-        <div className="circle-head-row">
-          <h2>Cercle</h2>
-          {cloud ? <span className="circle-badge">en ligne</span> : <span className="circle-badge dim">local</span>}
-        </div>
-        <p>Classement live · record perso · pseudo + code</p>
-      </div>
+    <section className={`circle-panel ${open ? 'is-open' : ''}`}>
+      <button
+        type="button"
+        className="circle-toggle"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="circle-toggle-main">
+          <span className="circle-toggle-title">Cercle</span>
+          {cloud ? (
+            <span className="circle-badge on">en ligne</span>
+          ) : (
+            <span className="circle-badge">local</span>
+          )}
+        </span>
+        <span className="circle-toggle-meta">
+          {joined ? `${circle!.nickname} · ${circle!.circleCode}` : 'Rejoindre amis'}
+        </span>
+        <span className="circle-chevron" aria-hidden>
+          {open ? '▴' : '▾'}
+        </span>
+      </button>
 
-      {!circle?.circleCode ? (
-        <div className="circle-form">
-          <label>
-            Pseudo
-            <input
-              value={nickname}
-              maxLength={16}
-              placeholder="ex. Minuit"
-              onChange={(e) => setNickname(e.target.value)}
-            />
-          </label>
-          <label>
-            Code cercle (vide = créer)
-            <input
-              value={joinCode}
-              maxLength={12}
-              placeholder="NOC-XXXX"
-              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-            />
-          </label>
-          {error && <p className="circle-error">{error}</p>}
-          <button
-            className="btn primary"
-            onClick={() => void createOrJoin()}
-            disabled={busy || nickname.trim().length < 2}
-          >
-            {busy ? 'Connexion…' : 'Entrer dans le cercle'}
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="circle-meta">
-            <span>
-              {circle.nickname} · {circle.circleCode}
-              {circle.cloud ? ' · cloud' : ' · local'}
-            </span>
-            <button className="btn ghost" onClick={() => void leave()} disabled={busy}>
-              Quitter
-            </button>
-          </div>
-
-          <div className="circle-tabs" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'live'}
-              className={tab === 'live' ? 'on' : ''}
-              onClick={() => setTab('live')}
-            >
-              Crédit actuel
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'peak'}
-              className={tab === 'peak' ? 'on' : ''}
-              onClick={() => setTab('peak')}
-            >
-              Record
-            </button>
-          </div>
-
-          <ol className="circle-board">
-            {rows.length === 0 && <li className="empty">Aucun score pour l’instant</li>}
-            {rows.map((m) => (
-              <li key={`${tab}-${m.nickname}`} className={m.is_me ? 'me' : ''}>
-                <span className="rank">{m.rank}</span>
-                <span className="nick">{m.nickname}</span>
-                <span className="peak">
-                  {fmt(tab === 'live' ? m.balance : m.peak_balance)}
+      {open && (
+        <div className="circle-body">
+          {!joined ? (
+            <div className="circle-form">
+              <label>
+                Pseudo
+                <input
+                  value={nickname}
+                  maxLength={16}
+                  placeholder="ex. Minuit"
+                  onChange={(e) => setNickname(e.target.value)}
+                />
+              </label>
+              <label>
+                Code cercle (vide = créer)
+                <input
+                  value={joinCode}
+                  maxLength={12}
+                  placeholder="NOC-XXXX"
+                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                />
+              </label>
+              {error && <p className="circle-error">{error}</p>}
+              <button
+                className="btn primary"
+                onClick={() => void createOrJoin()}
+                disabled={busy || nickname.trim().length < 2}
+              >
+                {busy ? 'Connexion…' : 'Entrer dans le cercle'}
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="circle-meta">
+                <span>
+                  {circle!.nickname} · {circle!.circleCode}
+                  {circle!.cloud ? ' · cloud' : ' · local'}
                 </span>
-              </li>
-            ))}
-          </ol>
-        </>
+                <button className="btn ghost" onClick={() => void leave()} disabled={busy}>
+                  Quitter
+                </button>
+              </div>
+
+              <div className="circle-tabs" role="tablist">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === 'live'}
+                  className={tab === 'live' ? 'on' : ''}
+                  onClick={() => setTab('live')}
+                >
+                  Crédit actuel
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === 'peak'}
+                  className={tab === 'peak' ? 'on' : ''}
+                  onClick={() => setTab('peak')}
+                >
+                  Record
+                </button>
+              </div>
+
+              <ol className="circle-board">
+                {rows.length === 0 && <li className="empty">Aucun score pour l’instant</li>}
+                {rows.map((m) => (
+                  <li key={`${tab}-${m.nickname}`} className={m.is_me ? 'me' : ''}>
+                    <span className="rank">{m.rank}</span>
+                    <span className="nick">{m.nickname}</span>
+                    <span className="peak">
+                      {fmt(tab === 'live' ? m.balance : m.peak_balance)}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </>
+          )}
+        </div>
       )}
     </section>
   );
