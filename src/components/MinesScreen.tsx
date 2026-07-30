@@ -18,6 +18,22 @@ import { useGame } from '../store/gameStore';
 
 const BET_PRESETS = [1_00, 5_00, 25_00, 100_00, 500_00] as const;
 
+/** Affiche des centimes en euros pour l’input (virgule FR). */
+function centsToInput(cents: number): string {
+  const v = cents / 100;
+  if (Number.isInteger(v)) return String(v);
+  return v.toFixed(2).replace('.', ',');
+}
+
+/** Parse une saisie euros → centimes, ou null si invalide. */
+function parseBetInput(raw: string): number | null {
+  const cleaned = raw.trim().replace(/\s/g, '').replace(',', '.');
+  if (!cleaned || cleaned === '.' || cleaned === '-') return null;
+  const n = Number(cleaned);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.round(n * 100);
+}
+
 function GemIcon() {
   const gid = `gem-${useId().replace(/:/g, '')}`;
   return (
@@ -72,6 +88,8 @@ export function MinesScreen() {
 
   const [mines, setMines] = useState(3);
   const [bet, setBet] = useState(5_00);
+  const [betDraft, setBetDraft] = useState(() => centsToInput(5_00));
+  const [betFocused, setBetFocused] = useState(false);
   const [round, setRound] = useState<MinesRound>(() => createIdleRound(3));
   const [flash, setFlash] = useState<'win' | 'lose' | null>(null);
   const [lastPayout, setLastPayout] = useState(0);
@@ -82,11 +100,24 @@ export function MinesScreen() {
   /** Entre deux manches : on peut régler mise / mines et relancer d’un clic. */
   const canConfigure = idle || finished;
 
+  const commitBet = (nextCents: number) => {
+    const clamped = Math.max(1_00, Math.min(balance, Math.floor(nextCents)));
+    setBet(clamped);
+    setBetDraft(centsToInput(clamped));
+  };
+
   useEffect(() => {
-    if (canConfigure && bet > balance) {
-      setBet(Math.max(1_00, balance));
+    if (!canConfigure || bet <= balance) return;
+    const clamped = Math.max(1_00, balance);
+    setBet(clamped);
+    if (!betFocused) setBetDraft(centsToInput(clamped));
+  }, [canConfigure, balance, bet, betFocused]);
+
+  useEffect(() => {
+    if (!betFocused && canConfigure) {
+      setBetDraft(centsToInput(bet));
     }
-  }, [canConfigure, balance, bet]);
+  }, [bet, betFocused, canConfigure]);
 
   const potential = useMemo(
     () =>
@@ -140,7 +171,26 @@ export function MinesScreen() {
 
   const adjustBet = (delta: number) => {
     if (!canConfigure) return;
-    setBet((b) => Math.max(1_00, Math.min(balance, b + delta)));
+    commitBet(bet + delta);
+  };
+
+  const onBetDraftChange = (raw: string) => {
+    if (!/^[0-9\s.,]*$/.test(raw)) return;
+    setBetDraft(raw);
+    const parsed = parseBetInput(raw);
+    if (parsed != null && parsed >= 1_00) {
+      setBet(Math.min(balance, parsed));
+    }
+  };
+
+  const onBetDraftBlur = () => {
+    setBetFocused(false);
+    const parsed = parseBetInput(betDraft);
+    if (parsed == null || parsed < 1_00) {
+      commitBet(bet);
+      return;
+    }
+    commitBet(parsed);
   };
 
   return (
@@ -163,12 +213,36 @@ export function MinesScreen() {
       <div className="mines-layout">
         <aside className="mines-panel">
           <div className="mines-panel-block">
-            <label className="mines-label">Mise</label>
+            <label className="mines-label" htmlFor="mines-bet-input">
+              Mise
+            </label>
             <div className="mines-bet-row">
               <button type="button" className="btn ghost" disabled={!canConfigure} onClick={() => adjustBet(-1_00)}>
                 −
               </button>
-              <strong className="mines-bet-value">{fmt(playing ? round.bet : bet)}</strong>
+              {canConfigure ? (
+                <input
+                  id="mines-bet-input"
+                  className="mines-bet-input"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={betDraft}
+                  disabled={!canConfigure}
+                  aria-label="Mise en euros"
+                  onFocus={() => setBetFocused(true)}
+                  onChange={(e) => onBetDraftChange(e.target.value)}
+                  onBlur={onBetDraftBlur}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.currentTarget.blur();
+                    }
+                  }}
+                />
+              ) : (
+                <strong className="mines-bet-value">{fmt(round.bet)}</strong>
+              )}
               <button type="button" className="btn ghost" disabled={!canConfigure} onClick={() => adjustBet(1_00)}>
                 +
               </button>
@@ -180,7 +254,7 @@ export function MinesScreen() {
                   type="button"
                   className={`mines-chip ${bet === p ? 'on' : ''}`}
                   disabled={!canConfigure || p > balance}
-                  onClick={() => setBet(p)}
+                  onClick={() => commitBet(p)}
                 >
                   {fmt(p)}
                 </button>
@@ -189,7 +263,7 @@ export function MinesScreen() {
                 type="button"
                 className="mines-chip"
                 disabled={!canConfigure || balance < 1_00}
-                onClick={() => setBet(Math.max(1_00, balance))}
+                onClick={() => commitBet(balance)}
               >
                 Max
               </button>
