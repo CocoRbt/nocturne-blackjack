@@ -31,7 +31,7 @@ export function CirclePanel() {
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Ouvert par défaut : sur téléphone un bandeau fermé disparaissait
+  const [copied, setCopied] = useState(false);
   const [open, setOpen] = useState(true);
 
   const seed = {
@@ -76,7 +76,7 @@ export function CirclePanel() {
         setBoards(r.boards);
       });
     };
-    const id = window.setInterval(tick, 12_000);
+    const id = window.setInterval(tick, 8_000);
     return () => window.clearInterval(id);
   }, [circle]);
 
@@ -114,6 +114,18 @@ export function CirclePanel() {
     }
   };
 
+  const copyCode = async () => {
+    const code = circle?.circleCode;
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // fallback silencieux
+    }
+  };
+
   const rows: LeaderboardRow[] = tab === 'live' ? boards?.live ?? [] : boards?.peak ?? [];
   const cloud = isSupabaseConfigured();
   const joined = Boolean(circle?.circleCode);
@@ -146,6 +158,9 @@ export function CirclePanel() {
         <div className="circle-body">
           {!joined ? (
             <div className="circle-form">
+              <p className="circle-hint">
+                Vide = tu crées un cercle. Sinon colle le code exact d&rsquo;un pote.
+              </p>
               <div className="circle-form-row">
                 <label>
                   Pseudo
@@ -158,12 +173,13 @@ export function CirclePanel() {
                   />
                 </label>
                 <label>
-                  Code (vide = créer)
+                  Code cercle
                   <input
                     value={joinCode}
                     maxLength={12}
                     placeholder="NOC-XXXX"
                     autoCapitalize="characters"
+                    spellCheck={false}
                     onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                   />
                 </label>
@@ -174,20 +190,27 @@ export function CirclePanel() {
                 onClick={() => void createOrJoin()}
                 disabled={busy || nickname.trim().length < 2}
               >
-                {busy ? 'Connexion…' : 'Entrer dans le cercle'}
+                {busy ? 'Connexion…' : joinCode.trim() ? 'Rejoindre' : 'Créer mon cercle'}
               </button>
             </div>
           ) : (
             <>
-              <div className="circle-meta">
-                <span>
-                  {circle!.nickname} · {circle!.circleCode}
-                  {circle!.cloud ? ' · cloud' : ' · local'}
-                </span>
+              <div className="circle-code-row">
+                <div>
+                  <span className="circle-code-label">Code à partager</span>
+                  <strong className="circle-code-value">{circle!.circleCode}</strong>
+                </div>
+                <button type="button" className="btn ghost" onClick={() => void copyCode()}>
+                  {copied ? 'Copié' : 'Copier'}
+                </button>
                 <button className="btn ghost" onClick={() => void leave()} disabled={busy}>
                   Quitter
                 </button>
               </div>
+              <p className="circle-meta-line">
+                {circle!.nickname}
+                {circle!.cloud ? ' · cloud' : ' · local'}
+              </p>
 
               <div className="circle-tabs" role="tablist">
                 <button
@@ -212,7 +235,7 @@ export function CirclePanel() {
 
               <ol className="circle-board">
                 {rows.length === 0 && <li className="empty">Aucun score pour l’instant</li>}
-                {rows.slice(0, 5).map((m) => (
+                {rows.slice(0, 8).map((m) => (
                   <li key={`${tab}-${m.nickname}`} className={m.is_me ? 'me' : ''}>
                     <span className="rank">{m.rank}</span>
                     <span className="nick">{m.nickname}</span>

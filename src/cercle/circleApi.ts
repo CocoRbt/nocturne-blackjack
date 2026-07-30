@@ -22,6 +22,23 @@ export interface JoinResult {
   circle_name: string;
 }
 
+function rpcMessage(error: { message?: string; details?: string; hint?: string }): string {
+  const raw = [error.message, error.details, error.hint].filter(Boolean).join(' — ');
+  if (/introuvable/i.test(raw)) {
+    return 'Code cercle introuvable — vérifie bien chaque lettre (EVJ ≠ EJV).';
+  }
+  if (/déjà pris/i.test(raw)) {
+    return 'Pseudo déjà pris dans ce cercle — choisis-en un autre.';
+  }
+  if (/Pseudo invalide/i.test(raw)) {
+    return 'Pseudo invalide (2–16 caractères).';
+  }
+  if (/Non authentifié/i.test(raw)) {
+    return 'Session expirée — réessaie dans un instant.';
+  }
+  return raw || 'Impossible de rejoindre le cercle';
+}
+
 async function ensureAnonSession() {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase non configuré');
@@ -41,7 +58,7 @@ export async function joinCircleCloud(nickname: string, code?: string): Promise<
     p_nickname: nickname.trim(),
     p_code: code?.trim() ? code.trim().toUpperCase() : null,
   });
-  if (error) throw error;
+  if (error) throw new Error(rpcMessage(error));
   return data as JoinResult;
 }
 
@@ -64,7 +81,7 @@ export async function syncScoreCloud(input: {
     p_best_streak: input.bestStreak,
     p_highest_table: input.highestTable,
   });
-  if (error) throw error;
+  if (error) throw new Error(rpcMessage(error));
   return data as { balance: number; peak_balance: number };
 }
 
@@ -73,7 +90,7 @@ export async function fetchLeaderboards(): Promise<Leaderboards> {
   if (!sb) throw new Error('Supabase non configuré');
   await ensureAnonSession();
   const { data, error } = await sb.rpc('get_leaderboards');
-  if (error) throw error;
+  if (error) throw new Error(rpcMessage(error));
   const raw = data as { live: LeaderboardRow[]; peak: LeaderboardRow[] };
   return {
     live: raw?.live ?? [],
@@ -81,9 +98,18 @@ export async function fetchLeaderboards(): Promise<Leaderboards> {
   };
 }
 
+/** Quitte le cercle côté cloud puis déconnecte la session anonyme locale. */
 export async function leaveCircleCloud(): Promise<void> {
   const sb = getSupabase();
   if (!sb) return;
+  const { data: sessionData } = await sb.auth.getSession();
+  if (sessionData.session) {
+    const { error } = await sb.rpc('leave_circle');
+    if (error) {
+      // même si RPC absente / échoue, on continue le cleanup local
+      console.warn('[cercle] leave_circle', error.message);
+    }
+  }
   await sb.auth.signOut({ scope: 'local' });
 }
 

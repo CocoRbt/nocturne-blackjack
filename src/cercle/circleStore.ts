@@ -191,7 +191,6 @@ export async function pushScore(state: LocalCircleState, seed: Omit<CircleMember
 }
 
 export async function exitCircle(): Promise<void> {
-  clearCircleLocal();
   if (isSupabaseConfigured()) {
     try {
       await leaveCircleCloud();
@@ -199,6 +198,7 @@ export async function exitCircle(): Promise<void> {
       // ignore
     }
   }
+  clearCircleLocal();
 }
 
 function mergeBoardMembers(boards: Leaderboards, me: string): CircleMemberScore[] {
