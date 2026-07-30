@@ -872,6 +872,7 @@ button:disabled {
   overflow-x: auto;
   overflow-y: visible;
   scrollbar-width: none;
+  padding-top: 8px;
   padding-inline: max(8px, env(safe-area-inset-left, 0px));
   -webkit-overflow-scrolling: touch;
 }
@@ -890,6 +891,8 @@ button:disabled {
   justify-content: center;
   gap: clamp(8px, 1.8vw, 20px);
   max-width: min(1120px, 100%);
+  /* Marge haute : évite que la bordure / label « Place » soit clipés */
+  padding-top: 16px;
   padding-bottom: 4px;
 }
 .table-seat {
@@ -898,16 +901,16 @@ button:disabled {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 12px 10px 8px;
+  padding: 14px 10px 8px;
   border-radius: 24px 24px 14px 14px;
-  border: 1px solid rgba(233, 228, 216, 0.08);
+  border: 1px solid rgba(233, 228, 216, 0.14);
   background: radial-gradient(120% 80% at 50% 100%, rgba(0, 0, 0, 0.24), transparent 72%);
-  transition: border-color 0.3s var(--ease-lux), box-shadow 0.3s var(--ease-lux), transform 0.3s var(--ease-lux);
+  transition: border-color 0.3s var(--ease-lux), box-shadow 0.3s var(--ease-lux);
+  overflow: visible;
 }
 .table-seat.active {
   border-color: var(--brass-soft);
-  box-shadow: 0 0 0 1px var(--brass-faint), 0 18px 56px rgba(0, 0, 0, 0.22), 0 0 42px var(--chip-glow);
-  transform: translateY(-4px);
+  box-shadow: 0 0 0 1px var(--brass-faint), 0 12px 40px rgba(0, 0, 0, 0.22), 0 0 36px var(--chip-glow);
 }
 .seat-round-label {
   font-size: 10px;
@@ -1673,6 +1676,27 @@ button:disabled {
   letter-spacing: 0.18em;
   min-height: 52px;
 }
+/* Tirer = vert (continuer) · Rester = rouge (stop) */
+.btn.action-hit {
+  background: linear-gradient(160deg, #6aad7f, #3f7a55);
+  color: #f3faf5;
+  border-color: rgba(126, 180, 140, 0.45);
+  font-weight: 600;
+}
+.btn.action-hit:not(:disabled):hover {
+  background: linear-gradient(160deg, #7ec093, #4a8b61);
+  border-color: rgba(150, 200, 160, 0.55);
+}
+.btn.action-stand {
+  background: linear-gradient(160deg, #c46a6a, #8f3f3f);
+  color: #faf3f3;
+  border-color: rgba(200, 130, 130, 0.45);
+  font-weight: 600;
+}
+.btn.action-stand:not(:disabled):hover {
+  background: linear-gradient(160deg, #d47a7a, #a04a4a);
+  border-color: rgba(220, 150, 150, 0.55);
+}
 
 /* ---------- overlays ---------- */
 .overlay-panel {
@@ -2134,12 +2158,13 @@ button:disabled {
     justify-content: flex-start;
     align-items: flex-end;
     overflow-x: auto;
+    padding-top: 14px;
     padding-bottom: 8px;
     scroll-snap-type: x proximity;
   }
   .table-seat {
     scroll-snap-align: center;
-    padding: 8px 6px 6px;
+    padding: 12px 6px 6px;
     border-radius: 18px 18px 12px 12px;
   }
   .seat-side-win {
