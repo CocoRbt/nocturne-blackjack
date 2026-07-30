@@ -76,15 +76,54 @@ export function ResultBanner() {
   const res = round.result;
   const net = resultsShown ? res.totalNet : animatedNet;
   const insuranceNet = res.insurance.reduce((total, insurance) => total + insurance.net, 0);
+  const sideNet = res.sideBets.reduce((total, b) => total + b.net, 0) + insuranceNet;
 
-  const headline =
-    resultsShown && res.hands.some((h) => h.outcome === 'blackjack') && res.totalNet > 0
-      ? { text: 'Blackjack', cls: 'bj' }
-      : net > 0
-        ? { text: `Vous gagnez ${fmt(Math.abs(net))}`, cls: 'win' }
-        : net < 0
-          ? { text: `Perte de ${fmt(Math.abs(net))}`, cls: 'lose' }
-          : { text: 'Égalité', cls: 'push' };
+  const seatIndexes = [...new Set(res.hands.map((h) => h.seatIndex))].sort((a, b) => a - b);
+  const multiSeat = seatIndexes.length > 1;
+  const handsAllPush = res.hands.length > 0 && res.hands.every((h) => h.outcome === 'push');
+  const handsNet = res.hands.reduce((total, h) => total + h.net, 0);
+
+  const seatLines = multiSeat
+    ? seatIndexes.map((seatIndex) => {
+        const seatHands = res.hands.filter((h) => h.seatIndex === seatIndex);
+        const seatNet = seatHands.reduce((total, h) => total + h.net, 0);
+        const label =
+          seatHands.every((h) => h.outcome === 'push')
+            ? 'Égalité'
+            : seatHands.every((h) => h.outcome === 'lose' || h.outcome === 'surrender')
+              ? 'Perdu'
+              : seatHands.some((h) => h.outcome === 'blackjack')
+                ? 'Blackjack'
+                : seatNet > 0
+                  ? 'Gagné'
+                  : seatNet < 0
+                    ? 'Perdu'
+                    : 'Égalité';
+        return { seatIndex, label, seatNet };
+      })
+    : [];
+
+  const headline = (() => {
+    if (resultsShown && res.hands.some((h) => h.outcome === 'blackjack') && handsNet > 0 && !multiSeat) {
+      return { text: 'Blackjack', cls: 'bj' };
+    }
+    // Égalité sur la/les mains : ne pas crier « gagné/perdu » à cause d’un side bet
+    if (handsAllPush) {
+      if (sideNet === 0) return { text: 'Égalité · mise rendue', cls: 'push' };
+      return {
+        text: sideNet > 0 ? 'Égalité · side bet gagné' : 'Égalité · side bet perdu',
+        cls: 'push',
+      };
+    }
+    if (multiSeat) {
+      if (net > 0) return { text: `Bilan ${fmtNet(net)}`, cls: 'win' };
+      if (net < 0) return { text: `Bilan ${fmtNet(net)}`, cls: 'lose' };
+      return { text: 'Bilan · égalité', cls: 'push' };
+    }
+    if (net > 0) return { text: `Vous gagnez ${fmt(Math.abs(net))}`, cls: 'win' };
+    if (net < 0) return { text: `Perte de ${fmt(Math.abs(net))}`, cls: 'lose' };
+    return { text: 'Égalité · mise rendue', cls: 'push' };
+  })();
 
   return (
     <motion.div
@@ -101,6 +140,21 @@ export function ResultBanner() {
             {res.dealerBust ? 'sauté' : res.dealerBlackjack ? 'blackjack' : res.dealerTotal}
             {res.insurance.length > 0 && ` · assurance ${fmtNet(insuranceNet)}`}
           </div>
+          {multiSeat && seatLines.length > 0 && (
+            <div className="seat-results">
+              {seatLines.map((line) => (
+                <span
+                  key={line.seatIndex}
+                  className={
+                    line.seatNet > 0 ? 'won' : line.seatNet < 0 ? 'lost' : 'push'
+                  }
+                >
+                  P{line.seatIndex + 1} · {line.label}
+                  {line.seatNet !== 0 ? ` ${fmtNet(line.seatNet)}` : ' · mise rendue'}
+                </span>
+              ))}
+            </div>
+          )}
           {res.sideBets.length > 0 && (
             <div className="side-results">
               {res.sideBets.map((b) => (

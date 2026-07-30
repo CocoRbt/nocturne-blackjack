@@ -1751,6 +1751,32 @@ button:disabled {
   color: var(--win);
   border-color: rgba(143, 207, 168, 0.35);
 }
+.seat-results {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 4px;
+}
+.seat-results span {
+  font-size: 11px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--ink-dim);
+}
+.seat-results span.won {
+  color: var(--win);
+  border-color: rgba(143, 207, 168, 0.35);
+}
+.seat-results span.lost {
+  color: var(--lose);
+  border-color: rgba(220, 140, 140, 0.35);
+}
+.seat-results span.push {
+  color: var(--push);
+  border-color: rgba(180, 170, 120, 0.35);
+}
 
 .result-tray {
   display: flex;
