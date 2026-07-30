@@ -1,4 +1,5 @@
 import { CrapsScreen } from './components/CrapsScreen';
+import { CrashScreen } from './components/CrashScreen';
 import { Lobby } from './components/Lobby';
 import { MinesScreen } from './components/MinesScreen';
 import { TableScreen } from './components/TableScreen';
@@ -9,5 +10,6 @@ export default function App() {
   if (screen === 'lobby') return <Lobby />;
   if (screen === 'mines') return <MinesScreen />;
   if (screen === 'craps') return <CrapsScreen />;
+  if (screen === 'crash') return <CrashScreen />;
   return <TableScreen />;
 }

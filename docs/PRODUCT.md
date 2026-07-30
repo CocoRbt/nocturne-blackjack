@@ -6,7 +6,7 @@ Dernière mise à jour : 2026-07-30.
 ## Vision
 
 Casino fictif (jetons virtuels). Enjeu principal = **mises, jetons, progression de crédit**.  
-Jeux : **blackjack** (tables) + **Mines** + **Craps / Scraps** (salon des jeux). Même crédit / pic / cercle.  
+Jeux : **blackjack** (tables) + **Mines** + **Craps / Scraps** + **Crash** (salon des jeux). Même crédit / pic / cercle.  
 Les micro-différences de règles blackjack (S17/H17, etc.) sont **secondaires** ; ambiance / enjeux priment.
 
 ## Mines
@@ -21,6 +21,12 @@ Les micro-différences de règles blackjack (S17/H17, etc.) sont **secondaires**
 - Phases come-out / point ; dés via `crypto.getRandomValues`.
 - Accès : menu lobby + carte « Salon des jeux ».
 - Détail : `docs/CRAPS.md`.
+
+## Crash
+
+- Multiplicateur exponentiel style Stake (RTP 99 %), cashout manuel / auto, avion animé.
+- Accès : menu lobby + carte « Salon des jeux ».
+- Détail : `docs/CRASH.md`.
 
 ## Tables
 

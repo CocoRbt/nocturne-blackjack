@@ -22,6 +22,7 @@ export function Lobby() {
   const enterTable = useGame((s) => s.enterTable);
   const enterMines = useGame((s) => s.enterMines);
   const enterCraps = useGame((s) => s.enterCraps);
+  const enterCrash = useGame((s) => s.enterCrash);
   const configurePrivateLimits = useGame((s) => s.configurePrivateLimits);
   const resetAll = useGame((s) => s.resetAll);
   const refill = useGame((s) => s.refill);
@@ -115,6 +116,16 @@ export function Lobby() {
                 Craps
                 <span className="dim">Scraps · dés</span>
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  enterCrash();
+                }}
+              >
+                Crash
+                <span className="dim">avion · multiplicateur</span>
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -131,7 +142,7 @@ export function Lobby() {
           NOC<span>T</span>URNE
         </h1>
         <p>
-          Blackjack, Mines &amp; Craps — jetons sans valeur, crédit partagé.
+          Blackjack, Mines, Craps &amp; Crash — jetons sans valeur, crédit partagé.
           On commence au Salon — les portes s&rsquo;ouvrent avec le crédit.
         </p>
       </motion.div>
@@ -246,6 +257,24 @@ export function Lobby() {
             <div className="craps-card-body">
               <h3>Craps</h3>
               <p>Scraps · Pass Line · Don’t Pass · Field · Odds 3-4-5× · come-out &amp; point.</p>
+              <span className="enter">Entrer dans le salon →</span>
+            </div>
+          </motion.button>
+          <motion.button
+            type="button"
+            className="crash-card"
+            onClick={enterCrash}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.75, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="crash-card-visual" aria-hidden>
+              <span className="crash-card-curve" />
+              <span className="crash-card-plane" />
+            </div>
+            <div className="crash-card-body">
+              <h3>Crash</h3>
+              <p>Avion · multiplicateur qui monte · encaisse avant le crash · RTP 99&nbsp;%.</p>
               <span className="enter">Entrer dans le salon →</span>
             </div>
           </motion.button>

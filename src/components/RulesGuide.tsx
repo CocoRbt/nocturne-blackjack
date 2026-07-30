@@ -5,7 +5,7 @@ import { SIDE_BET_DEFS } from '../engine/sidebets';
 import { fmt, fmtPays } from '../lib/format';
 import { useGame } from '../store/gameStore';
 
-export type RulesGame = 'blackjack' | 'mines' | 'craps';
+export type RulesGame = 'blackjack' | 'mines' | 'craps' | 'crash';
 
 function IlluBlackjack() {
   return (
@@ -241,6 +241,77 @@ function MinesRules() {
   );
 }
 
+function IlluCrash() {
+  return (
+    <svg className="rules-illu" viewBox="0 0 280 120" aria-hidden>
+      <defs>
+        <linearGradient id="rg-crash-bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#14110e" />
+          <stop offset="100%" stopColor="#0a0b0e" />
+        </linearGradient>
+        <linearGradient id="rg-crash-line" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0%" stopColor="#5d584e" />
+          <stop offset="100%" stopColor="#c2a15f" />
+        </linearGradient>
+      </defs>
+      <rect width="280" height="120" rx="14" fill="url(#rg-crash-bg)" />
+      <path
+        d="M24 96 C 70 94, 90 80, 120 58 S 190 22, 230 18"
+        fill="none"
+        stroke="url(#rg-crash-line)"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+      <path d="M218 22 L248 12 L252 16 L232 24 L248 28 L244 30 L222 24 Z" fill="#c2a15f" />
+      <text x="140" y="112" textAnchor="middle" fill="rgba(194,161,95,0.75)" fontSize="9" letterSpacing="3" fontFamily="sans-serif">
+        CRASH
+      </text>
+    </svg>
+  );
+}
+
+function CrashRules() {
+  return (
+    <>
+      <IlluCrash />
+      <p className="rules-lead">
+        Un multiplicateur part de 1,00× et grimpe. Encaisse avant que l’avion ne crash — sinon la mise est perdue.
+      </p>
+      <section className="rules-section">
+        <h3>Déroulement</h3>
+        <ol className="rules-steps">
+          <li>
+            <span className="n">1</span>
+            <span>Choisis ta mise (et optionnellement un auto-cashout), puis Décoller.</span>
+          </li>
+          <li>
+            <span className="n">2</span>
+            <span>Le multiplicateur monte en temps réel. Clique Encaisser quand tu veux.</span>
+          </li>
+          <li>
+            <span className="n">3</span>
+            <span>Si l’avion crash avant ton encaissement, tu perds. Gain = mise × multiplicateur.</span>
+          </li>
+        </ol>
+      </section>
+      <section className="rules-section">
+        <h3>Fairness · Stake-like</h3>
+        <div className="rules-grid">
+          <RuleRow label="RTP" value="99 %" />
+          <RuleRow label="Instant crash ~1 %" value="1,00×" />
+          <RuleRow label="Formule" value="(2³²/(h+1)) × 0,99" />
+          <RuleRow label="Max théorique" value="1 000 000×" />
+        </div>
+      </section>
+      <div className="rules-callout">
+        <strong>Auto cashout</strong>
+        <span>Définis un seuil (ex. 2×) pour encaisser automatiquement dès qu’il est atteint.</span>
+      </div>
+      <p className="rules-foot">Point de crash tiré au décollage · crypto.getRandomValues · crédit partagé</p>
+    </>
+  );
+}
+
 function CrapsRules() {
   return (
     <>
@@ -298,6 +369,7 @@ const META: Record<RulesGame, { eyebrow: string; title: string }> = {
   blackjack: { eyebrow: 'Table · guide de salle', title: 'Blackjack' },
   mines: { eyebrow: 'Salon des jeux · guide', title: 'Mines' },
   craps: { eyebrow: 'Salon des jeux · Scraps', title: 'Craps' },
+  crash: { eyebrow: 'Salon des jeux · Stake-like', title: 'Crash' },
 };
 
 export function RulesGuide({
@@ -355,6 +427,7 @@ export function RulesGuide({
               {game === 'blackjack' && <BlackjackRules />}
               {game === 'mines' && <MinesRules />}
               {game === 'craps' && <CrapsRules />}
+              {game === 'crash' && <CrashRules />}
             </div>
             <footer className="rules-guide-foot">
               <button type="button" className="btn primary" onClick={onClose}>
