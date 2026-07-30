@@ -102,6 +102,10 @@ export interface SaveData {
   balance: number;
   /** Plus haut solde atteint (progression / unlock). */
   peakBalance: number;
+  /** Parties terminées (BJ + salon), tous jeux confondus. */
+  gamesPlayed: number;
+  /** Parties jouées avant d’atteindre le record actuel. */
+  gamesBeforePeak: number;
   refills: number;
   soundMuted: boolean;
   tableId: string;
@@ -155,15 +159,27 @@ function migrate(raw: Record<string, unknown>): SaveData | null {
       ? Math.max(raw.peakBalance as number, balance)
       : Math.max(balance, STARTING_BALANCE);
 
+  const stats = (raw.stats as Stats) ?? emptyStats();
+  const gamesPlayed =
+    typeof raw.gamesPlayed === 'number'
+      ? Math.max(0, Math.floor(raw.gamesPlayed))
+      : Math.max(0, stats.rounds);
+  const gamesBeforePeak =
+    typeof raw.gamesBeforePeak === 'number'
+      ? Math.max(0, Math.floor(raw.gamesBeforePeak))
+      : 0;
+
   return {
     version: 2,
     balance,
     peakBalance,
+    gamesPlayed,
+    gamesBeforePeak,
     refills: typeof raw.refills === 'number' ? raw.refills : 0,
     soundMuted: Boolean(raw.soundMuted),
     tableId: typeof raw.tableId === 'string' ? raw.tableId : 'emeraude',
     history: Array.isArray(raw.history) ? (raw.history as HistoryEntry[]) : [],
-    stats: (raw.stats as Stats) ?? emptyStats(),
+    stats,
     lastBets: normalizeLastBets(raw.lastBets),
     gameSpeed: raw.gameSpeed === 'fast' ? 'fast' : 'classic',
     privateLimits: raw.privateLimits as PrivateLimits | undefined,

@@ -11,6 +11,7 @@ import {
 } from '../engine/rules';
 import { fmt } from '../lib/format';
 import { useGame } from '../store/gameStore';
+import { formatGamesBeforePeak } from '../store/peakMeta';
 import { CircleDrawer } from './CircleDrawer';
 import { circleJoinedLabel, useCircleKeepalive } from './CirclePanel';
 import { useDefiSync } from './DailyChallenges';
@@ -19,6 +20,7 @@ import { exitCircle } from '../cercle/circleStore';
 export function Lobby() {
   const balance = useGame((s) => s.balance);
   const peakBalance = useGame((s) => s.peakBalance);
+  const gamesBeforePeak = useGame((s) => s.gamesBeforePeak);
   const privateLimits = useGame((s) => s.privateLimits);
   const enterTable = useGame((s) => s.enterTable);
   const enterMines = useGame((s) => s.enterMines);
@@ -157,7 +159,10 @@ export function Lobby() {
       >
         <span className="label">Votre crédit</span>
         <span className="value">{fmt(balance)}</span>
-        <span className="peak">Pic {fmt(peakBalance)}</span>
+        <span className="peak">
+          Pic {fmt(peakBalance)}
+          <span className="peak-meta"> · {formatGamesBeforePeak(gamesBeforePeak)}</span>
+        </span>
         {broke && (
           <button className="btn primary" onClick={refill} style={{ marginLeft: 10 }}>
             Reconstituer

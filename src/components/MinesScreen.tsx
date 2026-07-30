@@ -151,6 +151,7 @@ export function MinesScreen() {
       const result = revealTile(round, index);
       setRound(result.round);
       if (result.hitMine) {
+        minesCredit(0);
         setFlash('lose');
         setLastPayout(0);
         return;

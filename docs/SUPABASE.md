@@ -7,7 +7,7 @@
 
 ## Classements
 1. **Crédit actuel** — solde live (`balance`)
-2. **Record** — plus haut crédit atteint (`peak_balance`)
+2. **Record** — plus haut crédit atteint (`peak_balance`) + parties avant ce record (`games_before_peak`)
 
 ## Setup dashboard
 1. Projet Supabase `Nocturne_Blackjack`
@@ -15,6 +15,7 @@
 3. **SQL Editor** : coller / exécuter dans l’ordre :
    - `supabase/migrations/20260730140000_cercle.sql`
    - `supabase/migrations/20260730190000_fix_join_leave.sql` (si la 1ʳᵉ a déjà été jouée)
+   - `supabase/migrations/20260730220000_games_before_peak.sql` (parties avant le record)
 4. **Project Settings → API** : copier `Project URL` + `anon public` key
 5. Local : créer `.env` (gitignoré) :
    ```

@@ -13,6 +13,7 @@ import {
   type LocalCircleState,
 } from '../cercle/circleStore';
 import { useGame } from '../store/gameStore';
+import { formatGamesBeforePeak } from '../store/peakMeta';
 import { DailyChallenges } from './DailyChallenges';
 
 type BoardTab = 'live' | 'peak';
@@ -21,6 +22,8 @@ type BoardTab = 'live' | 'peak';
 export function useCircleKeepalive() {
   const balance = useGame((s) => s.balance);
   const peakBalance = useGame((s) => s.peakBalance);
+  const gamesPlayed = useGame((s) => s.gamesPlayed);
+  const gamesBeforePeak = useGame((s) => s.gamesBeforePeak);
   const stats = useGame((s) => s.stats);
   const tableId = useGame((s) => s.tableId);
 
@@ -35,6 +38,8 @@ export function useCircleKeepalive() {
       blackjacks: stats.blackjacks,
       bestStreak: stats.longestWinStreak,
       highestTable: tableId,
+      gamesBeforePeak,
+      gamesPlayed,
     };
     const t = window.setTimeout(() => {
       void pushScore(state, seed).catch(() => undefined);
@@ -44,12 +49,23 @@ export function useCircleKeepalive() {
       window.clearTimeout(t);
       void cancelled;
     };
-  }, [balance, peakBalance, stats.handsPlayed, stats.blackjacks, stats.longestWinStreak, tableId]);
+  }, [
+    balance,
+    peakBalance,
+    gamesPlayed,
+    gamesBeforePeak,
+    stats.handsPlayed,
+    stats.blackjacks,
+    stats.longestWinStreak,
+    tableId,
+  ]);
 }
 
 export function CirclePanel() {
   const balance = useGame((s) => s.balance);
   const peakBalance = useGame((s) => s.peakBalance);
+  const gamesPlayed = useGame((s) => s.gamesPlayed);
+  const gamesBeforePeak = useGame((s) => s.gamesBeforePeak);
   const stats = useGame((s) => s.stats);
   const tableId = useGame((s) => s.tableId);
 
@@ -72,6 +88,8 @@ export function CirclePanel() {
     blackjacks: stats.blackjacks,
     bestStreak: stats.longestWinStreak,
     highestTable: tableId,
+    gamesBeforePeak,
+    gamesPlayed,
   };
 
   useEffect(() => {
@@ -97,7 +115,18 @@ export function CirclePanel() {
       window.clearTimeout(t);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [balance, peakBalance, stats.handsPlayed, stats.blackjacks, stats.longestWinStreak, tableId, circle?.circleCode, circle?.nickname]);
+  }, [
+    balance,
+    peakBalance,
+    gamesPlayed,
+    gamesBeforePeak,
+    stats.handsPlayed,
+    stats.blackjacks,
+    stats.longestWinStreak,
+    tableId,
+    circle?.circleCode,
+    circle?.nickname,
+  ]);
 
   useEffect(() => {
     if (!circle?.cloud) return;
@@ -315,8 +344,15 @@ export function CirclePanel() {
               <li key={`${tab}-${m.nickname}`} className={m.is_me ? 'me' : ''}>
                 <span className="rank">{m.rank}</span>
                 <span className="nick">{m.nickname}</span>
-                <span className="peak">
-                  {fmt(tab === 'live' ? m.balance : m.peak_balance)}
+                <span className="score-cell">
+                  <span className="peak">
+                    {fmt(tab === 'live' ? m.balance : m.peak_balance)}
+                  </span>
+                  {tab === 'peak' && (
+                    <span className="before-peak">
+                      {formatGamesBeforePeak(m.games_before_peak ?? 0)}
+                    </span>
+                  )}
                 </span>
               </li>
             ))}

@@ -22,6 +22,8 @@ export interface CircleMemberScore {
   blackjacks: number;
   bestStreak: number;
   highestTable: string;
+  gamesBeforePeak: number;
+  gamesPlayed: number;
   updatedAt: number;
 }
 
@@ -38,7 +40,15 @@ export function loadCircle(): LocalCircleState | null {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as LocalCircleState;
+    const parsed = JSON.parse(raw) as LocalCircleState;
+    return {
+      ...parsed,
+      members: (parsed.members ?? []).map((m) => ({
+        ...m,
+        gamesBeforePeak: m.gamesBeforePeak ?? 0,
+        gamesPlayed: m.gamesPlayed ?? 0,
+      })),
+    };
   } catch {
     return null;
   }
@@ -82,6 +92,8 @@ export function upsertSelfScore(
     blackjacks: score.blackjacks,
     bestStreak: score.bestStreak,
     highestTable: score.highestTable,
+    gamesBeforePeak: score.gamesBeforePeak,
+    gamesPlayed: score.gamesPlayed,
     updatedAt: Date.now(),
   };
   const others = state.members.filter((m) => m.nickname !== nickname);
@@ -100,6 +112,7 @@ export function leaderboardsFromLocal(state: LocalCircleState): Leaderboards {
       nickname: m.nickname,
       balance: m.balance,
       peak_balance: m.peakBalance,
+      games_before_peak: m.gamesBeforePeak,
       updated_at: new Date(m.updatedAt).toISOString(),
       is_me: m.nickname === state.nickname,
     }));
@@ -110,6 +123,7 @@ export function leaderboardsFromLocal(state: LocalCircleState): Leaderboards {
       nickname: m.nickname,
       balance: m.balance,
       peak_balance: m.peakBalance,
+      games_before_peak: m.gamesBeforePeak,
       updated_at: new Date(m.updatedAt).toISOString(),
       is_me: m.nickname === state.nickname,
     }));
@@ -127,6 +141,8 @@ export async function enterCircle(nickname: string, code: string | undefined, se
       blackjacks: seed.blackjacks,
       bestStreak: seed.bestStreak,
       highestTable: seed.highestTable,
+      gamesBeforePeak: seed.gamesBeforePeak,
+      gamesPlayed: seed.gamesPlayed,
     });
     const boards = await fetchLeaderboards();
     const members = mergeBoardMembers(boards, name);
@@ -176,6 +192,8 @@ export async function pushScore(state: LocalCircleState, seed: Omit<CircleMember
         blackjacks: seed.blackjacks,
         bestStreak: seed.bestStreak,
         highestTable: seed.highestTable,
+        gamesBeforePeak: seed.gamesBeforePeak,
+        gamesPlayed: seed.gamesPlayed,
       });
       const boards = await fetchLeaderboards();
       const next = { ...local, members: mergeBoardMembers(boards, state.nickname), cloud: true };
@@ -206,14 +224,20 @@ function mergeBoardMembers(boards: Leaderboards, me: string): CircleMemberScore[
   const map = new Map<string, CircleMemberScore>();
   for (const row of [...boards.live, ...boards.peak]) {
     const prev = map.get(row.nickname);
+    const peakBalance = Math.max(row.peak_balance, prev?.peakBalance ?? 0);
+    const fromPeakRow = row.peak_balance >= (prev?.peakBalance ?? 0);
     map.set(row.nickname, {
       nickname: row.nickname,
       balance: row.balance,
-      peakBalance: Math.max(row.peak_balance, prev?.peakBalance ?? 0),
+      peakBalance,
       handsPlayed: prev?.handsPlayed ?? 0,
       blackjacks: prev?.blackjacks ?? 0,
       bestStreak: prev?.bestStreak ?? 0,
       highestTable: prev?.highestTable ?? 'emeraude',
+      gamesBeforePeak: fromPeakRow
+        ? (row.games_before_peak ?? prev?.gamesBeforePeak ?? 0)
+        : (prev?.gamesBeforePeak ?? row.games_before_peak ?? 0),
+      gamesPlayed: prev?.gamesPlayed ?? 0,
       updatedAt: Date.parse(row.updated_at) || Date.now(),
     });
   }

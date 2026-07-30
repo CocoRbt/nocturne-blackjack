@@ -32,6 +32,7 @@ import {
   type SaveData,
   type Stats,
 } from './persistence';
+import { creditWithoutGame, settleGamePeak } from './peakMeta';
 import { TIMING, type GameSpeed } from './timing';
 
 export type BetSpot = 'main' | SideBetId;
@@ -79,6 +80,10 @@ export interface DisplayState {
 interface GameState {
   balance: number;
   peakBalance: number;
+  /** Parties terminées tous jeux confondus. */
+  gamesPlayed: number;
+  /** Parties jouées avant le record actuel. */
+  gamesBeforePeak: number;
   refills: number;
   screen: 'lobby' | 'table' | 'mines' | 'craps' | 'crash';
   tableId: string;
@@ -111,20 +116,20 @@ interface GameState {
   leaveMines(): void;
   /** Débite une mise Mines. false si solde insuffisant. */
   minesDebit(bet: number): boolean;
-  /** Crédite un payout Mines (cashout / clear). */
-  minesCredit(payout: number): void;
+  /** Crédite un payout Mines (cashout / bust). Compte 1 partie par défaut. */
+  minesCredit(payout: number, countGame?: boolean): void;
   enterCraps(): void;
   leaveCraps(): void;
   /** Débite une mise Craps. false si solde insuffisant. */
   crapsDebit(bet: number): boolean;
-  /** Crédite un payout / rendu de mise Craps. */
-  crapsCredit(payout: number): void;
+  /** Crédite les gains Craps. countGame pour une décision de ligne. */
+  crapsCredit(payout: number, countGame?: boolean): void;
   enterCrash(): void;
   leaveCrash(): void;
   /** Débite une mise Crash. false si solde insuffisant. */
   crashDebit(bet: number): boolean;
-  /** Crédite un payout Crash (cashout). */
-  crashCredit(payout: number): void;
+  /** Crédite un payout Crash (ou 0 si crash). Compte 1 partie par défaut. */
+  crashCredit(payout: number, countGame?: boolean): void;
   configurePrivateLimits(limits: PrivateLimits): void;
   selectChip(denom: number): void;
   selectSeat(seatIndex: number): void;
@@ -225,10 +230,6 @@ export function decompose(amount: number, denoms: readonly number[] = ALL_CHIP_D
   return decomposeAmount(amount, denoms);
 }
 
-function withPeak(balance: number, peak: number): number {
-  return Math.max(peak, balance);
-}
-
 function goalProgressOf(session: SessionState, balance: number): number {
   switch (session.goalId) {
     case 'reach6100':
@@ -261,6 +262,8 @@ let presentToken = 0;
 const saved = loadSave();
 const initialBalance = saved?.balance ?? STARTING_BALANCE;
 const initialPeak = saved?.peakBalance ?? Math.max(initialBalance, STARTING_BALANCE);
+const initialGamesPlayed = saved?.gamesPlayed ?? saved?.stats.rounds ?? 0;
+const initialGamesBeforePeak = saved?.gamesBeforePeak ?? 0;
 const initialPrivate = saved?.privateLimits ?? { minBet: 250_00, maxBet: 25_000_00 };
 const initialSeatCapacity = orientationSeatCapacity();
 setEnginePrivateLimits(initialPrivate);
@@ -279,6 +282,8 @@ export const useGame = create<GameState>((set, get) => {
       version: 2,
       balance: s.balance,
       peakBalance: s.peakBalance,
+      gamesPlayed: s.gamesPlayed,
+      gamesBeforePeak: s.gamesBeforePeak,
       tableId: s.tableId,
       history: s.history,
       stats: s.stats,
@@ -419,9 +424,19 @@ export const useGame = create<GameState>((set, get) => {
     else if (summary.totalNet === 0) sounds.play('push');
     else sounds.play('lose');
 
+    // totalReturned déjà dans balance ; settleGamePeak re-crédite → on part du solde avant retour.
+    const beforeReturn = s.balance;
+    const settled = settleGamePeak(beforeReturn, summary.totalReturned, {
+      peakBalance: s.peakBalance,
+      gamesPlayed: s.gamesPlayed,
+      gamesBeforePeak: s.gamesBeforePeak,
+    });
+
     set({
-      balance,
-      peakBalance: withPeak(balance, s.peakBalance),
+      balance: settled.balance,
+      peakBalance: settled.peakBalance,
+      gamesPlayed: settled.gamesPlayed,
+      gamesBeforePeak: settled.gamesBeforePeak,
       stats,
       history: [entry, ...s.history].slice(0, 60),
       session,
@@ -532,6 +547,8 @@ export const useGame = create<GameState>((set, get) => {
   return {
     balance: initialBalance,
     peakBalance: initialPeak,
+    gamesPlayed: initialGamesPlayed,
+    gamesBeforePeak: initialGamesBeforePeak,
     refills: saved?.refills ?? 0,
     screen: 'lobby',
     tableId: saved?.tableId === PRIVATE_TABLE_ID ? PRIVATE_TABLE_ID : (saved?.tableId ?? 'emeraude'),
@@ -654,17 +671,21 @@ export const useGame = create<GameState>((set, get) => {
       return true;
     },
 
-    minesCredit(payout) {
-      const amount = Math.max(0, Math.floor(payout));
-      if (amount <= 0) {
-        persist();
-        return;
-      }
+    minesCredit(payout, countGame = true) {
       const s = get();
-      const balance = s.balance + amount;
+      const meta = {
+        peakBalance: s.peakBalance,
+        gamesPlayed: s.gamesPlayed,
+        gamesBeforePeak: s.gamesBeforePeak,
+      };
+      const settled = countGame
+        ? settleGamePeak(s.balance, payout, meta)
+        : creditWithoutGame(s.balance, payout, meta);
       set({
-        balance,
-        peakBalance: withPeak(balance, s.peakBalance),
+        balance: settled.balance,
+        peakBalance: settled.peakBalance,
+        gamesPlayed: settled.gamesPlayed,
+        gamesBeforePeak: settled.gamesBeforePeak,
       });
       persist();
     },
@@ -699,17 +720,21 @@ export const useGame = create<GameState>((set, get) => {
       return true;
     },
 
-    crapsCredit(payout) {
-      const amount = Math.max(0, Math.floor(payout));
-      if (amount <= 0) {
-        persist();
-        return;
-      }
+    crapsCredit(payout, countGame = true) {
       const s = get();
-      const balance = s.balance + amount;
+      const meta = {
+        peakBalance: s.peakBalance,
+        gamesPlayed: s.gamesPlayed,
+        gamesBeforePeak: s.gamesBeforePeak,
+      };
+      const settled = countGame
+        ? settleGamePeak(s.balance, payout, meta)
+        : creditWithoutGame(s.balance, payout, meta);
       set({
-        balance,
-        peakBalance: withPeak(balance, s.peakBalance),
+        balance: settled.balance,
+        peakBalance: settled.peakBalance,
+        gamesPlayed: settled.gamesPlayed,
+        gamesBeforePeak: settled.gamesBeforePeak,
       });
       persist();
     },
@@ -744,17 +769,21 @@ export const useGame = create<GameState>((set, get) => {
       return true;
     },
 
-    crashCredit(payout) {
-      const amount = Math.max(0, Math.floor(payout));
-      if (amount <= 0) {
-        persist();
-        return;
-      }
+    crashCredit(payout, countGame = true) {
       const s = get();
-      const balance = s.balance + amount;
+      const meta = {
+        peakBalance: s.peakBalance,
+        gamesPlayed: s.gamesPlayed,
+        gamesBeforePeak: s.gamesBeforePeak,
+      };
+      const settled = countGame
+        ? settleGamePeak(s.balance, payout, meta)
+        : creditWithoutGame(s.balance, payout, meta);
       set({
-        balance,
-        peakBalance: withPeak(balance, s.peakBalance),
+        balance: settled.balance,
+        peakBalance: settled.peakBalance,
+        gamesPlayed: settled.gamesPlayed,
+        gamesBeforePeak: settled.gamesBeforePeak,
       });
       persist();
     },
@@ -1099,10 +1128,15 @@ export const useGame = create<GameState>((set, get) => {
       const s = get();
       if (s.round) return;
       sounds.play('chipStack');
-      const balance = s.balance + STARTING_BALANCE;
+      const settled = creditWithoutGame(s.balance, STARTING_BALANCE, {
+        peakBalance: s.peakBalance,
+        gamesPlayed: s.gamesPlayed,
+        gamesBeforePeak: s.gamesBeforePeak,
+      });
       set({
-        balance,
-        peakBalance: withPeak(balance, s.peakBalance),
+        balance: settled.balance,
+        peakBalance: settled.peakBalance,
+        gamesBeforePeak: settled.gamesBeforePeak,
         refills: s.refills + 1,
         notice: 'Crédit reconstitué.',
       });
@@ -1118,6 +1152,8 @@ export const useGame = create<GameState>((set, get) => {
       set({
         balance: STARTING_BALANCE,
         peakBalance: STARTING_BALANCE,
+        gamesPlayed: 0,
+        gamesBeforePeak: 0,
         refills: 0,
         screen: 'lobby',
         tableId: 'emeraude',

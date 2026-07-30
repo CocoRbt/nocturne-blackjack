@@ -142,6 +142,10 @@ export function CrashScreen() {
           setFlash('win');
           pushHistory(result.round.crashAt, result.round.cashoutAt ?? undefined);
         } else {
+          if (!credited.current) {
+            credited.current = true;
+            crashCredit(0);
+          }
           setFlash('lose');
           pushHistory(result.round.crashAt);
         }
@@ -186,6 +190,8 @@ export function CrashScreen() {
       setDisplayMult(1);
       setFlash('lose');
       setFlightOverBanner(true);
+      credited.current = true;
+      crashCredit(0);
       pushHistory(1);
       return;
     }

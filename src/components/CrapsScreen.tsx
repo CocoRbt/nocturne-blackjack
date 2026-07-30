@@ -297,9 +297,20 @@ export function CrapsScreen() {
         }
         timers.current.push(
           window.setTimeout(() => {
-            if (res.creditCents > 0) crapsCredit(res.creditCents);
-            setRound(res.round);
             const kinds = res.round.settlements.map((s) => s.kind);
+            const lineEnded = kinds.some(
+              (k) =>
+                k === 'pass_win' ||
+                k === 'pass_lose' ||
+                k === 'dont_pass_win' ||
+                k === 'dont_pass_lose' ||
+                k === 'dont_pass_push' ||
+                k === 'seven_out' ||
+                k === 'point_made',
+            );
+            if (lineEnded) crapsCredit(res.creditCents, true);
+            else if (res.creditCents > 0) crapsCredit(res.creditCents, false);
+            setRound(res.round);
             if (kinds.some((k) => k === 'pass_win')) notifyDefi({ type: 'craps_pass_win' });
             if (kinds.some((k) => k.endsWith('_win') || k === 'point_made')) setFlash('win');
             else if (kinds.some((k) => k === 'dont_pass_push' || k === 'point_set')) setFlash('push');

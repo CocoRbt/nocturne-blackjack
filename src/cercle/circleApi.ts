@@ -5,6 +5,8 @@ export interface LeaderboardRow {
   nickname: string;
   balance: number;
   peak_balance: number;
+  /** Parties jouées avant d’atteindre ce record (onglet Record). */
+  games_before_peak?: number;
   updated_at: string;
   is_me: boolean;
 }
@@ -69,7 +71,9 @@ export async function syncScoreCloud(input: {
   blackjacks: number;
   bestStreak: number;
   highestTable: string;
-}): Promise<{ balance: number; peak_balance: number }> {
+  gamesBeforePeak: number;
+  gamesPlayed: number;
+}): Promise<{ balance: number; peak_balance: number; games_before_peak?: number }> {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase non configuré');
   await ensureAnonSession();
@@ -80,9 +84,11 @@ export async function syncScoreCloud(input: {
     p_blackjacks: input.blackjacks,
     p_best_streak: input.bestStreak,
     p_highest_table: input.highestTable,
+    p_games_before_peak: input.gamesBeforePeak,
+    p_games_played: input.gamesPlayed,
   });
   if (error) throw new Error(rpcMessage(error));
-  return data as { balance: number; peak_balance: number };
+  return data as { balance: number; peak_balance: number; games_before_peak?: number };
 }
 
 export async function fetchLeaderboards(): Promise<Leaderboards> {
