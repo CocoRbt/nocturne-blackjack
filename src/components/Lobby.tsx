@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   allLobbyTables,
   canSitAtTable,
@@ -11,7 +11,8 @@ import {
 } from '../engine/rules';
 import { fmt } from '../lib/format';
 import { useGame } from '../store/gameStore';
-import { CirclePanel } from './CirclePanel';
+import { CircleDrawer } from './CircleDrawer';
+import { circleJoinedLabel, useCircleKeepalive } from './CirclePanel';
 
 export function Lobby() {
   const balance = useGame((s) => s.balance);
@@ -26,6 +27,14 @@ export function Lobby() {
 
   const [showPrivateSetup, setShowPrivateSetup] = useState(false);
   const [draftLimits, setDraftLimits] = useState<PrivateLimits>(privateLimits);
+  const [circleOpen, setCircleOpen] = useState(false);
+  const [joinedAs, setJoinedAs] = useState(() => circleJoinedLabel());
+
+  useCircleKeepalive();
+
+  useEffect(() => {
+    if (!circleOpen) setJoinedAs(circleJoinedLabel());
+  }, [circleOpen]);
 
   const tables = useMemo(() => allLobbyTables(privateLimits), [privateLimits]);
   const broke = balance < tables[0].rules.minBet;
@@ -48,6 +57,23 @@ export function Lobby() {
 
   return (
     <div className="lobby grain">
+      <button
+        type="button"
+        className={`lobby-menu-btn ${joinedAs ? 'has-circle' : ''}`}
+        aria-label="Ouvrir le cercle d'amis"
+        aria-expanded={circleOpen}
+        onClick={() => setCircleOpen(true)}
+      >
+        <span className="lobby-menu-icon" aria-hidden>
+          <span />
+          <span />
+          <span />
+        </span>
+        <span className="lobby-menu-text">
+          {joinedAs ? joinedAs : 'Cercle'}
+        </span>
+      </button>
+
       <motion.div
         className="lobby-brand"
         initial={{ opacity: 0, y: 18 }}
@@ -88,8 +114,6 @@ export function Lobby() {
           </button>
         </div>
       )}
-
-      <CirclePanel />
 
       <div className="lobby-tables">
         {tables.map((t, i) => {
@@ -210,6 +234,8 @@ export function Lobby() {
           Réinitialiser la partie
         </button>
       </div>
+
+      <CircleDrawer open={circleOpen} onClose={() => setCircleOpen(false)} />
     </div>
   );
 }
