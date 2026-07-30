@@ -62,6 +62,7 @@ export function CirclePanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [switching, setSwitching] = useState(false);
 
   const seed = {
     balance,
@@ -113,15 +114,19 @@ export function CirclePanel() {
   const createOrJoin = async () => {
     const name = nickname.trim().slice(0, 16);
     if (name.length < 2) return;
+    if (switching && !joinCode.trim()) return;
     setBusy(true);
     setError(null);
     try {
+      // Changer de code : on reste sur la même session anonyme,
+      // join_circle bascule le circle_id (pas besoin du dashboard).
       const next = await enterCircle(name, joinCode || undefined, seed);
       setCircle(next);
       setJoinCode(next.circleCode ?? '');
       const refreshed = await refreshLeaderboards(next);
       setCircle(refreshed.state);
       setBoards(refreshed.boards);
+      setSwitching(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Impossible de rejoindre le cercle');
     } finally {
@@ -131,15 +136,24 @@ export function CirclePanel() {
 
   const leave = async () => {
     setBusy(true);
+    setError(null);
     try {
       await exitCircle();
       setCircle(null);
       setBoards(null);
       setNickname('');
       setJoinCode('');
+      setSwitching(false);
     } finally {
       setBusy(false);
     }
+  };
+
+  const startSwitch = () => {
+    setSwitching(true);
+    setError(null);
+    setJoinCode('');
+    setNickname(circle?.nickname ?? '');
   };
 
   const copyCode = async () => {
@@ -157,6 +171,7 @@ export function CirclePanel() {
   const rows: LeaderboardRow[] = tab === 'live' ? boards?.live ?? [] : boards?.peak ?? [];
   const cloud = isSupabaseConfigured();
   const joined = Boolean(circle?.circleCode);
+  const showForm = !joined || switching;
 
   return (
     <div className={`circle-panel-in-drawer ${joined ? 'is-joined' : ''}`}>
@@ -169,11 +184,18 @@ export function CirclePanel() {
         )}
       </p>
 
-      {!joined ? (
+      {showForm ? (
         <div className="circle-form">
-          <p className="circle-hint">
-            Laisse le code vide pour créer un cercle. Sinon colle le code exact d&rsquo;un pote.
-          </p>
+          {switching && (
+            <p className="circle-hint">
+              Tu quittes <strong>{circle?.circleCode}</strong> pour rejoindre un autre code.
+            </p>
+          )}
+          {!switching && (
+            <p className="circle-hint">
+              Laisse le code vide pour créer un cercle. Sinon colle le code exact d&rsquo;un pote.
+            </p>
+          )}
           <div className="circle-form-row">
             <label>
               Pseudo
@@ -201,10 +223,31 @@ export function CirclePanel() {
           <button
             className="btn primary circle-join-btn"
             onClick={() => void createOrJoin()}
-            disabled={busy || nickname.trim().length < 2}
+            disabled={busy || nickname.trim().length < 2 || (switching && !joinCode.trim())}
           >
-            {busy ? 'Connexion…' : joinCode.trim() ? 'Rejoindre' : 'Créer mon cercle'}
+            {busy
+              ? 'Connexion…'
+              : switching
+                ? 'Rejoindre ce code'
+                : joinCode.trim()
+                  ? 'Rejoindre'
+                  : 'Créer mon cercle'}
           </button>
+          {switching && (
+            <button
+              type="button"
+              className="btn ghost circle-join-btn"
+              style={{ marginTop: 8 }}
+              onClick={() => {
+                setSwitching(false);
+                setJoinCode(circle?.circleCode ?? '');
+                setError(null);
+              }}
+              disabled={busy}
+            >
+              Annuler
+            </button>
+          )}
         </div>
       ) : (
         <>
@@ -216,14 +259,30 @@ export function CirclePanel() {
             <button type="button" className="btn ghost" onClick={() => void copyCode()}>
               {copied ? 'Copié' : 'Copier'}
             </button>
-            <button className="btn ghost" onClick={() => void leave()} disabled={busy}>
-              Quitter
-            </button>
           </div>
           <p className="circle-meta-line">
             {circle!.nickname}
             {circle!.cloud ? ' · cloud' : ' · local'}
           </p>
+
+          <div className="circle-leave-actions">
+            <button
+              type="button"
+              className="btn ghost circle-leave-btn"
+              onClick={() => void leave()}
+              disabled={busy}
+            >
+              {busy ? 'Sortie…' : 'Quitter ce cercle'}
+            </button>
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={startSwitch}
+              disabled={busy}
+            >
+              Changer de code
+            </button>
+          </div>
 
           <div className="circle-tabs" role="tablist">
             <button

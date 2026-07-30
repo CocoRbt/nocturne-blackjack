@@ -191,14 +191,15 @@ export async function pushScore(state: LocalCircleState, seed: Omit<CircleMember
 }
 
 export async function exitCircle(): Promise<void> {
+  // Local d’abord : l’UI ne reste jamais bloquée si le réseau rame
+  clearCircleLocal();
   if (isSupabaseConfigured()) {
     try {
       await leaveCircleCloud();
     } catch {
-      // ignore
+      // ignore — déjà sorti en local
     }
   }
-  clearCircleLocal();
 }
 
 function mergeBoardMembers(boards: Leaderboards, me: string): CircleMemberScore[] {

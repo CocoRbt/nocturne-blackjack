@@ -98,19 +98,38 @@ export async function fetchLeaderboards(): Promise<Leaderboards> {
   };
 }
 
-/** Quitte le cercle côté cloud puis déconnecte la session anonyme locale. */
+/**
+ * Quitte le cercle côté cloud.
+ * 1) RPC leave_circle si dispo
+ * 2) sinon détache le profil via RLS (pas besoin du dashboard)
+ * puis sign-out anonyme local.
+ */
 export async function leaveCircleCloud(): Promise<void> {
   const sb = getSupabase();
   if (!sb) return;
+
   const { data: sessionData } = await sb.auth.getSession();
-  if (sessionData.session) {
-    const { error } = await sb.rpc('leave_circle');
-    if (error) {
-      // même si RPC absente / échoue, on continue le cleanup local
-      console.warn('[cercle] leave_circle', error.message);
+  const uid = sessionData.session?.user?.id;
+
+  if (uid) {
+    const { error: rpcErr } = await sb.rpc('leave_circle');
+    if (rpcErr) {
+      // Fallback : pas de RPC / pas encore migrée — update direct (policy profiles update self)
+      const { error: updErr } = await sb
+        .from('profiles')
+        .update({ circle_id: null })
+        .eq('id', uid);
+      if (updErr) {
+        console.warn('[cercle] detach profile', updErr.message);
+      }
     }
   }
-  await sb.auth.signOut({ scope: 'local' });
+
+  try {
+    await sb.auth.signOut({ scope: 'local' });
+  } catch {
+    // ignore
+  }
 }
 
 export { isSupabaseConfigured };
