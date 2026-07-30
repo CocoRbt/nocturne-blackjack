@@ -186,10 +186,6 @@ export function BettingBoard() {
             })}
           </div>
         </div>
-
-        {seatCapacity === 5 && (
-          <div className="seat-capacity-hint">Passe en paysage pour 7 places</div>
-        )}
       </div>
       <div className="tray">
         <div className="chip-row">

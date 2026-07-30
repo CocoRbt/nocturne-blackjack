@@ -1997,26 +1997,22 @@ button:disabled {
   .seat-tab-sides {
     font-size: 9px;
   }
+  .betting-board {
+    gap: 6px;
+    padding-bottom: 10px;
+  }
   .focused-seat-bets {
-    gap: 4px;
+    gap: 2px;
+    margin-bottom: 4px;
   }
-  .focused-seat-caption {
-    font-size: 13px;
-  }
-  .focused-seat-caption span {
-    display: none; /* libère de la hauteur en portrait */
-  }
-  .seat-capacity-hint {
-    display: none; /* évite le chevauchement avec le rack de jetons */
-  }
-
   .tray {
     flex-direction: column;
     gap: 8px;
-    padding-top: 14px;
+    padding-top: 10px;
     position: relative;
     z-index: 10;
-    background: linear-gradient(180deg, rgba(5, 7, 6, 0.35), rgba(5, 7, 6, 0.88) 24%);
+    background: rgba(5, 7, 6, 0.92);
+    border-top: 1px solid rgba(233, 228, 216, 0.06);
   }
   .chip-btn:not(:disabled):hover {
     transform: translateY(-2px);
