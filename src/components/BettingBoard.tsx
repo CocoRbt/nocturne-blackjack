@@ -10,6 +10,17 @@ import { Chip, ChipStack } from './ChipView';
 /** Ordre Stake / Evolution : 21+3 à gauche, main au centre, Paires à droite. */
 const SPOT_ORDER: BetSpot[] = ['twentyOnePlusThree', 'main', 'perfectPairs'];
 
+function emptyStacks(): SeatStacks {
+  return {
+    main: [],
+    perfectPairs: [],
+    twentyOnePlusThree: [],
+    luckyLadies: [],
+    bustIt: [],
+    royalMatch: [],
+  };
+}
+
 function spotAmount(stacks: SeatStacks, spot: BetSpot): number {
   return stacks[spot].reduce((a, b) => a + b, 0);
 }
@@ -23,7 +34,6 @@ function Spot({
   hint,
   main = false,
   flash = false,
-  locked = false,
 }: {
   seatIndex: number;
   stacks: SeatStacks;
@@ -33,7 +43,6 @@ function Spot({
   hint?: string;
   main?: boolean;
   flash?: boolean;
-  locked?: boolean;
 }) {
   const addChip = useGame((s) => s.addChip);
   const selectSeat = useGame((s) => s.selectSeat);
@@ -42,12 +51,10 @@ function Spot({
   return (
     <button
       className={`bet-spot ${main ? 'main' : 'pill'} ${amount > 0 ? 'filled' : ''} ${flash ? 'flash-win' : ''}`}
-      onClick={(e) => {
-        e.stopPropagation();
+      onClick={() => {
         selectSeat(seatIndex);
         addChip(spot);
       }}
-      disabled={locked}
       aria-label={`Miser place ${seatIndex + 1} sur ${main ? 'Main principale' : label}`}
       title={title}
       data-zone={main ? ANIMATION_ZONES.betMain : ANIMATION_ZONES.betSide}
@@ -65,91 +72,52 @@ function Spot({
   );
 }
 
-function SeatPod({
+/** Pastille compacte : sélection de place + aperçu de la mise principale. */
+function SeatTab({
   seatIndex,
-  locked,
-  enabled,
-  dealFlashIds,
+  stacks,
+  selected,
 }: {
   seatIndex: number;
-  locked: boolean;
-  enabled: Set<BetSpot>;
-  dealFlashIds: string[];
+  stacks: SeatStacks;
+  selected: boolean;
 }) {
-  const allStacks = useGame((s) => s.stacks);
-  const selectedSeat = useGame((s) => s.selectedSeat);
   const selectSeat = useGame((s) => s.selectSeat);
-  const stacks = allStacks[seatIndex] ?? {
-    main: [],
-    perfectPairs: [],
-    twentyOnePlusThree: [],
-    luckyLadies: [],
-    bustIt: [],
-    royalMatch: [],
-  };
-  const occupied = spotAmount(stacks, 'main') > 0;
-  const selected = selectedSeat === seatIndex && !locked;
+  const addChip = useGame((s) => s.addChip);
+  const main = spotAmount(stacks, 'main');
+  const sides =
+    spotAmount(stacks, 'twentyOnePlusThree') + spotAmount(stacks, 'perfectPairs');
 
   return (
-    <div
-      className={`seat-pod ${selected ? 'selected' : ''} ${occupied ? 'occupied' : ''} ${locked ? 'locked' : ''}`}
+    <button
+      type="button"
+      className={`seat-tab ${selected ? 'selected' : ''} ${main > 0 ? 'occupied' : ''}`}
       onClick={() => selectSeat(seatIndex)}
-      onKeyDown={(e) => {
-        if (locked) return;
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          selectSeat(seatIndex);
-        }
+      onDoubleClick={() => {
+        selectSeat(seatIndex);
+        addChip('main');
       }}
-      role="button"
-      tabIndex={locked ? -1 : 0}
+      aria-label={`Place ${seatIndex + 1}${main > 0 ? `, mise ${fmt(main)}` : ''}`}
+      aria-pressed={selected}
       data-seat-id={seatIndex}
-      aria-label={locked ? `Place ${seatIndex + 1} verrouillée` : `Sélectionner place ${seatIndex + 1}`}
-      aria-disabled={locked}
     >
-      <span className="seat-label">Place {seatIndex + 1}</span>
-      <div className="seat-spots">
-        {SPOT_ORDER.filter((s) => enabled.has(s)).map((spot) => {
-          if (spot === 'main') {
-            return (
-              <Spot
-                key={spot}
-                seatIndex={seatIndex}
-                stacks={stacks}
-                spot="main"
-                label="Main"
-                hint="BJ"
-                main
-                locked={locked}
-              />
-            );
-          }
-          const def = SIDE_BET_DEFS[spot as SideBetId];
-          return (
-            <Spot
-              key={spot}
-              seatIndex={seatIndex}
-              stacks={stacks}
-              spot={spot}
-              label={def.shortName}
-              title={`${def.name} — ${def.description}`}
-              hint={def.shortName}
-              flash={dealFlashIds.includes(`${seatIndex}:${spot}`)}
-              locked={locked}
-            />
-          );
-        })}
-      </div>
-    </div>
+      <span className="seat-tab-num">{seatIndex + 1}</span>
+      <span className="seat-tab-main">{main > 0 ? fmt(main) : '—'}</span>
+      {sides > 0 && <span className="seat-tab-sides">+{fmt(sides)}</span>}
+    </button>
   );
 }
 
-/** Plateau de mise : arc desktop, pastilles mobile, rack de jetons. */
+/**
+ * Plateau multi-places : bandeau de sièges + zone de mise focalisée
+ * sur la place sélectionnée (évite la superposition des cercles).
+ */
 export function BettingBoard() {
   const tableId = useGame((s) => s.tableId);
   const balance = useGame((s) => s.balance);
   const stacks = useGame((s) => s.stacks);
   const seatCapacity = useGame((s) => s.seatCapacity);
+  const selectedSeat = useGame((s) => s.selectedSeat);
   const selectedChip = useGame((s) => s.selectedChip);
   const selectChip = useGame((s) => s.selectChip);
   const undoLastChip = useGame((s) => s.undoLastChip);
@@ -163,24 +131,62 @@ export function BettingBoard() {
   const table = getTable(tableId);
   const chipDenoms = chipsForLimits(table.rules.minBet, table.rules.maxBet);
   const staged = stagedTotal(stacks);
-  const canDeal = stacks.some((seatStacks, index) => index < seatCapacity && spotAmount(seatStacks, 'main') >= table.rules.minBet);
+  const canDeal = stacks.some(
+    (seatStacks, index) =>
+      index < seatCapacity && spotAmount(seatStacks, 'main') >= table.rules.minBet,
+  );
   const enabled = new Set<BetSpot>(['main', ...table.rules.sideBets]);
-  const visibleSeatCount = seatCapacity === 5 ? 7 : seatCapacity;
+  const activeSeat = Math.min(selectedSeat, seatCapacity - 1);
+  const activeStacks = stacks[activeSeat] ?? emptyStacks();
 
   return (
     <>
       <div className="betting-board">
-        <div className="seats-betting-row" data-seat-capacity={seatCapacity}>
-          {Array.from({ length: visibleSeatCount }, (_, seatIndex) => (
-            <SeatPod
+        <div className="seat-tabs" data-seat-capacity={seatCapacity}>
+          {Array.from({ length: seatCapacity }, (_, seatIndex) => (
+            <SeatTab
               key={seatIndex}
               seatIndex={seatIndex}
-              locked={seatIndex >= seatCapacity}
-              enabled={enabled}
-              dealFlashIds={dealFlashIds}
+              stacks={stacks[seatIndex] ?? emptyStacks()}
+              selected={seatIndex === activeSeat}
             />
           ))}
         </div>
+
+        <div className="focused-seat-bets" data-seat-id={activeSeat}>
+          <div className="focused-seat-caption">Place {activeSeat + 1}</div>
+          <div className="spots-row">
+            {SPOT_ORDER.filter((s) => enabled.has(s)).map((spot) => {
+              if (spot === 'main') {
+                return (
+                  <Spot
+                    key={spot}
+                    seatIndex={activeSeat}
+                    stacks={activeStacks}
+                    spot="main"
+                    label="Main"
+                    hint="BJ 3:2"
+                    main
+                  />
+                );
+              }
+              const def = SIDE_BET_DEFS[spot as SideBetId];
+              return (
+                <Spot
+                  key={spot}
+                  seatIndex={activeSeat}
+                  stacks={activeStacks}
+                  spot={spot}
+                  label={def.shortName}
+                  title={`${def.name} — ${def.description}`}
+                  hint={def.shortName}
+                  flash={dealFlashIds.includes(`${activeSeat}:${spot}`)}
+                />
+              );
+            })}
+          </div>
+        </div>
+
         {seatCapacity === 5 && (
           <div className="seat-capacity-hint">Passe en paysage pour 7 places</div>
         )}
