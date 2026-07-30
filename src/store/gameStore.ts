@@ -8,7 +8,7 @@ import {
   setPrivateLimits as setEnginePrivateLimits,
   type PrivateLimits,
 } from '../engine/rules';
-import { DealingShoe } from '../engine/shoe';
+import { DealingShoe, RiggedShoe, type Shoe } from '../engine/shoe';
 import {
   maxSeatsForOrientation,
   TableRound,
@@ -16,6 +16,7 @@ import {
   type TableSeatRoundState,
 } from '../engine/tableRound';
 import type { BetLayout, PlayerActionType, SideBetId } from '../engine/types';
+import { card } from '../engine/cards';
 import {
   ALL_CHIP_DENOMS,
   chipsForLimits,
@@ -126,6 +127,8 @@ interface GameState {
   refill(): void;
   resetAll(): void;
   dismissNotice(): void;
+  /** DEV/QA : force une manche multi-places en phase assurance. */
+  qaForceInsurance(): void;
 }
 
 const emptyStacks = (): SeatStacks => ({
@@ -234,7 +237,7 @@ function goalLabel(id: GoalId): string {
   }
 }
 
-let shoe: DealingShoe | null = null;
+let shoe: Shoe | null = null;
 let presentToken = 0;
 
 const saved = loadSave();
@@ -983,6 +986,42 @@ export const useGame = create<GameState>((set, get) => {
 
     dismissNotice() {
       set({ notice: null });
+    },
+
+    qaForceInsurance() {
+      const s = get();
+      const table = getTable(s.tableId || 'emeraude');
+      // Ordre TableRound : S0c1, S1c1, Up(As), S0c2, S1c2, Hole
+      const codes = ['4S', '2D', 'AH', '8C', '4C', '9D'];
+      const rigged = new RiggedShoe(codes.map((c, i) => card(c, `qa-${c}-${i}`)));
+      shoe = rigged;
+      const seats: TableSeatInput[] = [
+        { seatIndex: 0, bets: { main: 10_00, sideBets: {} } },
+        { seatIndex: 1, bets: { main: 5_00, sideBets: {} } },
+      ];
+      const round = new TableRound(table.rules, rigged, seats);
+      presentToken++;
+      set({
+        screen: 'table',
+        tableId: s.tableId || 'emeraude',
+        balance: Math.max(s.balance, 100_00),
+        round,
+        session: s.session ?? freshSession(Math.max(s.balance, 100_00)),
+        display: {
+          dealing: false,
+          holeShown: false,
+          dealerShown: 2,
+          resultsShown: false,
+          payoutPhase: 'idle',
+          payoutFlies: [],
+          dealFlashIds: [],
+          animatedNet: 0,
+        },
+        notice: null,
+        shoeSize: rigged.size(),
+        shoeDealt: rigged.cardsDealt(),
+      });
+      bump();
     },
   };
 });

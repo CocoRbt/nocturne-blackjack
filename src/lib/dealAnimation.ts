@@ -98,7 +98,7 @@ export function shoeDeltaFor(el: HTMLElement): { x: number; y: number } {
 
 const SPEED_SCALE: Record<GameSpeed, number> = {
   classic: 1,
-  fast: 0.64,
+  fast: 0.72,
 };
 
 export interface DealTimelineOpts {
@@ -158,8 +158,8 @@ export function playDealTimeline(el: HTMLElement, opts: DealTimelineOpts): gsap.
   const base = shoeDeltaFor(el);
   const scale = SPEED_SCALE[opts.speed] * v.durationMul;
   const delay = Math.max(0, opts.delay + v.delayJitter);
-  // ~340ms classic + emerge — 4 cartes ≈ 1s avec dealGap ~190ms.
-  const duration = 0.36 * scale;
+  // Vol un peu plus long en classic pour coller au rythme humain.
+  const duration = (opts.speed === 'fast' ? 0.3 : 0.48) * scale;
   const revealOnLand = opts.revealOnLand ?? false;
 
   const startX = base.x + v.lateral;
