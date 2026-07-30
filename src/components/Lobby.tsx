@@ -21,6 +21,7 @@ export function Lobby() {
   const privateLimits = useGame((s) => s.privateLimits);
   const enterTable = useGame((s) => s.enterTable);
   const enterMines = useGame((s) => s.enterMines);
+  const enterCraps = useGame((s) => s.enterCraps);
   const configurePrivateLimits = useGame((s) => s.configurePrivateLimits);
   const resetAll = useGame((s) => s.resetAll);
   const refill = useGame((s) => s.refill);
@@ -104,6 +105,16 @@ export function Lobby() {
                 Mines
                 <span className="dim">diamants · bombes</span>
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  enterCraps();
+                }}
+              >
+                Craps
+                <span className="dim">Scraps · dés</span>
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -120,7 +131,7 @@ export function Lobby() {
           NOC<span>T</span>URNE
         </h1>
         <p>
-          Blackjack &amp; Mines — jetons sans valeur, crédit partagé.
+          Blackjack, Mines &amp; Craps — jetons sans valeur, crédit partagé.
           On commence au Salon — les portes s&rsquo;ouvrent avec le crédit.
         </p>
       </motion.div>
@@ -200,25 +211,45 @@ export function Lobby() {
 
       <section className="lobby-games">
         <h2 className="lobby-games-title">Salon des jeux</h2>
-        <motion.button
-          type="button"
-          className="mines-card"
-          onClick={enterMines}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.55, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <div className="mines-card-visual" aria-hidden>
-            <span className="mines-card-gem" />
-            <span className="mines-card-gem" />
-            <span className="mines-card-mine" />
-          </div>
-          <div className="mines-card-body">
-            <h3>Mines</h3>
-            <p>Grille 5×5 · choisis tes bombes · diamants &amp; multiplicateur · encaisser quand tu veux.</p>
-            <span className="enter">Entrer dans le salon →</span>
-          </div>
-        </motion.button>
+        <div className="lobby-games-grid">
+          <motion.button
+            type="button"
+            className="mines-card"
+            onClick={enterMines}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="mines-card-visual" aria-hidden>
+              <span className="mines-card-gem" />
+              <span className="mines-card-gem" />
+              <span className="mines-card-mine" />
+            </div>
+            <div className="mines-card-body">
+              <h3>Mines</h3>
+              <p>Grille 5×5 · choisis tes bombes · diamants &amp; multiplicateur · encaisser quand tu veux.</p>
+              <span className="enter">Entrer dans le salon →</span>
+            </div>
+          </motion.button>
+          <motion.button
+            type="button"
+            className="craps-card"
+            onClick={enterCraps}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.65, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="craps-card-visual" aria-hidden>
+              <span className="craps-card-die" data-pips="5" />
+              <span className="craps-card-die" data-pips="2" />
+            </div>
+            <div className="craps-card-body">
+              <h3>Craps</h3>
+              <p>Scraps · Pass Line · Don’t Pass · Field · Odds 3-4-5× · come-out &amp; point.</p>
+              <span className="enter">Entrer dans le salon →</span>
+            </div>
+          </motion.button>
+        </div>
       </section>
 
       {showPrivateSetup && (

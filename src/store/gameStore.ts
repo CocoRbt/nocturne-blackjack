@@ -80,7 +80,7 @@ interface GameState {
   balance: number;
   peakBalance: number;
   refills: number;
-  screen: 'lobby' | 'table' | 'mines';
+  screen: 'lobby' | 'table' | 'mines' | 'craps';
   tableId: string;
   soundMuted: boolean;
   gameSpeed: GameSpeed;
@@ -113,6 +113,12 @@ interface GameState {
   minesDebit(bet: number): boolean;
   /** Crédite un payout Mines (cashout / clear). */
   minesCredit(payout: number): void;
+  enterCraps(): void;
+  leaveCraps(): void;
+  /** Débite une mise Craps. false si solde insuffisant. */
+  crapsDebit(bet: number): boolean;
+  /** Crédite un payout / rendu de mise Craps. */
+  crapsCredit(payout: number): void;
   configurePrivateLimits(limits: PrivateLimits): void;
   selectChip(denom: number): void;
   selectSeat(seatIndex: number): void;
@@ -643,6 +649,51 @@ export const useGame = create<GameState>((set, get) => {
     },
 
     minesCredit(payout) {
+      const amount = Math.max(0, Math.floor(payout));
+      if (amount <= 0) {
+        persist();
+        return;
+      }
+      const s = get();
+      const balance = s.balance + amount;
+      set({
+        balance,
+        peakBalance: withPeak(balance, s.peakBalance),
+      });
+      persist();
+    },
+
+    enterCraps() {
+      presentToken++;
+      shoe = null;
+      set({
+        screen: 'craps',
+        round: null,
+        stacks: emptyTableStacks(get().seatCapacity),
+        placementOrder: [],
+        display: idleDisplay(),
+        session: null,
+        notice: null,
+      });
+    },
+
+    leaveCraps() {
+      set({ screen: 'lobby', notice: null });
+    },
+
+    crapsDebit(bet) {
+      const s = get();
+      const amount = Math.floor(bet);
+      if (amount <= 0 || amount > s.balance) return false;
+      set({
+        balance: s.balance - amount,
+        notice: null,
+      });
+      persist();
+      return true;
+    },
+
+    crapsCredit(payout) {
       const amount = Math.max(0, Math.floor(payout));
       if (amount <= 0) {
         persist();
