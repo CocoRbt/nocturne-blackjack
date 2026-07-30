@@ -752,9 +752,6 @@ button:disabled {
   width: 100%;
   flex-shrink: 0;
 }
-.table-cluster .deal-flash-strip {
-  margin-top: calc(clamp(22px, 4.5vh, 48px) * -0.35);
-}
 
 .dealer-zone {
   display: flex;
@@ -929,6 +926,31 @@ button:disabled {
 }
 .table-seat .hand {
   --split-hand-scale: min(var(--split-hand-scale, 1), 0.9);
+}
+.seat-side-wins {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  margin-top: 2px;
+}
+.seat-side-win {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(143, 207, 168, 0.45);
+  color: var(--win);
+  background: rgba(12, 22, 16, 0.88);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  animation: flash-win 1.4s var(--ease-lux);
+  max-width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ---------- cartes ---------- */
@@ -1831,24 +1853,6 @@ button:disabled {
 .session-goal.done {
   color: var(--brass);
 }
-
-.deal-flash-strip {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-.flash-pill {
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  padding: 5px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(143, 207, 168, 0.45);
-  color: var(--win);
-  background: rgba(143, 207, 168, 0.08);
-  animation: flash-win 1.4s var(--ease-lux);
-}
 .payout-fly {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -2137,6 +2141,12 @@ button:disabled {
     scroll-snap-align: center;
     padding: 8px 6px 6px;
     border-radius: 18px 18px 12px 12px;
+  }
+  .seat-side-win {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    padding: 4px 8px;
+    max-width: min(92vw, 220px);
   }
   .seat-hands {
     gap: 2px;
