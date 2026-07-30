@@ -181,7 +181,7 @@ button:disabled {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  margin-bottom: clamp(20px, 4vh, 40px);
+  margin-bottom: 14px;
   padding: 10px 22px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -363,49 +363,62 @@ button:disabled {
 }
 
 .circle-panel {
-  width: min(520px, 100%);
-  margin: -8px auto clamp(18px, 3vh, 28px);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: rgba(14, 13, 11, 0.72);
+  width: min(520px, calc(100% - 8px));
+  flex-shrink: 0;
+  margin: 0 auto clamp(16px, 2.5vh, 24px);
+  border: 1px solid rgba(212, 175, 119, 0.38);
+  border-radius: 14px;
+  background:
+    linear-gradient(165deg, rgba(212, 175, 119, 0.1), transparent 50%),
+    rgba(18, 16, 12, 0.92);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
   overflow: hidden;
 }
 .circle-toggle {
   width: 100%;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    'main chev'
+    'meta chev';
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
+  column-gap: 10px;
+  row-gap: 2px;
+  padding: 12px 14px;
   text-align: left;
+  min-height: 52px;
 }
 .circle-toggle:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.03);
 }
 .circle-toggle-main {
+  grid-area: main;
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 .circle-toggle-title {
   font-family: var(--font-display);
-  font-size: 15px;
+  font-size: 16px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--brass);
 }
 .circle-toggle-meta {
+  grid-area: meta;
   font-size: 12px;
   color: var(--ink-dim);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  justify-self: end;
 }
 .circle-chevron {
-  color: var(--ink-faint);
-  font-size: 12px;
+  grid-area: chev;
+  color: var(--brass);
+  font-size: 14px;
   line-height: 1;
+  padding: 4px;
 }
 .circle-badge {
   font-size: 9px;
@@ -417,15 +430,22 @@ button:disabled {
   color: var(--ink-faint);
 }
 .circle-badge.on {
-  border-color: rgba(126, 180, 150, 0.4);
+  border-color: rgba(126, 180, 150, 0.45);
   color: #9fc9b0;
+  background: rgba(80, 130, 100, 0.15);
 }
 .circle-body {
   padding: 0 14px 14px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid rgba(212, 175, 119, 0.22);
 }
 .circle-form {
   padding-top: 12px;
+}
+.circle-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 .circle-form label,
 .circle-form input {
@@ -437,27 +457,27 @@ button:disabled {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-faint);
-  margin-bottom: 10px;
+  margin-bottom: 0;
 }
 .circle-form input {
   margin-top: 6px;
-  padding: 10px 12px;
+  padding: 11px 12px;
   border-radius: 8px;
   border: 1px solid var(--line-strong);
   background: #12100d;
   color: var(--ink);
+  font-size: 16px; /* évite le zoom iOS */
 }
-.circle-form .btn {
-  margin-top: 4px;
-}
-.circle-meta {
-  padding-top: 10px;
+.circle-join-btn {
+  width: 100%;
+  margin-top: 2px;
 }
 .circle-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  padding-top: 10px;
   margin-bottom: 10px;
   color: var(--brass);
   font-size: 13px;
@@ -1966,6 +1986,32 @@ button:disabled {
     --card-w: 60px;
     --card-h: 85px;
     --chip-s: 46px;
+  }
+
+  .lobby {
+    padding: 18px 14px 36px;
+  }
+  .lobby-brand {
+    margin-bottom: 16px;
+  }
+  .lobby-brand h1 {
+    font-size: clamp(36px, 11vw, 52px);
+    margin: 6px 0 8px;
+  }
+  .lobby-brand p {
+    font-size: 13px;
+  }
+  .lobby-balance {
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .circle-panel {
+    width: 100%;
+    margin-bottom: 18px;
+  }
+  .circle-form-row {
+    grid-template-columns: 1fr;
   }
 
   .table-screen::after {

@@ -31,7 +31,8 @@ export function CirclePanel() {
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
+  // Ouvert par défaut : sur téléphone un bandeau fermé disparaissait
+  const [open, setOpen] = useState(true);
 
   const seed = {
     balance,
@@ -118,7 +119,7 @@ export function CirclePanel() {
   const joined = Boolean(circle?.circleCode);
 
   return (
-    <section className={`circle-panel ${open ? 'is-open' : ''}`}>
+    <section className={`circle-panel ${open ? 'is-open' : ''} ${joined ? 'is-joined' : ''}`}>
       <button
         type="button"
         className="circle-toggle"
@@ -126,7 +127,7 @@ export function CirclePanel() {
         onClick={() => setOpen((v) => !v)}
       >
         <span className="circle-toggle-main">
-          <span className="circle-toggle-title">Cercle</span>
+          <span className="circle-toggle-title">Cercle d&rsquo;amis</span>
           {cloud ? (
             <span className="circle-badge on">en ligne</span>
           ) : (
@@ -134,7 +135,7 @@ export function CirclePanel() {
           )}
         </span>
         <span className="circle-toggle-meta">
-          {joined ? `${circle!.nickname} · ${circle!.circleCode}` : 'Rejoindre amis'}
+          {joined ? `${circle!.nickname} · ${circle!.circleCode}` : 'Pseudo + code'}
         </span>
         <span className="circle-chevron" aria-hidden>
           {open ? '▴' : '▾'}
@@ -145,27 +146,31 @@ export function CirclePanel() {
         <div className="circle-body">
           {!joined ? (
             <div className="circle-form">
-              <label>
-                Pseudo
-                <input
-                  value={nickname}
-                  maxLength={16}
-                  placeholder="ex. Minuit"
-                  onChange={(e) => setNickname(e.target.value)}
-                />
-              </label>
-              <label>
-                Code cercle (vide = créer)
-                <input
-                  value={joinCode}
-                  maxLength={12}
-                  placeholder="NOC-XXXX"
-                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                />
-              </label>
+              <div className="circle-form-row">
+                <label>
+                  Pseudo
+                  <input
+                    value={nickname}
+                    maxLength={16}
+                    placeholder="ex. Minuit"
+                    autoComplete="nickname"
+                    onChange={(e) => setNickname(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Code (vide = créer)
+                  <input
+                    value={joinCode}
+                    maxLength={12}
+                    placeholder="NOC-XXXX"
+                    autoCapitalize="characters"
+                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                  />
+                </label>
+              </div>
               {error && <p className="circle-error">{error}</p>}
               <button
-                className="btn primary"
+                className="btn primary circle-join-btn"
                 onClick={() => void createOrJoin()}
                 disabled={busy || nickname.trim().length < 2}
               >
@@ -207,7 +212,7 @@ export function CirclePanel() {
 
               <ol className="circle-board">
                 {rows.length === 0 && <li className="empty">Aucun score pour l’instant</li>}
-                {rows.map((m) => (
+                {rows.slice(0, 5).map((m) => (
                   <li key={`${tab}-${m.nickname}`} className={m.is_me ? 'me' : ''}>
                     <span className="rank">{m.rank}</span>
                     <span className="nick">{m.nickname}</span>
