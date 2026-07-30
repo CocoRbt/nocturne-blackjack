@@ -25,3 +25,5 @@ Probabilité d’atteindre un multiplicateur `m` ≈ `0.99 / m`.
 ## Animation
 
 Courbe + avion en temps réel (`requestAnimationFrame`). Le point de crash est tiré **au décollage** ; l’affichage monte jusqu’à ce point (ou jusqu’au cashout).
+
+**Anti-exploit :** le graphe ne dépend **pas** de `crashAt` (ni X ni Y). Axe X = temps réel (fenêtre glissante 8 s) ; axe Y = échelle sur le multiplicateur **visible**. Un crash tôt meurt à gauche/milieu ; un long vol fait scroller la courbe — comme Stake.

@@ -7,15 +7,22 @@ import {
   tickRound,
   type CrashRound,
 } from '../crash/engine';
-import { CRASH_RTP, elapsedForMultiplier, payoutCents, reachChance } from '../crash/math';
+import {
+  GRAPH_H,
+  GRAPH_W,
+  buildPath,
+  displayYMax,
+  projectSample,
+  projectSamples,
+  type FlightSample,
+} from '../crash/graph';
+import { CRASH_RTP, payoutCents, reachChance } from '../crash/math';
 import { fmt, fmtMult } from '../lib/format';
 import { useGame } from '../store/gameStore';
 import { RulesGuide } from './RulesGuide';
 
 const BET_PRESETS = [1_00, 5_00, 25_00, 100_00, 500_00] as const;
 const HISTORY_MAX = 18;
-const GRAPH_W = 640;
-const GRAPH_H = 360;
 
 type HistoryEntry = { id: number; crashAt: number; cashed?: number };
 
@@ -39,28 +46,6 @@ function PlaneIcon({ crashed }: { crashed?: boolean }) {
   );
 }
 
-function multToPoint(mult: number, tNorm: number, maxMult: number): { x: number; y: number } {
-  const padL = 28;
-  const padR = 48;
-  const padT = 28;
-  const padB = 36;
-  const w = GRAPH_W - padL - padR;
-  const h = GRAPH_H - padT - padB;
-  const yMax = Math.max(2, maxMult * 1.08);
-  const x = padL + tNorm * w;
-  const y = padT + h - ((Math.min(mult, yMax) - 1) / (yMax - 1)) * h;
-  return { x, y };
-}
-
-function buildPath(points: Array<{ x: number; y: number }>): string {
-  if (points.length === 0) return '';
-  let d = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
-  for (let i = 1; i < points.length; i++) {
-    d += ` L ${points[i].x.toFixed(2)} ${points[i].y.toFixed(2)}`;
-  }
-  return d;
-}
-
 export function CrashScreen() {
   const balance = useGame((s) => s.balance);
   const peakBalance = useGame((s) => s.peakBalance);
@@ -76,8 +61,9 @@ export function CrashScreen() {
   const [autoAt, setAutoAt] = useState(2);
   const [round, setRound] = useState<CrashRound>(() => createIdleRound());
   const [displayMult, setDisplayMult] = useState(1);
-  const [points, setPoints] = useState<Array<{ x: number; y: number }>>([]);
-  const [cashMark, setCashMark] = useState<{ x: number; y: number } | null>(null);
+  const [samples, setSamples] = useState<FlightSample[]>([]);
+  const [windowEnd, setWindowEnd] = useState(0);
+  const [cashSample, setCashSample] = useState<FlightSample | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [flash, setFlash] = useState<'win' | 'lose' | null>(null);
   const [flightOverBanner, setFlightOverBanner] = useState(false);
@@ -89,6 +75,7 @@ export function CrashScreen() {
   const credited = useRef(false);
   const histPushed = useRef(false);
   const histIdRef = useRef(0);
+  const samplesRef = useRef<FlightSample[]>([]);
 
   useEffect(() => {
     roundRef.current = round;
@@ -120,26 +107,19 @@ export function CrashScreen() {
     );
   }, []);
 
-  const markCashPoint = useCallback((cashAt: number, crashAt: number) => {
-    const tNorm = Math.min(1, elapsedForMultiplier(cashAt) / Math.max(16, elapsedForMultiplier(crashAt)));
-    setCashMark(multToPoint(cashAt, tNorm, Math.max(crashAt, 1.5)));
-  }, []);
-
   const runLoop = useCallback(() => {
     const step = (now: number) => {
       const elapsed = now - startTs.current;
       const current = roundRef.current;
       const result = tickRound(current, elapsed);
-      const crashDur = Math.max(16, current.crashDurationMs);
-      const tNorm = Math.min(1, elapsed / crashDur);
-      const maxMult = Math.max(current.crashAt, 1.5);
-      const pt = multToPoint(result.displayMult, tNorm, maxMult);
 
+      // Graphe : temps réel + échelle Y sur le mult visible — JAMAIS crashAt.
+      const sample: FlightSample = { elapsed, mult: result.displayMult };
+      const nextSamples = [...samplesRef.current, sample].slice(-480);
+      samplesRef.current = nextSamples;
+      setSamples(nextSamples);
+      setWindowEnd(elapsed);
       setDisplayMult(result.displayMult);
-      setPoints((prev) => {
-        const next = [...prev, pt];
-        return next.length > 320 ? next.slice(next.length - 320) : next;
-      });
 
       if (result.justAutoCashed) {
         if (!credited.current && result.round.payout > 0) {
@@ -148,7 +128,7 @@ export function CrashScreen() {
         }
         setFlash('win');
         if (result.round.cashoutAt != null) {
-          markCashPoint(result.round.cashoutAt, result.round.crashAt);
+          setCashSample({ elapsed, mult: result.round.cashoutAt });
         }
       }
 
@@ -172,7 +152,7 @@ export function CrashScreen() {
       raf.current = requestAnimationFrame(step);
     };
     raf.current = requestAnimationFrame(step);
-  }, [crashCredit, stopLoop, pushHistory, markCashPoint]);
+  }, [crashCredit, stopLoop, pushHistory]);
 
   const inFlight = round.flightActive;
   const canBet = !inFlight;
@@ -183,12 +163,15 @@ export function CrashScreen() {
     const stake = Math.min(bet, balance);
     if (stake < 1_00) return;
     if (!crashDebit(stake)) return;
+    stopLoop();
     credited.current = false;
     histPushed.current = false;
     setFlash(null);
     setFlightOverBanner(false);
-    setPoints([]);
-    setCashMark(null);
+    samplesRef.current = [];
+    setSamples([]);
+    setWindowEnd(0);
+    setCashSample(null);
     setDisplayMult(1);
     const next = startRound(stake, autoOn ? autoAt : null);
     setRound(next);
@@ -218,13 +201,17 @@ export function CrashScreen() {
     roundRef.current = res.round;
     setFlash('win');
     if (res.round.cashoutAt != null) {
-      markCashPoint(res.round.cashoutAt, res.round.crashAt);
+      const elapsed = performance.now() - startTs.current;
+      setCashSample({ elapsed, mult: res.round.cashoutAt });
     }
-    // Vol continue jusqu’au crash — pas de stopLoop / pas d’historique tout de suite.
+    // Vol continue jusqu’au crash — pas de stopLoop.
   };
 
+  const yMax = displayYMax(displayMult);
+  const points = projectSamples(samples, windowEnd, yMax);
   const path = buildPath(points);
   const tip = points[points.length - 1];
+  const cashMark = cashSample ? projectSample(cashSample, windowEnd, yMax) : null;
   const potential = payoutCents(
     canCash || (round.phase === 'cashed' && inFlight) ? round.bet : bet,
     canCash ? displayMult : autoOn ? autoAt : 2,
