@@ -18,3 +18,13 @@ export function fmtPays(mult: number): string {
   // 2.5 -> 5:2
   return `${mult * 2}:2`;
 }
+
+/** Multiplicateur Mines : "1,03×". */
+export function fmtMult(mult: number): string {
+  return (
+    mult.toLocaleString('fr-FR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }) + '×'
+  );
+}

@@ -5,8 +5,15 @@ Dernière mise à jour : 2026-07-30.
 
 ## Vision
 
-Casino fictif de blackjack (jetons virtuels). Enjeu principal = **mises, jetons, progression de crédit**.  
-Les micro-différences de règles (S17/H17, abandon, re-split As) sont **secondaires** ; l’ambiance / min / max / jetons priment.
+Casino fictif (jetons virtuels). Enjeu principal = **mises, jetons, progression de crédit**.  
+Jeux : **blackjack** (tables) + **Mines** (salon des jeux). Même crédit / pic / cercle.  
+Les micro-différences de règles blackjack (S17/H17, etc.) sont **secondaires** ; ambiance / enjeux priment.
+
+## Mines
+
+- Grille 5×5, 1–24 mines, RTP 99 %, formule multiplicateur type Stake.
+- Accès : menu lobby + carte « Salon des jeux ».
+- Détail : `docs/MINES.md`.
 
 ## Tables
 
