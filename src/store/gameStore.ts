@@ -80,7 +80,7 @@ interface GameState {
   balance: number;
   peakBalance: number;
   refills: number;
-  screen: 'lobby' | 'table';
+  screen: 'lobby' | 'table' | 'mines';
   tableId: string;
   soundMuted: boolean;
   gameSpeed: GameSpeed;
@@ -107,6 +107,12 @@ interface GameState {
 
   enterTable(tableId: string): void;
   leaveTable(): void;
+  enterMines(): void;
+  leaveMines(): void;
+  /** Débite une mise Mines. false si solde insuffisant. */
+  minesDebit(bet: number): boolean;
+  /** Crédite un payout Mines (cashout / clear). */
+  minesCredit(payout: number): void;
   configurePrivateLimits(limits: PrivateLimits): void;
   selectChip(denom: number): void;
   selectSeat(seatIndex: number): void;
@@ -604,6 +610,51 @@ export const useGame = create<GameState>((set, get) => {
         session: null,
       });
       refreshSeatCapacityState();
+    },
+
+    enterMines() {
+      presentToken++;
+      shoe = null;
+      set({
+        screen: 'mines',
+        round: null,
+        stacks: emptyTableStacks(get().seatCapacity),
+        placementOrder: [],
+        display: idleDisplay(),
+        session: null,
+        notice: null,
+      });
+    },
+
+    leaveMines() {
+      set({ screen: 'lobby', notice: null });
+    },
+
+    minesDebit(bet) {
+      const s = get();
+      const amount = Math.floor(bet);
+      if (amount <= 0 || amount > s.balance) return false;
+      set({
+        balance: s.balance - amount,
+        notice: null,
+      });
+      persist();
+      return true;
+    },
+
+    minesCredit(payout) {
+      const amount = Math.max(0, Math.floor(payout));
+      if (amount <= 0) {
+        persist();
+        return;
+      }
+      const s = get();
+      const balance = s.balance + amount;
+      set({
+        balance,
+        peakBalance: withPeak(balance, s.peakBalance),
+      });
+      persist();
     },
 
     selectChip(denom) {

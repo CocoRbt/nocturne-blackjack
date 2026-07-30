@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import {
   allLobbyTables,
@@ -20,6 +20,7 @@ export function Lobby() {
   const peakBalance = useGame((s) => s.peakBalance);
   const privateLimits = useGame((s) => s.privateLimits);
   const enterTable = useGame((s) => s.enterTable);
+  const enterMines = useGame((s) => s.enterMines);
   const configurePrivateLimits = useGame((s) => s.configurePrivateLimits);
   const resetAll = useGame((s) => s.resetAll);
   const refill = useGame((s) => s.refill);
@@ -29,6 +30,7 @@ export function Lobby() {
   const [showPrivateSetup, setShowPrivateSetup] = useState(false);
   const [draftLimits, setDraftLimits] = useState<PrivateLimits>(privateLimits);
   const [circleOpen, setCircleOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [joinedAs, setJoinedAs] = useState(() => circleJoinedLabel());
 
   useCircleKeepalive();
@@ -58,22 +60,54 @@ export function Lobby() {
 
   return (
     <div className="lobby grain">
-      <button
-        type="button"
-        className={`lobby-menu-btn ${joinedAs ? 'has-circle' : ''}`}
-        aria-label="Ouvrir le cercle d'amis"
-        aria-expanded={circleOpen}
-        onClick={() => setCircleOpen(true)}
-      >
-        <span className="lobby-menu-icon" aria-hidden>
-          <span />
-          <span />
-          <span />
-        </span>
-        <span className="lobby-menu-text">
-          {joinedAs ? joinedAs : 'Cercle'}
-        </span>
-      </button>
+      <div className="lobby-menu">
+        <button
+          type="button"
+          className={`lobby-menu-btn ${joinedAs ? 'has-circle' : ''}`}
+          aria-label="Menu"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((v) => !v)}
+        >
+          <span className="lobby-menu-icon" aria-hidden>
+            <span />
+            <span />
+            <span />
+          </span>
+          <span className="lobby-menu-text">Menu</span>
+        </button>
+        <AnimatePresence>
+          {menuOpen && (
+            <motion.div
+              className="lobby-menu-panel"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.22 }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setCircleOpen(true);
+                }}
+              >
+                Cercle d&rsquo;amis
+                {joinedAs ? <span className="dim">{joinedAs}</span> : null}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  enterMines();
+                }}
+              >
+                Mines
+                <span className="dim">diamants · bombes</span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       <motion.div
         className="lobby-brand"
@@ -86,7 +120,7 @@ export function Lobby() {
           NOC<span>T</span>URNE
         </h1>
         <p>
-          Quatre tables de blackjack, un sabot honnête, des jetons sans valeur.
+          Blackjack &amp; Mines — jetons sans valeur, crédit partagé.
           On commence au Salon — les portes s&rsquo;ouvrent avec le crédit.
         </p>
       </motion.div>
@@ -163,6 +197,29 @@ export function Lobby() {
           );
         })}
       </div>
+
+      <section className="lobby-games">
+        <h2 className="lobby-games-title">Salon des jeux</h2>
+        <motion.button
+          type="button"
+          className="mines-card"
+          onClick={enterMines}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className="mines-card-visual" aria-hidden>
+            <span className="mines-card-gem" />
+            <span className="mines-card-gem" />
+            <span className="mines-card-mine" />
+          </div>
+          <div className="mines-card-body">
+            <h3>Mines</h3>
+            <p>Grille 5×5 · choisis tes bombes · diamants &amp; multiplicateur · encaisser quand tu veux.</p>
+            <span className="enter">Entrer dans le salon →</span>
+          </div>
+        </motion.button>
+      </section>
 
       {showPrivateSetup && (
         <div className="private-modal" role="dialog" aria-modal="true">
