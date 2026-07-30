@@ -6,7 +6,10 @@ const LABELS: Record<number, string> = {
   25_00: '25',
   100_00: '100',
   500_00: '500',
-  1000_00: '1K',
+  1_000_00: '1K',
+  5_000_00: '5K',
+  10_000_00: '10K',
+  25_000_00: '25K',
 };
 
 export function Chip({ denom }: { denom: number }) {

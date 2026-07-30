@@ -61,9 +61,24 @@ export interface TableConfig {
   felt: string;
   identity: TableIdentity;
   rules: RulesConfig;
+  /**
+   * Pic de crédit minimal pour débloquer la table (progression).
+   * 0 = toujours débloquée (Émeraude).
+   */
+  unlockPeak: number;
 }
 
-const BASE_RULES: Omit<RulesConfig, 'decks' | 'dealerHitsSoft17' | 'minBet' | 'maxBet' | 'sideBetMin' | 'sideBetMax' | 'resplitAces' | 'lateSurrender'> = {
+const BASE_RULES: Omit<
+  RulesConfig,
+  | 'decks'
+  | 'dealerHitsSoft17'
+  | 'minBet'
+  | 'maxBet'
+  | 'sideBetMin'
+  | 'sideBetMax'
+  | 'resplitAces'
+  | 'lateSurrender'
+> = {
   penetration: 0.75,
   blackjackPays: [3, 2],
   doubleOn: 'any2',
@@ -76,13 +91,14 @@ const BASE_RULES: Omit<RulesConfig, 'decks' | 'dealerHitsSoft17' | 'minBet' | 'm
   sideBets: ['twentyOnePlusThree', 'perfectPairs'],
 };
 
-/** Les trois tables du cercle. Montants en centimes. */
+/** Les trois tables thématiques du cercle. Montants en centimes. */
 export const TABLES: TableConfig[] = [
   {
     id: 'emeraude',
     name: 'Salon Émeraude',
-    tagline: '6 jeux · croupier reste sur soft 17 · abandon autorisé',
+    tagline: 'Table d’entrée · mises douces · jetons accessibles',
     felt: 'emerald',
+    unlockPeak: 0,
     identity: {
       accent: '#c2a15f',
       lamp: 'rgba(216, 201, 160, 0.10)',
@@ -104,8 +120,10 @@ export const TABLES: TableConfig[] = [
   {
     id: 'onyx',
     name: 'Table Onyx',
-    tagline: '8 jeux · croupier tire sur soft 17 · limites relevées',
+    tagline: 'Limites relevées · une fois le Salon maîtrisé',
     felt: 'onyx',
+    /** Déblocage : avoir atteint le plafond Émeraude au moins une fois. */
+    unlockPeak: 500_00,
     identity: {
       accent: '#a8b0c0',
       lamp: 'rgba(168, 176, 192, 0.08)',
@@ -127,8 +145,9 @@ export const TABLES: TableConfig[] = [
   {
     id: 'imperiale',
     name: 'Suite Impériale',
-    tagline: '6 jeux · re-split des As · table haute',
+    tagline: 'Table haute · pour ceux qui ont fait grossir le crédit',
     felt: 'oxblood',
+    unlockPeak: 2_000_00,
     identity: {
       accent: '#cf9a6c',
       lamp: 'rgba(224, 176, 144, 0.09)',
@@ -149,10 +168,103 @@ export const TABLES: TableConfig[] = [
   },
 ];
 
+/** Identifiant de la table privée (endgame). */
+export const PRIVATE_TABLE_ID = 'privee';
+
+/** Bornes du salon privé — pas un sur-mesure total dès le lobby. */
+export const PRIVATE_BOUNDS = {
+  minBetChoices: [25_00, 50_00, 100_00, 250_00, 500_00, 1_000_00] as const,
+  maxBetChoices: [1_000_00, 2_500_00, 5_000_00, 10_000_00, 25_000_00, 50_000_00, 100_000_00] as const,
+  /** Pic requis : plafond Impériale (le joueur a été bridé). */
+  unlockPeak: 10_000_00,
+};
+
+export interface PrivateLimits {
+  minBet: number;
+  maxBet: number;
+}
+
+export function defaultPrivateLimits(): PrivateLimits {
+  return { minBet: 250_00, maxBet: 25_000_00 };
+}
+
+/** Construit la config runtime de la Table Privée. */
+export function buildPrivateTable(limits: PrivateLimits): TableConfig {
+  const minBet = limits.minBet;
+  const maxBet = Math.max(limits.maxBet, minBet * 10);
+  const sideBetMin = Math.max(1_00, Math.round(minBet / 5));
+  const sideBetMax = Math.max(sideBetMin * 10, Math.round(maxBet / 10));
+  return {
+    id: PRIVATE_TABLE_ID,
+    name: 'Table Privée',
+    tagline: `Sur mesure · mise ${minBet / 100} – ${maxBet / 100}`,
+    felt: 'private',
+    unlockPeak: PRIVATE_BOUNDS.unlockPeak,
+    identity: {
+      accent: '#d4af77',
+      lamp: 'rgba(212, 175, 119, 0.11)',
+      ambienceHz: 240,
+      motto: '« Le cercle se referme sur ceux qui restent. »',
+    },
+    rules: {
+      ...BASE_RULES,
+      decks: 6,
+      dealerHitsSoft17: false,
+      resplitAces: true,
+      lateSurrender: true,
+      minBet,
+      maxBet,
+      sideBetMin,
+      sideBetMax,
+    },
+  };
+}
+
+let privateOverrides: PrivateLimits | null = null;
+
+/** Enregistre les limites privées pour `getTable('privee')`. */
+export function setPrivateLimits(limits: PrivateLimits | null): void {
+  privateOverrides = limits;
+}
+
+export function getPrivateLimits(): PrivateLimits {
+  return privateOverrides ?? defaultPrivateLimits();
+}
+
 export function getTable(id: string): TableConfig {
+  if (id === PRIVATE_TABLE_ID) {
+    return buildPrivateTable(getPrivateLimits());
+  }
   const t = TABLES.find((t) => t.id === id);
   if (!t) throw new Error(`Table inconnue : ${id}`);
   return t;
+}
+
+export function allLobbyTables(privateLimits?: PrivateLimits | null): TableConfig[] {
+  return [...TABLES, buildPrivateTable(privateLimits ?? getPrivateLimits())];
+}
+
+/** La table est débloquée par le pic de crédit (progression). */
+export function isTableUnlocked(tableId: string, peakBalance: number): boolean {
+  if (tableId === PRIVATE_TABLE_ID) {
+    return peakBalance >= PRIVATE_BOUNDS.unlockPeak;
+  }
+  const t = getTable(tableId);
+  return peakBalance >= t.unlockPeak;
+}
+
+/** On peut s’asseoir : débloquée + solde ≥ mise min. */
+export function canSitAtTable(
+  tableId: string,
+  balance: number,
+  peakBalance: number,
+  privateLimits?: PrivateLimits | null,
+): boolean {
+  const table =
+    tableId === PRIVATE_TABLE_ID
+      ? buildPrivateTable(privateLimits ?? getPrivateLimits())
+      : getTable(tableId);
+  return isTableUnlocked(tableId, peakBalance) && balance >= table.rules.minBet;
 }
 
 /** Applique un ratio [num, den] à un montant en centimes (arrondi au centime). */

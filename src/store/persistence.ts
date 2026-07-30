@@ -1,13 +1,15 @@
 import type { HandOutcome, SideBetId } from '../engine/types';
+import type { PrivateLimits } from '../engine/rules';
 
-export const STARTING_BALANCE = 1_000_00; // 1 000 jetons en centimes
+/** Solde de départ : assez pour Émeraude, sous le seuil Onyx (500). */
+export const STARTING_BALANCE = 100_00;
 
 export interface HistoryHand {
   outcome: HandOutcome;
   bet: number;
-  net: number;
   cards: string[];
   total: number;
+  net: number;
 }
 
 export interface HistoryEntry {
@@ -84,29 +86,62 @@ export function emptyStats(): Stats {
   };
 }
 
+export interface CircleProfileLocal {
+  nickname: string;
+  circleCode: string | null;
+}
+
 export interface SaveData {
-  version: 1;
+  version: 2;
   balance: number;
+  /** Plus haut solde atteint (progression / unlock). */
+  peakBalance: number;
   refills: number;
   soundMuted: boolean;
   tableId: string;
   history: HistoryEntry[];
   stats: Stats;
   lastBets: Record<string, { main: number; sideBets: Partial<Record<SideBetId, number>> }>;
-  /** Mode de rythme — optionnel pour les anciennes sauvegardes. */
   gameSpeed?: 'classic' | 'fast';
+  privateLimits?: PrivateLimits;
+  /** Profil local du cercle (sync Supabase plus tard). */
+  circle?: CircleProfileLocal | null;
 }
 
 const KEY = 'nocturne-blackjack-save';
+
+function migrate(raw: Record<string, unknown>): SaveData | null {
+  const version = raw.version;
+  if (version !== 1 && version !== 2) return null;
+  if (typeof raw.balance !== 'number') return null;
+
+  const balance = raw.balance as number;
+  const peakBalance =
+    typeof raw.peakBalance === 'number'
+      ? Math.max(raw.peakBalance as number, balance)
+      : Math.max(balance, STARTING_BALANCE);
+
+  return {
+    version: 2,
+    balance,
+    peakBalance,
+    refills: typeof raw.refills === 'number' ? raw.refills : 0,
+    soundMuted: Boolean(raw.soundMuted),
+    tableId: typeof raw.tableId === 'string' ? raw.tableId : 'emeraude',
+    history: Array.isArray(raw.history) ? (raw.history as HistoryEntry[]) : [],
+    stats: (raw.stats as Stats) ?? emptyStats(),
+    lastBets: (raw.lastBets as SaveData['lastBets']) ?? {},
+    gameSpeed: raw.gameSpeed === 'fast' ? 'fast' : 'classic',
+    privateLimits: raw.privateLimits as PrivateLimits | undefined,
+    circle: (raw.circle as CircleProfileLocal | null | undefined) ?? null,
+  };
+}
 
 export function loadSave(): SaveData | null {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
-    const data = JSON.parse(raw) as SaveData;
-    if (data.version !== 1) return null;
-    if (typeof data.balance !== 'number') return null;
-    return data;
+    return migrate(JSON.parse(raw) as Record<string, unknown>);
   } catch {
     return null;
   }
@@ -114,7 +149,7 @@ export function loadSave(): SaveData | null {
 
 export function persistSave(data: SaveData): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify(data));
+    localStorage.setItem(KEY, JSON.stringify({ ...data, version: 2 }));
   } catch {
     // stockage indisponible : le jeu reste jouable sans sauvegarde
   }

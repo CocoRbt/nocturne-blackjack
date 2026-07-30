@@ -3,7 +3,8 @@ import { SIDE_BET_DEFS } from '../engine/sidebets';
 import type { SideBetId } from '../engine/types';
 import { ANIMATION_ZONES } from '../lib/animationZones';
 import { fmt } from '../lib/format';
-import { CHIP_DENOMS, stagedTotal, useGame, type BetSpot } from '../store/gameStore';
+import { chipsForLimits } from '../store/chips';
+import { stagedTotal, useGame, type BetSpot } from '../store/gameStore';
 import { Chip, ChipStack } from './ChipView';
 
 /** Ordre Stake / Evolution : 21+3 à gauche, main au centre, Paires à droite. */
@@ -64,6 +65,7 @@ export function BettingBoard() {
   const dealFlashIds = useGame((s) => s.display.dealFlashIds);
 
   const table = getTable(tableId);
+  const chipDenoms = chipsForLimits(table.rules.minBet, table.rules.maxBet);
   const staged = stagedTotal(stacks);
   const main = stacks.main.reduce((a, b) => a + b, 0);
   const canDeal = main >= table.rules.minBet;
@@ -101,7 +103,7 @@ export function BettingBoard() {
       </div>
       <div className="tray">
         <div className="chip-row">
-          {CHIP_DENOMS.map((d) => (
+          {chipDenoms.map((d) => (
             <button
               key={d}
               className={`chip-btn ${selectedChip === d ? 'selected' : ''}`}

@@ -30,7 +30,13 @@ function RoundItem({ e }: { e: HistoryEntry }) {
       <div className="top">
         <span style={{ color: 'var(--ink-dim)' }}>
           {new Date(e.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} ·{' '}
-          {getTable(e.tableId).name}
+          {(() => {
+            try {
+              return getTable(e.tableId).name;
+            } catch {
+              return e.tableId;
+            }
+          })()}
         </span>
         <span className={`net ${e.net > 0 ? 'pos' : e.net < 0 ? 'neg' : ''}`}>{fmtNet(e.net)}</span>
       </div>

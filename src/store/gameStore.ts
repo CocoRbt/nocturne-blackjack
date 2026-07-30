@@ -2,9 +2,21 @@ import { create } from 'zustand';
 import { sounds } from '../audio/sounds';
 import { handValue, isNaturalBlackjack } from '../engine/hand';
 import { Round } from '../engine/round';
-import { getTable } from '../engine/rules';
+import {
+  canSitAtTable,
+  getTable,
+  PRIVATE_TABLE_ID,
+  setPrivateLimits as setEnginePrivateLimits,
+  type PrivateLimits,
+} from '../engine/rules';
 import { DealingShoe } from '../engine/shoe';
 import type { BetLayout, PlayerActionType, SideBetId } from '../engine/types';
+import {
+  ALL_CHIP_DENOMS,
+  chipsForLimits,
+  defaultChipForLimits,
+  decomposeAmount,
+} from './chips';
 import {
   emptyStats,
   loadSave,
@@ -18,7 +30,8 @@ import { TIMING, type GameSpeed } from './timing';
 
 export type BetSpot = 'main' | SideBetId;
 
-export const CHIP_DENOMS = [1_00, 5_00, 25_00, 100_00, 500_00, 1000_00] as const;
+/** @deprecated préférer ALL_CHIP_DENOMS / chipsForLimits — conservé pour imports existants. */
+export const CHIP_DENOMS = ALL_CHIP_DENOMS;
 
 export type GoalId = 'none' | 'reach6100' | 'hands20' | 'bj2';
 
@@ -57,11 +70,13 @@ export interface DisplayState {
 
 interface GameState {
   balance: number;
+  peakBalance: number;
   refills: number;
   screen: 'lobby' | 'table';
   tableId: string;
   soundMuted: boolean;
   gameSpeed: GameSpeed;
+  privateLimits: PrivateLimits;
 
   selectedChip: number;
   stacks: Record<BetSpot, number[]>;
@@ -82,6 +97,7 @@ interface GameState {
 
   enterTable(tableId: string): void;
   leaveTable(): void;
+  configurePrivateLimits(limits: PrivateLimits): void;
   selectChip(denom: number): void;
   addChip(spot: BetSpot): void;
   undoLastChip(): void;
@@ -136,16 +152,12 @@ const freshSession = (balance: number, goalId: GoalId = 'hands20'): SessionState
 
 const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
 
-export function decompose(amount: number): number[] {
-  const chips: number[] = [];
-  let rest = amount;
-  for (let i = CHIP_DENOMS.length - 1; i >= 0; i--) {
-    while (rest >= CHIP_DENOMS[i]) {
-      chips.push(CHIP_DENOMS[i]);
-      rest -= CHIP_DENOMS[i];
-    }
-  }
-  return chips;
+export function decompose(amount: number, denoms: readonly number[] = ALL_CHIP_DENOMS): number[] {
+  return decomposeAmount(amount, denoms);
+}
+
+function withPeak(balance: number, peak: number): number {
+  return Math.max(peak, balance);
 }
 
 function goalProgressOf(session: SessionState, balance: number): number {
@@ -178,6 +190,10 @@ let shoe: DealingShoe | null = null;
 let presentToken = 0;
 
 const saved = loadSave();
+const initialBalance = saved?.balance ?? STARTING_BALANCE;
+const initialPeak = saved?.peakBalance ?? Math.max(initialBalance, STARTING_BALANCE);
+const initialPrivate = saved?.privateLimits ?? { minBet: 250_00, maxBet: 25_000_00 };
+setEnginePrivateLimits(initialPrivate);
 
 export const useGame = create<GameState>((set, get) => {
   const bump = () => set((s) => ({ v: s.v + 1 }));
@@ -190,8 +206,9 @@ export const useGame = create<GameState>((set, get) => {
   const persist = () => {
     const s = get();
     const data: SaveData = {
-      version: 1,
+      version: 2,
       balance: s.balance,
+      peakBalance: s.peakBalance,
       tableId: s.tableId,
       history: s.history,
       stats: s.stats,
@@ -199,6 +216,7 @@ export const useGame = create<GameState>((set, get) => {
       soundMuted: s.soundMuted,
       refills: s.refills,
       gameSpeed: s.gameSpeed,
+      privateLimits: s.privateLimits,
     };
     persistSave(data);
   };
@@ -310,6 +328,7 @@ export const useGame = create<GameState>((set, get) => {
 
     set({
       balance,
+      peakBalance: withPeak(balance, s.peakBalance),
       stats,
       history: [entry, ...s.history].slice(0, 60),
       session,
@@ -418,12 +437,14 @@ export const useGame = create<GameState>((set, get) => {
   };
 
   return {
-    balance: saved?.balance ?? STARTING_BALANCE,
+    balance: initialBalance,
+    peakBalance: initialPeak,
     refills: saved?.refills ?? 0,
     screen: 'lobby',
-    tableId: saved?.tableId ?? 'emeraude',
+    tableId: saved?.tableId === PRIVATE_TABLE_ID ? PRIVATE_TABLE_ID : (saved?.tableId ?? 'emeraude'),
     soundMuted: saved?.soundMuted ?? false,
     gameSpeed: saved?.gameSpeed === 'fast' ? 'fast' : 'classic',
+    privateLimits: initialPrivate,
     selectedChip: 5_00,
     stacks: emptyStacks(),
     placementOrder: [],
@@ -439,13 +460,30 @@ export const useGame = create<GameState>((set, get) => {
     shoeDealt: 0,
 
     enterTable(tableId) {
+      const s = get();
+      if (tableId === PRIVATE_TABLE_ID) {
+        setEnginePrivateLimits(s.privateLimits);
+      }
+      if (!canSitAtTable(tableId, s.balance, s.peakBalance, s.privateLimits)) {
+        const table = getTable(tableId);
+        if (s.peakBalance < table.unlockPeak) {
+          set({
+            notice: `Table verrouillée — atteins ${table.unlockPeak / 100} crédits (pic actuel : ${Math.floor(s.peakBalance / 100)}).`,
+          });
+        } else {
+          set({
+            notice: `Crédit insuffisant — mise minimale ${table.rules.minBet / 100}.`,
+          });
+        }
+        return;
+      }
       const table = getTable(tableId);
       shoe = new DealingShoe(table.rules.decks, table.rules.penetration);
-      sounds.setMuted(get().soundMuted);
+      sounds.setMuted(s.soundMuted);
       sounds.setAmbienceProfile(table.identity.ambienceHz);
       sounds.startAmbience();
       sounds.play('shuffle');
-      const chip = CHIP_DENOMS.find((d) => d >= table.rules.minBet) ?? CHIP_DENOMS[0];
+      const chip = defaultChipForLimits(table.rules.minBet, table.rules.maxBet);
       const goals: GoalId[] = ['hands20', 'reach6100', 'bj2'];
       const goalId = goals[Math.floor(Math.random() * goals.length)];
       set({
@@ -459,8 +497,17 @@ export const useGame = create<GameState>((set, get) => {
         notice: null,
         shoeSize: shoe.size(),
         shoeDealt: 0,
-        session: freshSession(get().balance, goalId),
+        session: freshSession(s.balance, goalId),
       });
+      persist();
+    },
+
+    configurePrivateLimits(limits) {
+      const minBet = limits.minBet;
+      const maxBet = Math.max(limits.maxBet, minBet * 10);
+      const next = { minBet, maxBet };
+      setEnginePrivateLimits(next);
+      set({ privateLimits: next });
       persist();
     },
 
@@ -534,12 +581,14 @@ export const useGame = create<GameState>((set, get) => {
         set({ notice: 'Solde insuffisant pour rejouer la mise précédente.' });
         return false;
       }
+      const table = getTable(s.tableId);
+      const denoms = chipsForLimits(table.rules.minBet, table.rules.maxBet);
       const stacks = emptyStacks();
-      stacks.main = decompose(last.main);
+      stacks.main = decompose(last.main, denoms);
       const order: BetSpot[] = stacks.main.map(() => 'main' as BetSpot);
       for (const [id, amount] of Object.entries(last.sideBets)) {
         if (!amount) continue;
-        stacks[id as SideBetId] = decompose(amount);
+        stacks[id as SideBetId] = decompose(amount, denoms);
         for (let i = 0; i < stacks[id as SideBetId].length; i++) order.push(id as SideBetId);
       }
       sounds.play('chipStack');
@@ -738,8 +787,10 @@ export const useGame = create<GameState>((set, get) => {
       const s = get();
       if (s.round) return;
       sounds.play('chipStack');
+      const balance = s.balance + STARTING_BALANCE;
       set({
-        balance: s.balance + STARTING_BALANCE,
+        balance,
+        peakBalance: withPeak(balance, s.peakBalance),
         refills: s.refills + 1,
         notice: 'Crédit reconstitué.',
       });
@@ -749,10 +800,15 @@ export const useGame = create<GameState>((set, get) => {
     resetAll() {
       presentToken++;
       shoe = null;
+      const privateLimits = { minBet: 250_00, maxBet: 25_000_00 };
+      setEnginePrivateLimits(privateLimits);
       set({
         balance: STARTING_BALANCE,
+        peakBalance: STARTING_BALANCE,
         refills: 0,
         screen: 'lobby',
+        tableId: 'emeraude',
+        privateLimits,
         round: null,
         stacks: emptyStacks(),
         placementOrder: [],
