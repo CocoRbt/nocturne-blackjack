@@ -30,5 +30,22 @@
 - **Quitter** : retire vraiment ton profil + scores du cloud (`leave_circle`). Les autres appareils mettent ~8 s à rafraîchir.
 - Téléphone et PC = **2 joueurs séparés** (auth anonyme par appareil). Quitter sur le PC ne te sort pas du cercle sur le téléphone.
 
+## Nettoyer un profil fantôme (ex. test « Minuit »)
+Si quelqu’un a quitté **avant** le fix `leave_circle`, son pseudo peut rester dans le classement.
+SQL Editor → coller / Run :
+
+```sql
+delete from public.player_scores s
+using public.profiles p
+where s.profile_id = p.id
+  and lower(p.nickname) = lower('Minuit');
+
+update public.profiles
+set circle_id = null
+where lower(nickname) = lower('Minuit');
+```
+
+Puis sur le téléphone : attendre ~8 s ou recharger la page.
+
 ## Fichier mdp
 Le fichier texte `mdp` / `mdp.txt` avec les secrets **ne doit jamais être push** (déjà dans `.gitignore`).
