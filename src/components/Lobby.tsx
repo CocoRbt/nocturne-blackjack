@@ -13,6 +13,7 @@ import { fmt } from '../lib/format';
 import { useGame } from '../store/gameStore';
 import { CircleDrawer } from './CircleDrawer';
 import { circleJoinedLabel, useCircleKeepalive } from './CirclePanel';
+import { exitCircle } from '../cercle/circleStore';
 
 export function Lobby() {
   const balance = useGame((s) => s.balance);
@@ -228,7 +229,17 @@ export function Lobby() {
           className="btn ghost"
           style={{ marginTop: 12 }}
           onClick={() => {
-            if (confirm('Effacer la sauvegarde (solde, historique, statistiques) ?')) resetAll();
+            if (
+              confirm(
+                'Effacer la sauvegarde (solde, historique, statistiques) et quitter le cercle d’amis ?',
+              )
+            ) {
+              void exitCircle().finally(() => {
+                resetAll();
+                setJoinedAs(null);
+                setCircleOpen(false);
+              });
+            }
           }}
         >
           Réinitialiser la partie

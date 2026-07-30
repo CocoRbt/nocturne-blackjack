@@ -511,6 +511,16 @@ button:disabled {
   color: var(--ink-dim);
   letter-spacing: 0.04em;
 }
+.circle-leave-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.circle-leave-btn {
+  border-color: rgba(200, 120, 120, 0.35) !important;
+  color: #e0a8a8 !important;
+}
 .circle-board {
   list-style: none;
   display: flex;
