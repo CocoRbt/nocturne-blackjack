@@ -64,6 +64,12 @@
 [data-felt='oxblood'] {
   --felt-a: #391a1f;
   --felt-b: #150709;
+  --accent: #cf9a6c;
+  --lamp: rgba(224, 176, 144, 0.09);
+  --chip-glow: rgba(207, 154, 108, 0.12);
+  --brass: #cf9a6c;
+  --brass-soft: rgba(207, 154, 108, 0.4);
+  --brass-faint: rgba(207, 154, 108, 0.14);
 }
 
 [data-felt='private'] {
@@ -73,13 +79,6 @@
   --lamp: rgba(212, 175, 119, 0.11);
   --brass: #d4af77;
   --brass-soft: rgba(212, 175, 119, 0.55);
-}
-  --accent: #cf9a6c;
-  --lamp: rgba(224, 176, 144, 0.09);
-  --chip-glow: rgba(207, 154, 108, 0.12);
-  --brass: #cf9a6c;
-  --brass-soft: rgba(207, 154, 108, 0.4);
-  --brass-faint: rgba(207, 154, 108, 0.14);
 }
 
 * {
