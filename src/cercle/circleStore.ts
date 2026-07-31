@@ -247,5 +247,84 @@ function mergeBoardMembers(boards: Leaderboards, me: string): CircleMemberScore[
   return [...map.values()].sort((a, b) => b.peakBalance - a.peakBalance);
 }
 
+/**
+ * Superpose mon score local sur les classements cloud.
+ * Évite qu’un refresh stale (migration pas appliquée / sync en échec)
+ * n’affiche un ancien crédit ou « dès le départ » pour soi-même.
+ */
+export function overlaySelfOnBoards(
+  boards: Leaderboards,
+  me: string,
+  self: { balance: number; peakBalance: number; gamesBeforePeak: number },
+): Leaderboards {
+  const patchLive = (rows: LeaderboardRow[]): LeaderboardRow[] => {
+    let seen = false;
+    const next = rows.map((r) => {
+      if (r.nickname !== me && !r.is_me) return r;
+      seen = true;
+      return {
+        ...r,
+        balance: self.balance,
+        peak_balance: Math.max(r.peak_balance, self.peakBalance),
+        games_before_peak: r.games_before_peak ?? self.gamesBeforePeak,
+        is_me: true,
+      };
+    });
+    if (!seen && me) {
+      next.push({
+        rank: next.length + 1,
+        nickname: me,
+        balance: self.balance,
+        peak_balance: self.peakBalance,
+        games_before_peak: self.gamesBeforePeak,
+        updated_at: new Date().toISOString(),
+        is_me: true,
+      });
+    }
+    return next
+      .sort((a, b) => b.balance - a.balance || a.nickname.localeCompare(b.nickname))
+      .map((r, i) => ({ ...r, rank: i + 1 }));
+  };
+
+  const patchPeak = (rows: LeaderboardRow[]): LeaderboardRow[] => {
+    let seen = false;
+    const next = rows.map((r) => {
+      if (r.nickname !== me && !r.is_me) return r;
+      seen = true;
+      const peak = Math.max(r.peak_balance, self.peakBalance);
+      const gamesBefore =
+        self.peakBalance >= r.peak_balance
+          ? self.gamesBeforePeak
+          : (r.games_before_peak ?? self.gamesBeforePeak);
+      return {
+        ...r,
+        balance: self.balance,
+        peak_balance: peak,
+        games_before_peak: gamesBefore,
+        is_me: true,
+      };
+    });
+    if (!seen && me) {
+      next.push({
+        rank: next.length + 1,
+        nickname: me,
+        balance: self.balance,
+        peak_balance: self.peakBalance,
+        games_before_peak: self.gamesBeforePeak,
+        updated_at: new Date().toISOString(),
+        is_me: true,
+      });
+    }
+    return next
+      .sort((a, b) => b.peak_balance - a.peak_balance || a.nickname.localeCompare(b.nickname))
+      .map((r, i) => ({ ...r, rank: i + 1 }));
+  };
+
+  return {
+    live: patchLive(boards.live),
+    peak: patchPeak(boards.peak),
+  };
+}
+
 export type { LeaderboardRow, Leaderboards };
 export { isSupabaseConfigured };

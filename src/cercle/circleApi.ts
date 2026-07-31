@@ -77,7 +77,8 @@ export async function syncScoreCloud(input: {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase non configuré');
   await ensureAnonSession();
-  const { data, error } = await sb.rpc('sync_my_score', {
+
+  const full = await sb.rpc('sync_my_score', {
     p_balance: input.balance,
     p_peak_balance: input.peakBalance,
     p_hands_played: input.handsPlayed,
@@ -87,8 +88,22 @@ export async function syncScoreCloud(input: {
     p_games_before_peak: input.gamesBeforePeak,
     p_games_played: input.gamesPlayed,
   });
-  if (error) throw new Error(rpcMessage(error));
-  return data as { balance: number; peak_balance: number; games_before_peak?: number };
+
+  if (!full.error) {
+    return full.data as { balance: number; peak_balance: number; games_before_peak?: number };
+  }
+
+  // Migration games_before_peak pas encore appliquée → retombe sur l’ancienne signature.
+  const legacy = await sb.rpc('sync_my_score', {
+    p_balance: input.balance,
+    p_peak_balance: input.peakBalance,
+    p_hands_played: input.handsPlayed,
+    p_blackjacks: input.blackjacks,
+    p_best_streak: input.bestStreak,
+    p_highest_table: input.highestTable,
+  });
+  if (legacy.error) throw new Error(rpcMessage(full.error));
+  return legacy.data as { balance: number; peak_balance: number; games_before_peak?: number };
 }
 
 export async function fetchLeaderboards(): Promise<Leaderboards> {

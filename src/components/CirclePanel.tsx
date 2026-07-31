@@ -6,6 +6,7 @@ import {
   isSupabaseConfigured,
   leaderboardsFromLocal,
   loadCircle,
+  overlaySelfOnBoards,
   pushScore,
   refreshLeaderboards,
   type LeaderboardRow,
@@ -107,6 +108,7 @@ export function CirclePanel() {
           setBoards(refreshed.boards);
         } catch {
           // garde le local
+          if (circle) setBoards(leaderboardsFromLocal(circle));
         }
       })();
     }, 400);
@@ -139,7 +141,8 @@ export function CirclePanel() {
     tick();
     const id = window.setInterval(tick, 8_000);
     return () => window.clearInterval(id);
-  }, [circle]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [circle?.circleCode, circle?.nickname, circle?.cloud]);
 
   const createOrJoin = async () => {
     const name = nickname.trim().slice(0, 16);
@@ -198,7 +201,15 @@ export function CirclePanel() {
     }
   };
 
-  const rows: LeaderboardRow[] = tab === 'live' ? boards?.live ?? [] : boards?.peak ?? [];
+  const displayBoards = boards
+    ? overlaySelfOnBoards(boards, circle?.nickname ?? nickname, {
+        balance,
+        peakBalance,
+        gamesBeforePeak,
+      })
+    : null;
+  const rows: LeaderboardRow[] =
+    tab === 'live' ? displayBoards?.live ?? [] : displayBoards?.peak ?? [];
   const cloud = isSupabaseConfigured();
   const joined = Boolean(circle?.circleCode);
   const showForm = !joined || switching;
