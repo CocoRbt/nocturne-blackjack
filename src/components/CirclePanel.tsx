@@ -177,6 +177,13 @@ export function CirclePanel() {
   };
 
   const leave = async () => {
+    if (
+      !confirm(
+        'Quitter ce cercle ? Vos scores cloud restent sauvegardés — vous pourrez rejoindre avec le même code et pseudo.',
+      )
+    ) {
+      return;
+    }
     setBusy(true);
     setError(null);
     try {

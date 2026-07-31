@@ -1,7 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { requestCircleSection } from '../cercle/circleNav';
-import { exitCircle } from '../cercle/circleStore';
 import { useGame } from '../store/gameStore';
 import { CircleDrawer } from './CircleDrawer';
 import { circleJoinedLabel } from './CirclePanel';
@@ -156,21 +155,6 @@ export function AppMenu({
                   Crash
                   <span className="dim">avion · multiplicateur</span>
                 </button>
-              )}
-              {joinedAs && (
-                <>
-                  <div className="lobby-menu-sep" aria-hidden />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      void exitCircle().finally(() => setJoinedAs(null));
-                    }}
-                  >
-                    Quitter le cercle
-                    <span className="dim">garde votre crédit local</span>
-                  </button>
-                </>
               )}
             </motion.div>
           )}

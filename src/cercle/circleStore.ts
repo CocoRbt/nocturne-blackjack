@@ -145,7 +145,7 @@ export async function enterCircle(nickname: string, code: string | undefined, se
       gamesPlayed: seed.gamesPlayed,
     });
     const boards = await fetchLeaderboards();
-    const members = mergeBoardMembers(boards, name);
+    const members = mergeBoardMembers(boards, name, []);
     const state: LocalCircleState = {
       nickname: joined.nickname,
       circleCode: joined.circle_code,
@@ -170,15 +170,68 @@ export async function enterCircle(nickname: string, code: string | undefined, se
 
 export async function refreshLeaderboards(state: LocalCircleState): Promise<{ state: LocalCircleState; boards: Leaderboards }> {
   if (state.cloud && isSupabaseConfigured()) {
-    const boards = await fetchLeaderboards();
-    const next: LocalCircleState = {
-      ...state,
-      members: mergeBoardMembers(boards, state.nickname),
-    };
-    saveCircle(next);
-    return { state: next, boards };
+    try {
+      const boards = await fetchLeaderboards();
+      const merged = mergeBoardMembers(boards, state.nickname, state.members);
+      // Session cassée / nouveau anon → boards vides : ne pas écraser le cache local.
+      const boardEmpty = (boards.live?.length ?? 0) === 0 && (boards.peak?.length ?? 0) === 0;
+      if (boardEmpty && state.members.length > 0) {
+        return { state, boards: leaderboardsFromLocal(state) };
+      }
+      const next: LocalCircleState = {
+        ...state,
+        members: merged.length > 0 ? merged : state.members,
+      };
+      saveCircle(next);
+      return { state: next, boards };
+    } catch {
+      return { state, boards: leaderboardsFromLocal(state) };
+    }
   }
   return { state, boards: leaderboardsFromLocal(state) };
+}
+
+/** Restaure le cercle local après connexion compte (même uid / membership cloud). */
+export async function restoreCircleFromCloud(
+  score: {
+    nickname?: string | null;
+    circle_code?: string | null;
+    in_circle?: boolean;
+    balance?: number;
+    peak_balance?: number;
+    hands_played?: number;
+    blackjacks?: number;
+    best_streak?: number;
+    highest_table?: string;
+    games_before_peak?: number;
+    games_played?: number;
+  },
+): Promise<LocalCircleState | null> {
+  if (!score.in_circle || !score.circle_code || !score.nickname) return null;
+  const seed = {
+    balance: score.balance ?? 0,
+    peakBalance: score.peak_balance ?? 0,
+    handsPlayed: score.hands_played ?? 0,
+    blackjacks: score.blackjacks ?? 0,
+    bestStreak: score.best_streak ?? 0,
+    highestTable: score.highest_table ?? 'emeraude',
+    gamesBeforePeak: score.games_before_peak ?? 0,
+    gamesPlayed: score.games_played ?? 0,
+  };
+  const base: LocalCircleState = {
+    nickname: score.nickname,
+    circleCode: score.circle_code,
+    members: [],
+    cloud: true,
+  };
+  let state = upsertSelfScore(base, { ...seed, nickname: score.nickname });
+  saveCircle(state);
+  try {
+    const refreshed = await refreshLeaderboards(state);
+    return refreshed.state;
+  } catch {
+    return state;
+  }
 }
 
 export async function pushScore(state: LocalCircleState, seed: Omit<CircleMemberScore, 'nickname' | 'updatedAt'>): Promise<LocalCircleState> {
@@ -196,7 +249,11 @@ export async function pushScore(state: LocalCircleState, seed: Omit<CircleMember
         gamesPlayed: seed.gamesPlayed,
       });
       const boards = await fetchLeaderboards();
-      const next = { ...local, members: mergeBoardMembers(boards, state.nickname), cloud: true };
+      const next = {
+        ...local,
+        members: mergeBoardMembers(boards, state.nickname, local.members),
+        cloud: true,
+      };
       saveCircle(next);
       return next;
     } catch {
@@ -220,8 +277,13 @@ export async function exitCircle(): Promise<void> {
   }
 }
 
-function mergeBoardMembers(boards: Leaderboards, me: string): CircleMemberScore[] {
+function mergeBoardMembers(
+  boards: Leaderboards,
+  me: string,
+  previous: CircleMemberScore[] = [],
+): CircleMemberScore[] {
   const map = new Map<string, CircleMemberScore>();
+  for (const m of previous) map.set(m.nickname, m);
   for (const row of [...boards.live, ...boards.peak]) {
     const prev = map.get(row.nickname);
     const peakBalance = Math.max(row.peak_balance, prev?.peakBalance ?? 0);
@@ -241,8 +303,9 @@ function mergeBoardMembers(boards: Leaderboards, me: string): CircleMemberScore[
       updatedAt: Date.parse(row.updated_at) || Date.now(),
     });
   }
-  if (!map.has(me)) {
-    // keep me visible even if board empty
+  if (!map.has(me) && previous.some((m) => m.nickname === me)) {
+    const self = previous.find((m) => m.nickname === me);
+    if (self) map.set(me, self);
   }
   return [...map.values()].sort((a, b) => b.peakBalance - a.peakBalance);
 }

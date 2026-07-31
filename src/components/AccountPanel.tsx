@@ -7,6 +7,7 @@ import {
   registerAccount,
   savedAccountEmail,
 } from '../cercle/accountAuth';
+import { restoreCircleFromCloud } from '../cercle/circleStore';
 import { useGame } from '../store/gameStore';
 
 /** Création / connexion compte pour sync crédit PC ↔ téléphone. */
@@ -64,9 +65,17 @@ export function AccountPanel() {
             bestStreak: score.best_streak,
             highestTable: score.highest_table,
           });
+        }
+        if (score?.in_circle && score.circle_code) {
+          await restoreCircleFromCloud(score);
+          setInfo(`Connecté — cercle ${score.circle_code} restauré.`);
+        } else if (score?.found) {
+          setInfo(
+            'Connecté. Si votre cercle n’apparaît pas, rejoignez-le avec le même code et pseudo.',
+          );
         } else {
           setInfo(
-            'Connecté. Rejoignez votre cercle pour synchroniser le crédit cloud, ou jouez ici puis sync.',
+            'Connecté. Rejoignez votre cercle pour synchroniser le crédit cloud.',
           );
         }
         setPassword('');

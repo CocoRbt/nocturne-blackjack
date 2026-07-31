@@ -122,6 +122,9 @@ export async function fetchLeaderboards(): Promise<Leaderboards> {
 export type MyScore = {
   found: boolean;
   nickname?: string | null;
+  circle_id?: string | null;
+  circle_code?: string | null;
+  in_circle?: boolean;
   balance?: number;
   peak_balance?: number;
   hands_played?: number;
@@ -159,29 +162,19 @@ export async function fetchCreditSeries(hours = 48): Promise<CreditSeriesPoint[]
 }
 
 /**
- * Quitte le cercle côté cloud.
- * 1) RPC leave_circle si dispo
- * 2) sinon détache le profil via RLS (pas besoin du dashboard)
- * puis sign-out anonyme local.
+ * Quitte le cercle côté cloud (soft leave).
+ * Ne signOut PAS — ça cassait le compte / recréait un anon sans cercle.
  */
 export async function leaveCircleCloud(): Promise<void> {
   const sb = getSupabase();
   if (!sb) return;
 
   const { data: sessionData } = await sb.auth.getSession();
-  const uid = sessionData.session?.user?.id;
+  if (!sessionData.session?.user?.id) return;
 
-  if (uid) {
-    const { error: rpcErr } = await sb.rpc('leave_circle');
-    if (rpcErr) {
-      console.warn('[cercle] leave_circle', rpcErr.message);
-    }
-  }
-
-  try {
-    await sb.auth.signOut({ scope: 'local' });
-  } catch {
-    // ignore
+  const { error: rpcErr } = await sb.rpc('leave_circle');
+  if (rpcErr) {
+    console.warn('[cercle] leave_circle', rpcErr.message);
   }
 }
 
