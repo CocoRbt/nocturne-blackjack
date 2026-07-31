@@ -141,4 +141,26 @@ describe('TableRound', () => {
     expect(maxSeatsForOrientation(false)).toBe(5);
     expect(maxSeatsForOrientation(true)).toBe(7);
   });
+
+  it('S17 : le croupier reste sur 6+A (soft 17)', () => {
+    // P: J+8=18, D: 6+A — ne doit plus tirer
+    const r = new TableRound(RULES, rig(['JS', '6D', '8H', 'AC', 'KH']), [
+      { seatIndex: 0, bets: bet(10_00) },
+    ]);
+    r.stand();
+    expect(r.result!.dealerCards.map((c) => c.rank)).toEqual(['6', 'A']);
+    expect(r.result!.dealerTotal).toBe(17);
+    expect(r.result!.dealerBust).toBe(false);
+    expect(r.result!.hands[0].outcome).toBe('win');
+  });
+
+  it('reste sur 10+6+A (17 dur avec As)', () => {
+    const r = new TableRound(RULES, rig(['JS', '10D', '8H', '6C', 'AS', '2H']), [
+      { seatIndex: 0, bets: bet(10_00) },
+    ]);
+    r.stand();
+    expect(r.result!.dealerCards.map((c) => c.rank)).toEqual(['10', '6', 'A']);
+    expect(r.result!.dealerTotal).toBe(17);
+    expect(r.result!.dealerBust).toBe(false);
+  });
 });

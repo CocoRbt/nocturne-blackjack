@@ -1576,6 +1576,9 @@ button:disabled {
   color: var(--brass);
   border-color: var(--brass-soft);
 }
+.total-badge.soft {
+  letter-spacing: 0.06em;
+}
 
 .hand-bet-spot {
   display: flex;

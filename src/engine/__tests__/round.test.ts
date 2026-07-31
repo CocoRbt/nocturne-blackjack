@@ -19,7 +19,7 @@ const ALL_SIDE_BETS_RULES: RulesConfig = {
   ...RULES,
   sideBets: ['perfectPairs', 'twentyOnePlusThree', 'luckyLadies', 'bustIt', 'royalMatch'],
 };
-const H17_RULES: RulesConfig = getTable('onyx').rules;
+const H17_RULES: RulesConfig = { ...getTable('onyx').rules, dealerHitsSoft17: true };
 const RSA_RULES: RulesConfig = getTable('imperiale').rules; // re-split des As
 
 const bet = (main: number, sideBets: BetLayout['sideBets'] = {}): BetLayout => ({ main, sideBets });
@@ -173,6 +173,15 @@ describe('règle soft 17', () => {
     expect(r.result!.dealerCards.length).toBe(3);
     expect(r.result!.dealerTotal).toBe(21);
     expect(r.result!.hands[0].outcome).toBe('lose');
+  });
+
+  it('H17 : le croupier reste sur 17 dur avec As (10+6+A)', () => {
+    // Bug classique : traiter tout As comme soft → retirer sur 17 dur.
+    const r = new Round(H17_RULES, rig(['JS', '10D', '8H', '6C', 'AS', '2S']), bet(25_00));
+    r.stand();
+    expect(r.result!.dealerCards.map((c) => c.rank)).toEqual(['10', '6', 'A']);
+    expect(r.result!.dealerTotal).toBe(17);
+    expect(r.result!.dealerBust).toBe(false);
   });
 
   it('H17 : le croupier reste sur 17 dur', () => {

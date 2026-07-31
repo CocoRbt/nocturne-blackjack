@@ -133,7 +133,7 @@ export const TABLES: TableConfig[] = [
     rules: {
       ...BASE_RULES,
       decks: 8,
-      dealerHitsSoft17: true,
+      dealerHitsSoft17: false,
       resplitAces: false,
       lateSurrender: true,
       minBet: 25_00,

@@ -40,7 +40,7 @@ function totalLabel(hand: PlayerHandState): { text: string; cls: string } {
   if (hand.surrendered) return { text: 'Abandon', cls: '' };
   if (isNaturalBlackjack(hand.cards, hand.fromSplit)) return { text: 'Blackjack', cls: 'bj' };
   if (v.bust) return { text: `${v.total} · sauté`, cls: 'bust' };
-  if (v.soft && v.total !== 21) return { text: `${v.total - 10} / ${v.total}`, cls: '' };
+  if (v.soft && v.total !== 21) return { text: `${v.total} soft`, cls: 'soft' };
   return { text: String(v.total), cls: '' };
 }
 
@@ -135,13 +135,13 @@ export function DealerHandView({ cards, shown, holeShown, isInitialDeal, dealInd
         ))}
       </div>
       {showTotal && (
-        <div className={`total-badge ${v.bust ? 'bust' : isBj ? 'bj' : ''}`}>
+        <div className={`total-badge ${v.bust ? 'bust' : isBj ? 'bj' : v.soft && v.total !== 21 ? 'soft' : ''}`}>
           {isBj
             ? 'Blackjack'
             : v.bust
               ? `${v.total} · sauté`
               : holeShown && revealed.length > 1 && v.soft && v.total !== 21
-                ? `${v.total - 10} / ${v.total}`
+                ? `${v.total} soft`
                 : v.total}
         </div>
       )}

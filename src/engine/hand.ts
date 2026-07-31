@@ -25,6 +25,21 @@ export function handValue(cards: Card[]): HandValue {
   return { total, soft, bust: total > 21 };
 }
 
+/**
+ * Le croupier tire-t-il encore ?
+ * - < 17 : toujours
+ * - 17 dur (y compris 10+6+A) : jamais
+ * - 17 soft (A+6) : seulement si la table est H17
+ * - > 17 : jamais
+ */
+export function dealerMustHit(cards: Card[], hitsSoft17: boolean): boolean {
+  const v = handValue(cards);
+  if (v.bust || v.total > 17) return false;
+  if (v.total < 17) return true;
+  // total === 17
+  return v.soft && hitsSoft17;
+}
+
 /** Blackjack naturel : 21 en deux cartes, hors main issue d'un split. */
 export function isNaturalBlackjack(cards: Card[], fromSplit: boolean): boolean {
   return !fromSplit && cards.length === 2 && handValue(cards).total === 21;

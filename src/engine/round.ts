@@ -1,4 +1,4 @@
-import { handValue, isNaturalBlackjack, isPair } from './hand';
+import { dealerMustHit, handValue, isNaturalBlackjack, isPair } from './hand';
 import { applyRatio, type RulesConfig } from './rules';
 import { evaluateBustIt, evaluateDealSideBet, SIDE_BET_DEFS } from './sidebets';
 import type { Shoe } from './shoe';
@@ -350,12 +350,7 @@ export class Round {
     // Le croupier complète sa main s'il reste une main vivante,
     // ou si un pari Bust It est en jeu (procédure Buster Blackjack).
     if (hasLiveHand || this.bustItBet > 0) {
-      const mustHit = (): boolean => {
-        const v = handValue(this.dealerCards);
-        if (v.total < 17) return true;
-        return v.total === 17 && v.soft && this.rules.dealerHitsSoft17;
-      };
-      while (mustHit()) {
+      while (dealerMustHit(this.dealerCards, this.rules.dealerHitsSoft17)) {
         this.dealerCards.push(this.shoe.draw());
       }
     }
