@@ -35,12 +35,17 @@ interface Props {
   dealIndexes?: number[];
 }
 
+/** Soft : total bas / total haut (ex. A+4 → 5/15). */
+function softPairLabel(total: number): string {
+  return `${total - 10}/${total}`;
+}
+
 function totalLabel(hand: PlayerHandState): { text: string; cls: string } {
   const v = handValue(hand.cards);
   if (hand.surrendered) return { text: 'Abandon', cls: '' };
   if (isNaturalBlackjack(hand.cards, hand.fromSplit)) return { text: 'Blackjack', cls: 'bj' };
   if (v.bust) return { text: `${v.total} · sauté`, cls: 'bust' };
-  if (v.soft && v.total !== 21) return { text: `${v.total} soft`, cls: 'soft' };
+  if (v.soft && v.total !== 21) return { text: softPairLabel(v.total), cls: 'soft' };
   return { text: String(v.total), cls: '' };
 }
 
@@ -141,7 +146,7 @@ export function DealerHandView({ cards, shown, holeShown, isInitialDeal, dealInd
             : v.bust
               ? `${v.total} · sauté`
               : holeShown && revealed.length > 1 && v.soft && v.total !== 21
-                ? `${v.total} soft`
+                ? softPairLabel(v.total)
                 : v.total}
         </div>
       )}

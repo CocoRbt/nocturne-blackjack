@@ -1,9 +1,9 @@
 # Brancher Supabase (projet Nocturne_Blackjack)
 
 ## Auth choisie
-- **Pas de compte email** pour les potes.
-- Auth **anonyme** Supabase + **pseudo** + **code cercle**.
-- Chaque appareil garde sa session ; le pseudo est unique **dans le cercle**.
+- Auth **anonyme** par défaut + **pseudo** + **code cercle**.
+- **Compte email optionnel** (Menu → Compte) : lie la session anonyme pour retrouver le même crédit sur PC / téléphone.
+- Dashboard : activer aussi **Authentication → Providers → Email**.
 
 ## Classements
 1. **Crédit actuel** — solde live (`balance`)
@@ -18,6 +18,7 @@
    - `supabase/migrations/20260730220000_games_before_peak.sql` (parties avant le record)
    - `supabase/migrations/20260731080000_sync_games_before_peak_backfill.sql`
    - `supabase/migrations/20260731100000_score_integrity.sql` (**anti-triche** : plus d’UPDATE direct des scores ; sync via parties)
+   - `supabase/migrations/20260731221221_account_credit_curve.sql` (compte `get_my_score` + courbe `credit_snapshots`)
 
 4. **Project Settings → API** : copier `Project URL` + `anon public` key
 5. Local : créer `.env` (gitignoré) :
@@ -32,7 +33,7 @@
 - **Créer** : laisser le code vide → génère `NOC-XXXX`.
 - **Rejoindre** : coller le code **exact** d’un pote. Un code inexistant renvoie une erreur (ne crée plus un 2ᵉ cercle par typo).
 - **Quitter** : retire vraiment ton profil + scores du cloud (`leave_circle`). Les autres appareils mettent ~8 s à rafraîchir.
-- Téléphone et PC = **2 joueurs séparés** (auth anonyme par appareil). Quitter sur le PC ne te sort pas du cercle sur le téléphone.
+- Sans compte email : téléphone et PC = **2 joueurs séparés**. Avec compte : même uid → même crédit / cercle après « Se connecter ».
 
 ## Nettoyer un profil fantôme (ex. test « Minuit »)
 Si quelqu’un a quitté **avant** le fix `leave_circle`, son pseudo peut rester dans le classement.

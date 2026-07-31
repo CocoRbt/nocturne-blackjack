@@ -226,6 +226,11 @@ export function CrapsScreen() {
   useEffect(() => () => clearTimers(), []);
 
   useEffect(() => {
+    const el = document.querySelector('.craps-screen');
+    if (el instanceof HTMLElement) el.scrollTop = 0;
+  }, []);
+
+  useEffect(() => {
     if (chip > balance) setChip(Math.max(1_00, balance));
   }, [balance, chip]);
 

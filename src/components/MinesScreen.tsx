@@ -117,6 +117,11 @@ export function MinesScreen() {
   }, [canConfigure, balance, bet, betFocused]);
 
   useEffect(() => {
+    const el = document.querySelector('.mines-screen');
+    if (el instanceof HTMLElement) el.scrollTop = 0;
+  }, []);
+
+  useEffect(() => {
     if (!betFocused && canConfigure) {
       setBetDraft(centsToInput(bet));
     }

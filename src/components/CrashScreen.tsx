@@ -103,6 +103,11 @@ export function CrashScreen() {
     }
   }, [balance, bet, round.flightActive]);
 
+  useEffect(() => {
+    const el = document.querySelector('.crash-screen');
+    if (el instanceof HTMLElement) el.scrollTop = 0;
+  }, []);
+
   const stopLoop = useCallback(() => {
     if (raf.current) cancelAnimationFrame(raf.current);
     raf.current = 0;

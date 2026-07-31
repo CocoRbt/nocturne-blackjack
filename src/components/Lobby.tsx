@@ -1,5 +1,5 @@
-import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
+import { useMemo, useState } from 'react';
 import {
   allLobbyTables,
   canSitAtTable,
@@ -14,8 +14,8 @@ import { fmt } from '../lib/format';
 import { STARTING_BALANCE } from '../store/persistence';
 import { useGame } from '../store/gameStore';
 import { formatGamesBeforePeak } from '../store/peakMeta';
-import { CircleDrawer } from './CircleDrawer';
-import { circleJoinedLabel, useCircleKeepalive } from './CirclePanel';
+import { AppMenu } from './AppMenu';
+import { useCircleKeepalive } from './CirclePanel';
 import { useDefiSync } from './DailyChallenges';
 import { exitCircle } from '../cercle/circleStore';
 
@@ -36,16 +36,9 @@ export function Lobby() {
 
   const [showPrivateSetup, setShowPrivateSetup] = useState(false);
   const [draftLimits, setDraftLimits] = useState<PrivateLimits>(privateLimits);
-  const [circleOpen, setCircleOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [joinedAs, setJoinedAs] = useState(() => circleJoinedLabel());
 
   useCircleKeepalive();
   useDefiSync();
-
-  useEffect(() => {
-    if (!circleOpen) setJoinedAs(circleJoinedLabel());
-  }, [circleOpen]);
 
   const tables = useMemo(() => allLobbyTables(privateLimits), [privateLimits]);
   const broke = balance < tables[0].rules.minBet;
@@ -73,74 +66,7 @@ export function Lobby() {
 
   return (
     <div className="lobby grain">
-      <div className="lobby-menu">
-        <button
-          type="button"
-          className={`lobby-menu-btn ${joinedAs ? 'has-circle' : ''}`}
-          aria-label="Menu"
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((v) => !v)}
-        >
-          <span className="lobby-menu-icon" aria-hidden>
-            <span />
-            <span />
-            <span />
-          </span>
-          <span className="lobby-menu-text">Menu</span>
-        </button>
-        <AnimatePresence>
-          {menuOpen && (
-            <motion.div
-              className="lobby-menu-panel"
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.22 }}
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  setCircleOpen(true);
-                }}
-              >
-                Cercle d&rsquo;amis
-                {joinedAs ? <span className="dim">{joinedAs}</span> : null}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  enterMines();
-                }}
-              >
-                Mines
-                <span className="dim">diamants · bombes</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  enterCraps();
-                }}
-              >
-                Craps
-                <span className="dim">Scraps · dés</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  enterCrash();
-                }}
-              >
-                Crash
-                <span className="dim">avion · multiplicateur</span>
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      <AppMenu showSalonLinks />
 
       <motion.div
         className="lobby-brand"
@@ -184,7 +110,13 @@ export function Lobby() {
         <button
           type="button"
           className={`lobby-defis-pill ${defis.done === defis.total ? 'done' : ''}`}
-          onClick={() => setCircleOpen(true)}
+          onClick={() => {
+            try {
+              window.dispatchEvent(new Event('nocturne-open-circle'));
+            } catch {
+              /* ignore */
+            }
+          }}
         >
           Défis {defis.done}/{defis.total}
           <span className="dim"> · cercle &amp; classement</span>
@@ -386,8 +318,6 @@ export function Lobby() {
             ) {
               void exitCircle().finally(() => {
                 resetAll();
-                setJoinedAs(null);
-                setCircleOpen(false);
               });
             }
           }}
@@ -395,8 +325,6 @@ export function Lobby() {
           Réinitialiser la partie
         </button>
       </div>
-
-      <CircleDrawer open={circleOpen} onClose={() => setCircleOpen(false)} />
     </div>
   );
 }

@@ -119,6 +119,45 @@ export async function fetchLeaderboards(): Promise<Leaderboards> {
   };
 }
 
+export type MyScore = {
+  found: boolean;
+  nickname?: string | null;
+  balance?: number;
+  peak_balance?: number;
+  hands_played?: number;
+  blackjacks?: number;
+  best_streak?: number;
+  highest_table?: string;
+  games_before_peak?: number;
+  games_played?: number;
+};
+
+export async function fetchMyScore(): Promise<MyScore> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase non configuré');
+  const { data: sessionData } = await sb.auth.getSession();
+  if (!sessionData.session) throw new Error('Non authentifié');
+  const { data, error } = await sb.rpc('get_my_score');
+  if (error) throw new Error(rpcMessage(error));
+  return data as MyScore;
+}
+
+export type CreditSeriesPoint = {
+  nickname: string;
+  balance: number;
+  t: string;
+  is_me: boolean;
+};
+
+export async function fetchCreditSeries(hours = 48): Promise<CreditSeriesPoint[]> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase non configuré');
+  await ensureAnonSession();
+  const { data, error } = await sb.rpc('get_circle_credit_series', { p_hours: hours });
+  if (error) throw new Error(rpcMessage(error));
+  return (data as CreditSeriesPoint[]) ?? [];
+}
+
 /**
  * Quitte le cercle côté cloud.
  * 1) RPC leave_circle si dispo

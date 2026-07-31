@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { fetchCreditSeries, type CreditSeriesPoint } from '../cercle/circleApi';
+import { consumeCircleSection } from '../cercle/circleNav';
 import { fmt } from '../lib/format';
 import {
   enterCircle,
@@ -16,9 +18,12 @@ import {
 import { consumeScoreDirty, onScoreDirty } from '../cercle/scoreSync';
 import { useGame } from '../store/gameStore';
 import { formatGamesBeforePeak } from '../store/peakMeta';
+import { AccountPanel } from './AccountPanel';
+import { CreditCurve } from './CreditCurve';
 import { DailyChallenges } from './DailyChallenges';
 
-type BoardTab = 'live' | 'peak';
+type BoardTab = 'live' | 'peak' | 'curve';
+type PanelSection = 'cercle' | 'compte';
 
 function currentScoreSeed() {
   const s = useGame.getState();
@@ -67,10 +72,15 @@ export function CirclePanel() {
   const [circle, setCircle] = useState<LocalCircleState | null>(() => loadCircle());
   const [nickname, setNickname] = useState(circle?.nickname ?? '');
   const [joinCode, setJoinCode] = useState(circle?.circleCode ?? '');
+  const [section, setSection] = useState<PanelSection>(
+    () => consumeCircleSection() ?? 'cercle',
+  );
   const [tab, setTab] = useState<BoardTab>('live');
   const [boards, setBoards] = useState<Leaderboards | null>(
     circle ? leaderboardsFromLocal(circle) : null,
   );
+  const [series, setSeries] = useState<CreditSeriesPoint[]>([]);
+  const [seriesError, setSeriesError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -213,10 +223,68 @@ export function CirclePanel() {
   const joined = Boolean(circle?.circleCode);
   const showForm = !joined || switching;
 
+  useEffect(() => {
+    const onSection = (e: Event) => {
+      const detail = (e as CustomEvent<PanelSection>).detail;
+      if (detail === 'cercle' || detail === 'compte') setSection(detail);
+    };
+    window.addEventListener('nocturne-circle-section', onSection);
+    return () => window.removeEventListener('nocturne-circle-section', onSection);
+  }, []);
+
+  useEffect(() => {
+    if (!joined || tab !== 'curve' || !cloud) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const pts = await fetchCreditSeries(48);
+        if (!cancelled) {
+          setSeries(pts);
+          setSeriesError(null);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setSeries([]);
+          setSeriesError(
+            e instanceof Error
+              ? e.message
+              : 'Courbe indisponible — appliquez la migration SQL côté Supabase.',
+          );
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [joined, tab, cloud, boards]);
+
   return (
     <div className={`circle-panel-in-drawer ${joined ? 'is-joined' : ''}`}>
+      <div className="circle-tabs section-tabs" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          className={section === 'cercle' ? 'on' : ''}
+          onClick={() => setSection('cercle')}
+        >
+          Cercle
+        </button>
+        <button
+          type="button"
+          role="tab"
+          className={section === 'compte' ? 'on' : ''}
+          onClick={() => setSection('compte')}
+        >
+          Compte
+        </button>
+      </div>
+
+      {section === 'compte' ? (
+        <AccountPanel />
+      ) : (
+        <>
       <p className="circle-drawer-lead">
-        Classement entre amis — pseudo + code, sans compte.
+        Classement entre amis — pseudo + code.
         {cloud ? (
           <span className="circle-badge on">en ligne</span>
         ) : (
@@ -346,27 +414,45 @@ export function CirclePanel() {
             >
               Record
             </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'curve'}
+              className={tab === 'curve' ? 'on' : ''}
+              onClick={() => setTab('curve')}
+            >
+              Courbe
+            </button>
           </div>
 
-          <ol className="circle-board">
-            {rows.length === 0 && <li className="empty">Aucun score pour l’instant</li>}
-            {rows.slice(0, 12).map((m) => (
-              <li key={`${tab}-${m.nickname}`} className={m.is_me ? 'me' : ''}>
-                <span className="rank">{m.rank}</span>
-                <span className="nick">{m.nickname}</span>
-                <span className="score-cell">
-                  <span className="peak">
-                    {fmt(tab === 'live' ? m.balance : m.peak_balance)}
-                  </span>
-                  {tab === 'peak' && (
-                    <span className="before-peak">
-                      {formatGamesBeforePeak(m.games_before_peak ?? 0)}
+          {tab === 'curve' ? (
+            <>
+              {seriesError && <p className="circle-error">{seriesError}</p>}
+              <CreditCurve data={series} />
+            </>
+          ) : (
+            <ol className="circle-board">
+              {rows.length === 0 && <li className="empty">Aucun score pour l’instant</li>}
+              {rows.slice(0, 12).map((m) => (
+                <li key={`${tab}-${m.nickname}`} className={m.is_me ? 'me' : ''}>
+                  <span className="rank">{m.rank}</span>
+                  <span className="nick">{m.nickname}</span>
+                  <span className="score-cell">
+                    <span className="peak">
+                      {fmt(tab === 'live' ? m.balance : m.peak_balance)}
                     </span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ol>
+                    {tab === 'peak' && (
+                      <span className="before-peak">
+                        {formatGamesBeforePeak(m.games_before_peak ?? 0)}
+                      </span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </>
+      )}
         </>
       )}
     </div>

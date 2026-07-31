@@ -7,6 +7,7 @@ import { ANIMATION_ZONES, splitHandScale } from '../lib/animationZones';
 import { resetSettledDeals } from '../lib/dealAnimation';
 import { useGame } from '../store/gameStore';
 import { ActionBar } from './ActionBar';
+import { AppMenu } from './AppMenu';
 import { BettingBoard } from './BettingBoard';
 import { SideDrawer, type DrawerTab } from './Drawers';
 import { DealerHandView, PlayerHandView } from './HandView';
@@ -119,6 +120,12 @@ export function TableScreen() {
     el.scrollTop = 0;
   }, [settled, display.resultsShown]);
 
+  // iOS : éviter de rester scrollé en bas (topbar / spots hors écran).
+  useEffect(() => {
+    const root = document.querySelector('.table-screen');
+    if (root instanceof HTMLElement) root.scrollTop = 0;
+  }, [tableId, betting]);
+
   return (
     <div
       className="table-screen grain"
@@ -131,6 +138,7 @@ export function TableScreen() {
         } as CSSProperties
       }
     >
+      <AppMenu />
       <div className="topbar">
         <button className="back" onClick={leaveTable}>
           ← Lobby

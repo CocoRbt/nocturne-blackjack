@@ -151,6 +151,17 @@ interface GameState {
   /** Crédite une récompense de défi (ne compte pas comme partie). */
   creditDefiReward(amountCents: number, label: string): void;
   refill(): void;
+  /** Hydrate le portefeuille local depuis le cloud (connexion compte). */
+  hydrateFromCloud(payload: {
+    balance: number;
+    peakBalance: number;
+    gamesPlayed?: number;
+    gamesBeforePeak?: number;
+    handsPlayed?: number;
+    blackjacks?: number;
+    bestStreak?: number;
+    highestTable?: string;
+  }): void;
   resetAll(): void;
   dismissNotice(): void;
   /** DEV/QA : force une manche multi-places en phase assurance. */
@@ -1172,6 +1183,31 @@ export const useGame = create<GameState>((set, get) => {
       });
       persist();
       markScoreDirty();
+    },
+
+    hydrateFromCloud(payload) {
+      const s = get();
+      if (s.round) {
+        set({ notice: 'Terminez la manche avant de synchroniser le compte.' });
+        return;
+      }
+      const balance = Math.max(0, Math.floor(payload.balance));
+      const peakBalance = Math.max(balance, Math.floor(payload.peakBalance));
+      set({
+        balance,
+        peakBalance,
+        gamesPlayed: payload.gamesPlayed ?? s.gamesPlayed,
+        gamesBeforePeak: payload.gamesBeforePeak ?? s.gamesBeforePeak,
+        stats: {
+          ...s.stats,
+          handsPlayed: payload.handsPlayed ?? s.stats.handsPlayed,
+          blackjacks: payload.blackjacks ?? s.stats.blackjacks,
+          longestWinStreak: payload.bestStreak ?? s.stats.longestWinStreak,
+        },
+        tableId: payload.highestTable ?? s.tableId,
+        notice: 'Compte connecté — crédit synchronisé.',
+      });
+      persist();
     },
 
     resetAll() {
