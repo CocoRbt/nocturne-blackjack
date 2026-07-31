@@ -25,6 +25,16 @@ import { RulesGuide } from './RulesGuide';
 
 const BET_PRESETS = [1_00, 5_00, 25_00, 100_00, 500_00] as const;
 const HISTORY_MAX = 18;
+const AUTO_MIN = 1.01;
+
+/** Parse un multiplicateur saisi (virgule ou point). */
+function parseAutoMult(raw: string): number | null {
+  const cleaned = raw.trim().replace(/\s/g, '').replace(',', '.');
+  if (!cleaned || cleaned === '.' || cleaned === '-') return null;
+  const n = Number(cleaned);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.floor(n * 100) / 100;
+}
 
 type HistoryEntry = { id: number; crashAt: number; cashed?: number };
 
@@ -60,6 +70,7 @@ export function CrashScreen() {
   const [betDraft, setBetDraft] = useState('5');
   const [autoOn, setAutoOn] = useState(false);
   const [autoAt, setAutoAt] = useState(2);
+  const [autoDraft, setAutoDraft] = useState('2');
   const [round, setRound] = useState<CrashRound>(() => createIdleRound());
   const [displayMult, setDisplayMult] = useState(1);
   const [samples, setSamples] = useState<FlightSample[]>([]);
@@ -367,12 +378,24 @@ export function CrashScreen() {
             <div className="crash-auto-row">
               <input
                 className="crash-auto-input"
-                type="number"
-                min={1.01}
-                step={0.01}
+                type="text"
+                inputMode="decimal"
                 disabled={!canBet || !autoOn}
-                value={autoAt}
-                onChange={(e) => setAutoAt(Math.max(1.01, Number(e.target.value) || 1.01))}
+                value={autoDraft}
+                aria-label="Multiplicateur d'encaissement auto"
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (!/^[0-9\s.,]*$/.test(raw)) return;
+                  setAutoDraft(raw);
+                  const n = parseAutoMult(raw);
+                  if (n != null && n >= AUTO_MIN) setAutoAt(n);
+                }}
+                onBlur={() => {
+                  const n = parseAutoMult(autoDraft);
+                  const clamped = Math.max(AUTO_MIN, n ?? autoAt);
+                  setAutoAt(clamped);
+                  setAutoDraft(String(clamped));
+                }}
               />
               <span className="crash-auto-x">×</span>
               <span className="crash-auto-odds">

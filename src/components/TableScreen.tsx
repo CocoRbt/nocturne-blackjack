@@ -87,21 +87,37 @@ export function TableScreen() {
     return () => mq.removeEventListener('change', onChange);
   }, [refreshSeatCapacity]);
 
-  useEffect(() => {
-    const el = stageRef.current;
-    if (!el) return;
-    const check = () => setStageScrollable(el.scrollHeight > el.clientHeight + 2);
-    check();
-    const ro = new ResizeObserver(check);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [round, display.resultsShown, betting]);
-
   const shoeRatio = shoeSize > 0 ? 1 - shoeDealt / shoeSize : 1;
   const broke = betting && balance < table.rules.minBet;
   const occupiedSeatCount = round?.seats.length ?? 0;
   const splitCount = round?.seats.reduce((max, seat) => Math.max(max, seat.hands.length), 0) ?? 0;
   const handScale = splitHandScale(splitCount);
+
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const check = () => {
+      const cluster = el.querySelector('.table-cluster') as HTMLElement | null;
+      // Mesurer le cluster (pas scrollHeight) : avec justify-content:center,
+      // le débordement haut n’augmente pas toujours scrollHeight (bug Android).
+      const needed = (cluster?.offsetHeight ?? el.scrollHeight) + 12;
+      setStageScrollable(needed > el.clientHeight + 2);
+    };
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    const cluster = el.querySelector('.table-cluster');
+    if (cluster) ro.observe(cluster);
+    return () => ro.disconnect();
+  }, [round, display.resultsShown, betting, occupiedSeatCount, splitCount]);
+
+  // Fin de manche : ramener le scroll en haut pour voir le croupier.
+  useEffect(() => {
+    if (!settled) return;
+    const el = stageRef.current;
+    if (!el) return;
+    el.scrollTop = 0;
+  }, [settled, display.resultsShown]);
 
   return (
     <div

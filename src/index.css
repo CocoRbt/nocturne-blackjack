@@ -1238,6 +1238,11 @@ button:disabled {
   overflow-x: clip;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* Sans flex-start, le centrage déborde en haut et scrollTop ne peut pas
+     remonter (cartes croupier coupées, surtout Android + barre navigateur). */
+  justify-content: flex-start;
+  padding-top: clamp(6px, 1.2vh, 14px);
+  padding-bottom: 8px;
 }
 /* Bloc table compact : l’écart croupier/joueur reste fixe, sans étirer le vide central */
 .table-cluster {
@@ -2648,12 +2653,23 @@ button:disabled {
   }
 
   .stage {
-    padding: 0 8px;
+    padding: 4px 8px 0;
+    justify-content: flex-start;
+  }
+
+  .stage.stage-scrollable {
+    padding-top: 4px;
+  }
+
+  .table-cluster {
+    gap: clamp(14px, 3vh, 28px);
   }
 
   .dealer-zone {
     min-height: 0;
     padding-inline: 40px;
+    /* Marge pour que les cartes ne passent pas sous la topbar au scroll 0 */
+    scroll-margin-top: 8px;
   }
   .table-shoe {
     width: 38px;
