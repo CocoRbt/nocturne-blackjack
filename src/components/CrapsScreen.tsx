@@ -17,6 +17,7 @@ import {
 import { notifyDefi } from '../defis/track';
 import { fmt } from '../lib/format';
 import { useGame } from '../store/gameStore';
+import { GameShell } from './GameShell';
 import { RulesGuide } from './RulesGuide';
 
 const BET_PRESETS = [1_00, 5_00, 25_00, 100_00, 500_00] as const;
@@ -197,7 +198,6 @@ function coachCopy(round: CrapsRound, hasLine: boolean, hasAnyBet: boolean): {
 
 export function CrapsScreen() {
   const balance = useGame((s) => s.balance);
-  const peakBalance = useGame((s) => s.peakBalance);
   const leaveCraps = useGame((s) => s.leaveCraps);
   const crapsDebit = useGame((s) => s.crapsDebit);
   const crapsCredit = useGame((s) => s.crapsCredit);
@@ -324,28 +324,14 @@ export function CrapsScreen() {
 
   return (
     <div className="craps-screen grain">
-      <header className="craps-topbar">
-        <button type="button" className="icon-btn" onClick={leaveCraps} aria-label="Retour lobby">
-          ←
-        </button>
-        <div className="craps-brand">
-          <span className="mono">Salon des jeux · Scraps</span>
-          <h1>Craps</h1>
-        </div>
-        <button
-          type="button"
-          className="icon-btn"
-          onClick={() => setRulesOpen(true)}
-          aria-label="Règles Craps"
-        >
-          ⓘ
-        </button>
-        <div className="craps-balance">
-          <span className="label">Crédit</span>
-          <span className="value">{fmt(balance)}</span>
-          <span className="peak">Pic {fmt(peakBalance)}</span>
-        </div>
-      </header>
+      <GameShell
+        accent="craps"
+        title="Craps"
+        eyebrow="Salon des jeux · Scraps"
+        onBack={leaveCraps}
+        onRules={() => setRulesOpen(true)}
+        rulesLabel="Règles Craps"
+      />
 
       <div className="craps-layout">
         <aside className="craps-panel">

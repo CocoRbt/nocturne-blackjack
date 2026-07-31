@@ -1961,6 +1961,7 @@ button:disabled {
   --seat-n: 7;
 }
 .seat-tab {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2011,6 +2012,16 @@ button:disabled {
   letter-spacing: 0.04em;
   color: var(--ink-faint);
 }
+.seat-tab-hint {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--brass);
+  opacity: 0.85;
+  pointer-events: none;
+}
 
 .focused-seat-bets {
   display: flex;
@@ -2028,12 +2039,16 @@ button:disabled {
   font-size: 15px;
   color: var(--ink);
 }
-.focused-seat-caption span {
+.focused-seat-caption span,
+.focused-seat-touch-hint {
   font-family: var(--font-ui);
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-faint);
+}
+.focused-seat-touch-hint {
+  display: none;
 }
 
 .seat-capacity-hint {
@@ -2713,22 +2728,42 @@ button:disabled {
   }
   .seat-tabs {
     width: min(100%, 94vw);
-    gap: 5px;
+    gap: 4px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .seat-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .seat-tabs[data-seat-capacity='7'] {
+    grid-template-columns: repeat(7, minmax(40px, 1fr));
+    width: 100%;
   }
   .seat-tab {
-    min-height: 48px;
-    padding: 5px 2px;
-    border-radius: 12px;
+    min-height: 44px;
+    padding: 4px 2px;
+    border-radius: 10px;
+    gap: 1px;
   }
   .seat-tab-num {
     font-size: 9px;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
   }
   .seat-tab-main {
-    font-size: 13px;
+    font-size: 12px;
   }
   .seat-tab-sides {
-    font-size: 9px;
+    display: none;
+  }
+  .seat-tab-hint {
+    top: 2px;
+    right: 3px;
+    font-size: 11px;
+  }
+  .focused-seat-touch-hint {
+    display: block;
   }
   .betting-board {
     gap: 6px;
@@ -2905,30 +2940,64 @@ button:disabled {
   flex-direction: column;
   padding: 0 16px 28px;
 }
-.mines-topbar {
+/* Topbar partagée salons (Mines / Craps / Crash) */
+.game-topbar {
   display: flex;
   align-items: center;
   gap: 14px;
   padding: max(14px, env(safe-area-inset-top)) 4px 18px;
 }
-.mines-brand {
+.game-shell-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  background: transparent;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.game-shell-back:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: var(--line);
+  background: rgba(0, 0, 0, 0.2);
+}
+.game-shell-back:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.game-brand {
   flex: 1;
   min-width: 0;
 }
-.mines-brand .mono {
+.game-brand .mono {
   font-size: 10px;
   letter-spacing: 0.28em;
   text-transform: uppercase;
+  color: var(--brass);
+}
+.game-topbar[data-accent='mines'] .game-brand .mono {
   color: var(--mines-gem);
 }
-.mines-brand h1 {
+.game-topbar[data-accent='craps'] .game-brand .mono {
+  color: var(--brass);
+}
+.game-topbar[data-accent='crash'] .game-brand .mono {
+  color: var(--crash-accent, #e0785a);
+}
+.game-brand h1 {
   font-family: var(--font-display);
   font-weight: 380;
   font-size: clamp(28px, 5vw, 36px);
   letter-spacing: 0.12em;
   line-height: 1.05;
 }
-.mines-balance {
+.game-balance {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -2938,17 +3007,17 @@ button:disabled {
   border: 1px solid var(--line);
   background: rgba(0, 0, 0, 0.28);
 }
-.mines-balance .label {
+.game-balance .label {
   font-size: 9px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--ink-faint);
 }
-.mines-balance .value {
+.game-balance .value {
   font-family: var(--font-display);
   font-size: 20px;
 }
-.mines-balance .peak {
+.game-balance .peak {
   font-size: 10px;
   color: var(--ink-faint);
 }
@@ -3224,53 +3293,6 @@ button:disabled {
   display: flex;
   flex-direction: column;
   padding: 0 16px 28px;
-}
-.craps-topbar {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: max(14px, env(safe-area-inset-top)) 4px 18px;
-}
-.craps-brand {
-  flex: 1;
-  min-width: 0;
-}
-.craps-brand .mono {
-  font-size: 10px;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: var(--brass);
-}
-.craps-brand h1 {
-  font-family: var(--font-display);
-  font-weight: 380;
-  font-size: clamp(28px, 5vw, 36px);
-  letter-spacing: 0.12em;
-  line-height: 1.05;
-}
-.craps-balance {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  padding: 8px 14px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: rgba(0, 0, 0, 0.28);
-}
-.craps-balance .label {
-  font-size: 9px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-.craps-balance .value {
-  font-family: var(--font-display);
-  font-size: 20px;
-}
-.craps-balance .peak {
-  font-size: 10px;
-  color: var(--ink-faint);
 }
 .craps-layout {
   display: grid;
@@ -3815,52 +3837,8 @@ button:disabled {
   flex-direction: column;
   padding: 0 16px 28px;
 }
-.crash-topbar {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: max(14px, env(safe-area-inset-top)) 4px 12px;
-}
-.crash-brand {
-  flex: 1;
-  min-width: 0;
-}
-.crash-brand .mono {
-  font-size: 10px;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: var(--crash-accent);
-}
-.crash-brand h1 {
-  font-family: var(--font-display);
-  font-weight: 380;
-  font-size: clamp(28px, 5vw, 36px);
-  letter-spacing: 0.12em;
-  line-height: 1.05;
-}
-.crash-balance {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  padding: 8px 14px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: rgba(0, 0, 0, 0.28);
-}
-.crash-balance .label {
-  font-size: 9px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-.crash-balance .value {
-  font-family: var(--font-display);
-  font-size: 20px;
-}
-.crash-balance .peak {
-  font-size: 10px;
-  color: var(--ink-faint);
+.crash-screen .game-topbar {
+  padding-bottom: 12px;
 }
 .crash-history {
   display: flex;
@@ -4238,25 +4216,22 @@ button:disabled {
   .crash-mult-value {
     font-size: clamp(36px, 14vw, 64px);
   }
-  .crash-topbar,
-  .mines-topbar,
-  .craps-topbar {
+  .game-topbar {
     gap: 8px;
     padding-inline: 0;
   }
-  .crash-balance,
-  .mines-balance,
-  .craps-balance {
+  .game-shell-back {
+    padding: 8px 6px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+  }
+  .game-balance {
     padding: 6px 10px;
   }
-  .crash-balance .value,
-  .mines-balance .value,
-  .craps-balance .value {
+  .game-balance .value {
     font-size: 17px;
   }
-  .crash-brand h1,
-  .mines-brand h1,
-  .craps-brand h1 {
+  .game-brand h1 {
     font-size: clamp(22px, 7vw, 30px);
   }
   .crash-screen,

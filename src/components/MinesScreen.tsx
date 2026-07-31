@@ -16,6 +16,7 @@ import {
 import { notifyDefi } from '../defis/track';
 import { minesMultiplier, payoutCents } from '../mines/math';
 import { useGame } from '../store/gameStore';
+import { GameShell } from './GameShell';
 import { RulesGuide } from './RulesGuide';
 
 const BET_PRESETS = [1_00, 5_00, 25_00, 100_00, 500_00] as const;
@@ -81,7 +82,6 @@ function MineIcon() {
 
 export function MinesScreen() {
   const balance = useGame((s) => s.balance);
-  const peakBalance = useGame((s) => s.peakBalance);
   const leaveMines = useGame((s) => s.leaveMines);
   const minesDebit = useGame((s) => s.minesDebit);
   const minesCredit = useGame((s) => s.minesCredit);
@@ -202,28 +202,14 @@ export function MinesScreen() {
 
   return (
     <div className="mines-screen grain">
-      <header className="mines-topbar">
-        <button type="button" className="icon-btn" onClick={leaveMines} aria-label="Retour lobby">
-          ←
-        </button>
-        <div className="mines-brand">
-          <span className="mono">Salon des jeux</span>
-          <h1>Mines</h1>
-        </div>
-        <button
-          type="button"
-          className="icon-btn"
-          onClick={() => setRulesOpen(true)}
-          aria-label="Règles Mines"
-        >
-          ⓘ
-        </button>
-        <div className="mines-balance">
-          <span className="label">Crédit</span>
-          <span className="value">{fmt(balance)}</span>
-          <span className="peak">Pic {fmt(peakBalance)}</span>
-        </div>
-      </header>
+      <GameShell
+        accent="mines"
+        title="Mines"
+        eyebrow="Salon des jeux"
+        onBack={leaveMines}
+        onRules={() => setRulesOpen(true)}
+        rulesLabel="Règles Mines"
+      />
 
       <div className="mines-layout">
         <aside className="mines-panel">

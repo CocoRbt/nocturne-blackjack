@@ -20,6 +20,7 @@ import { CRASH_RTP, payoutCents, reachChance } from '../crash/math';
 import { notifyDefi } from '../defis/track';
 import { fmt, fmtMult } from '../lib/format';
 import { useGame } from '../store/gameStore';
+import { GameShell } from './GameShell';
 import { RulesGuide } from './RulesGuide';
 
 const BET_PRESETS = [1_00, 5_00, 25_00, 100_00, 500_00] as const;
@@ -49,7 +50,6 @@ function PlaneIcon({ crashed }: { crashed?: boolean }) {
 
 export function CrashScreen() {
   const balance = useGame((s) => s.balance);
-  const peakBalance = useGame((s) => s.peakBalance);
   const leaveCrash = useGame((s) => s.leaveCrash);
   const crashDebit = useGame((s) => s.crashDebit);
   const crashCredit = useGame((s) => s.crashCredit);
@@ -234,37 +234,18 @@ export function CrashScreen() {
 
   return (
     <div className="crash-screen grain">
-      <header className="crash-topbar">
-        <button
-          type="button"
-          className="icon-btn"
-          onClick={() => {
-            if (!inFlight) leaveCrash();
-          }}
-          aria-label="Retour lobby"
-          disabled={inFlight}
-          title={inFlight ? 'Attendez la fin du vol' : 'Retour'}
-        >
-          ←
-        </button>
-        <div className="crash-brand">
-          <span className="mono">Salon des jeux · Crash</span>
-          <h1>Crash</h1>
-        </div>
-        <button
-          type="button"
-          className="icon-btn"
-          onClick={() => setRulesOpen(true)}
-          aria-label="Règles Crash"
-        >
-          ⓘ
-        </button>
-        <div className="crash-balance">
-          <span className="label">Crédit</span>
-          <span className="value">{fmt(balance)}</span>
-          <span className="peak">Pic {fmt(peakBalance)}</span>
-        </div>
-      </header>
+      <GameShell
+        accent="crash"
+        title="Crash"
+        eyebrow="Salon des jeux · Crash"
+        onBack={() => {
+          if (!inFlight) leaveCrash();
+        }}
+        backDisabled={inFlight}
+        backTitle={inFlight ? 'Attendez la fin du vol' : 'Retour Lobby'}
+        onRules={() => setRulesOpen(true)}
+        rulesLabel="Règles Crash"
+      />
 
       {history.length > 0 && (
         <div className="crash-history" aria-label="Historique des crashs">

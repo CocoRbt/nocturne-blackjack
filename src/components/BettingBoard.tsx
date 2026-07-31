@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { getTable } from '../engine/rules';
 import { SIDE_BET_DEFS } from '../engine/sidebets';
 import type { SideBetId } from '../engine/types';
@@ -9,6 +10,9 @@ import { Chip, ChipStack } from './ChipView';
 
 /** Ordre Stake / Evolution : 21+3 à gauche, main au centre, Paires à droite. */
 const SPOT_ORDER: BetSpot[] = ['twentyOnePlusThree', 'main', 'perfectPairs'];
+
+/** Long-press tactile pour ajouter un jeton sur la place (remplace le double-clic). */
+const SEAT_LONG_PRESS_MS = 420;
 
 function emptyStacks(): SeatStacks {
   return {
@@ -88,22 +92,68 @@ function SeatTab({
   const sides =
     spotAmount(stacks, 'twentyOnePlusThree') + spotAmount(stacks, 'perfectPairs');
 
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
+
+  const clearLongPress = () => {
+    if (longPressTimer.current != null) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const addMainChip = () => {
+    selectSeat(seatIndex);
+    addChip('main');
+  };
+
+  const onPointerDown = () => {
+    longPressFired.current = false;
+    clearLongPress();
+    longPressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      addMainChip();
+      longPressTimer.current = null;
+    }, SEAT_LONG_PRESS_MS);
+  };
+
+  const onPointerUpOrCancel = () => {
+    clearLongPress();
+  };
+
   return (
     <button
       type="button"
       className={`seat-tab ${selected ? 'selected' : ''} ${main > 0 ? 'occupied' : ''}`}
-      onClick={() => selectSeat(seatIndex)}
-      onDoubleClick={() => {
+      onClick={() => {
+        if (longPressFired.current) {
+          longPressFired.current = false;
+          return;
+        }
+        // 2ᵉ tap / clic sur la place déjà sélectionnée = ajouter un jeton (tactile + souris)
+        if (selected) {
+          addChip('main');
+          return;
+        }
         selectSeat(seatIndex);
-        addChip('main');
       }}
-      aria-label={`Place ${seatIndex + 1}${main > 0 ? `, mise ${fmt(main)}` : ''}`}
+      onPointerDown={onPointerDown}
+      onPointerUp={onPointerUpOrCancel}
+      onPointerCancel={onPointerUpOrCancel}
+      onPointerLeave={onPointerUpOrCancel}
+      aria-label={
+        selected
+          ? `Place ${seatIndex + 1}${main > 0 ? `, mise ${fmt(main)}` : ''}. Touchez à nouveau ou maintenez pour ajouter un jeton`
+          : `Place ${seatIndex + 1}${main > 0 ? `, mise ${fmt(main)}` : ''}`
+      }
       aria-pressed={selected}
+      title={selected ? 'Touchez à nouveau ou maintenez pour ajouter un jeton' : undefined}
       data-seat-id={seatIndex}
     >
       <span className="seat-tab-num">{seatIndex + 1}</span>
       <span className="seat-tab-main">{main > 0 ? fmt(main) : '—'}</span>
       {sides > 0 && <span className="seat-tab-sides">+{fmt(sides)}</span>}
+      {selected && <span className="seat-tab-hint" aria-hidden>+</span>}
     </button>
   );
 }
@@ -154,7 +204,10 @@ export function BettingBoard() {
         </div>
 
         <div className="focused-seat-bets" data-seat-id={activeSeat}>
-          <div className="focused-seat-caption">Place {activeSeat + 1}</div>
+          <div className="focused-seat-caption">
+            Place {activeSeat + 1}
+            <span className="focused-seat-touch-hint">Retouchez la place ou maintenez pour + jeton</span>
+          </div>
           <div className="spots-row">
             {SPOT_ORDER.filter((s) => enabled.has(s)).map((spot) => {
               if (spot === 'main') {

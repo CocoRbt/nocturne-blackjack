@@ -117,7 +117,7 @@ export function TableScreen() {
     >
       <div className="topbar">
         <button className="back" onClick={leaveTable}>
-          ← Salon
+          ← Lobby
         </button>
         <div>
           <div className="table-name">{table.name}</div>
