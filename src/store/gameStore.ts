@@ -33,6 +33,7 @@ import {
   type Stats,
 } from './persistence';
 import { creditWithoutGame, settleGamePeak } from './peakMeta';
+import { markScoreDirty } from '../cercle/scoreSync';
 import { TIMING, type GameSpeed } from './timing';
 
 export type BetSpot = 'main' | SideBetId;
@@ -147,6 +148,8 @@ interface GameState {
   nextRound(): void;
   toggleSound(): void;
   setGameSpeed(speed: GameSpeed): void;
+  /** Crédite une récompense de défi (ne compte pas comme partie). */
+  creditDefiReward(amountCents: number, label: string): void;
   refill(): void;
   resetAll(): void;
   dismissNotice(): void;
@@ -451,6 +454,7 @@ export const useGame = create<GameState>((set, get) => {
 
     persist();
     bump();
+    markScoreDirty();
   };
 
   const presentSettlement = () => {
@@ -668,6 +672,7 @@ export const useGame = create<GameState>((set, get) => {
         notice: null,
       });
       persist();
+      markScoreDirty();
       return true;
     },
 
@@ -688,6 +693,7 @@ export const useGame = create<GameState>((set, get) => {
         gamesBeforePeak: settled.gamesBeforePeak,
       });
       persist();
+      markScoreDirty();
     },
 
     enterCraps() {
@@ -717,6 +723,7 @@ export const useGame = create<GameState>((set, get) => {
         notice: null,
       });
       persist();
+      markScoreDirty();
       return true;
     },
 
@@ -737,6 +744,7 @@ export const useGame = create<GameState>((set, get) => {
         gamesBeforePeak: settled.gamesBeforePeak,
       });
       persist();
+      markScoreDirty();
     },
 
     enterCrash() {
@@ -766,6 +774,7 @@ export const useGame = create<GameState>((set, get) => {
         notice: null,
       });
       persist();
+      markScoreDirty();
       return true;
     },
 
@@ -786,6 +795,7 @@ export const useGame = create<GameState>((set, get) => {
         gamesBeforePeak: settled.gamesBeforePeak,
       });
       persist();
+      markScoreDirty();
     },
 
     selectChip(denom) {
@@ -983,6 +993,7 @@ export const useGame = create<GameState>((set, get) => {
       syncShoe();
       persist();
       bump();
+      markScoreDirty();
 
       // Chorégraphie : une pulsation par carte distribuée sur la table.
       for (let i = 0; i < dealCardCount; i++) {
@@ -1124,6 +1135,25 @@ export const useGame = create<GameState>((set, get) => {
       sounds.play('click');
     },
 
+    creditDefiReward(amountCents, label) {
+      const amount = Math.max(0, Math.floor(amountCents));
+      if (amount <= 0) return;
+      const s = get();
+      const settled = creditWithoutGame(s.balance, amount, {
+        peakBalance: s.peakBalance,
+        gamesPlayed: s.gamesPlayed,
+        gamesBeforePeak: s.gamesBeforePeak,
+      });
+      set({
+        balance: settled.balance,
+        peakBalance: settled.peakBalance,
+        gamesBeforePeak: settled.gamesBeforePeak,
+        notice: `Défi accompli — ${label} · +${Math.floor(amount / 100)} crédit`,
+      });
+      persist();
+      markScoreDirty();
+    },
+
     refill() {
       const s = get();
       if (s.round) return;
@@ -1141,6 +1171,7 @@ export const useGame = create<GameState>((set, get) => {
         notice: 'Crédit reconstitué.',
       });
       persist();
+      markScoreDirty();
     },
 
     resetAll() {

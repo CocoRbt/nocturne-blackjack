@@ -1,7 +1,9 @@
 import {
   defiById,
+  defiRewardCents,
   pickDailyDefis,
   todayKey,
+  DEFI_FULL_CLEAR_BONUS_CENTS,
   type DefiDef,
   type DefiMetric,
 } from './catalog'
@@ -22,6 +24,12 @@ export interface DefiDayState {
   counters: Partial<Record<DefiMetric, number>>
   baseline: DefiBaseline
   completed: string[]
+  /** Défis déjà récompensés (crédit versé). */
+  claimed: string[]
+  /** Bonus 3/3 déjà versé. */
+  fullClearClaimed: boolean
+  /** Titres / badges cosmétique du jour. */
+  badges: string[]
 }
 
 export interface DefiView {
@@ -29,7 +37,16 @@ export interface DefiView {
   progress: number
   target: number
   done: boolean
+  claimed: boolean
   pct: number
+  rewardCents: number
+}
+
+export interface DefiClaimResult {
+  rewards: { id: string; title: string; cents: number }[]
+  fullClearBonus: number
+  badges: string[]
+  totalCents: number
 }
 
 function emptyCounters(): Partial<Record<DefiMetric, number>> {
@@ -48,7 +65,13 @@ function loadRaw(): DefiDayState | null {
   try {
     const raw = localStorage.getItem(KEY)
     if (!raw) return null
-    return JSON.parse(raw) as DefiDayState
+    const parsed = JSON.parse(raw) as DefiDayState
+    return {
+      ...parsed,
+      claimed: parsed.claimed ?? [],
+      fullClearClaimed: parsed.fullClearClaimed ?? false,
+      badges: parsed.badges ?? [],
+    }
   } catch {
     return null
   }
@@ -65,7 +88,12 @@ function save(state: DefiDayState) {
 export function ensureDefiDay(baseline: DefiBaseline, day = todayKey()): DefiDayState {
   const existing = loadRaw()
   if (existing && existing.day === day && existing.challengeIds.length > 0) {
-    return existing
+    return {
+      ...existing,
+      claimed: existing.claimed ?? [],
+      fullClearClaimed: existing.fullClearClaimed ?? false,
+      badges: existing.badges ?? [],
+    }
   }
   const challenges = pickDailyDefis(day)
   const next: DefiDayState = {
@@ -74,6 +102,9 @@ export function ensureDefiDay(baseline: DefiBaseline, day = todayKey()): DefiDay
     counters: emptyCounters(),
     baseline: { ...baseline },
     completed: [],
+    claimed: [],
+    fullClearClaimed: false,
+    badges: [],
   }
   save(next)
   return next
@@ -115,7 +146,9 @@ export function listDefiViews(live: DefiBaseline): DefiView[] {
         progress: done ? def.target : progress,
         target: def.target,
         done,
+        claimed: state.claimed.includes(def.id),
         pct: Math.min(100, Math.round((progress / def.target) * 100)),
+        rewardCents: defiRewardCents(def),
       }
     })
 }
@@ -123,7 +156,6 @@ export function listDefiViews(live: DefiBaseline): DefiView[] {
 /** Recalcule les complétions à partir des stats live + compteurs. */
 export function syncDefiProgress(live: DefiBaseline): DefiDayState {
   const state = ensureDefiDay(live)
-  // Suivi du meilleur gain net du jour (pic de crédit depuis baseline)
   const gain = Math.max(0, live.balance - state.baseline.balance)
   if (gain > (state.counters.gain_cents ?? 0)) {
     state.counters.gain_cents = gain
@@ -138,6 +170,43 @@ export function syncDefiProgress(live: DefiBaseline): DefiDayState {
   state.completed = [...completed]
   save(state)
   return state
+}
+
+/**
+ * Verse les récompenses des défis nouvellement complétés (crédit + badge).
+ * Idempotent via `claimed` / `fullClearClaimed`.
+ */
+export function claimPendingDefiRewards(live: DefiBaseline): DefiClaimResult {
+  const state = syncDefiProgress(live)
+  const rewards: DefiClaimResult['rewards'] = []
+  const badges = [...state.badges]
+  const claimed = new Set(state.claimed)
+
+  for (const id of state.completed) {
+    if (claimed.has(id)) continue
+    const def = defiById(id)
+    if (!def) continue
+    const cents = defiRewardCents(def)
+    rewards.push({ id, title: def.title, cents })
+    claimed.add(id)
+    if (!badges.includes(def.title)) badges.push(def.title)
+  }
+
+  let fullClearBonus = 0
+  const allClaimed =
+    state.challengeIds.length > 0 && state.challengeIds.every((id) => claimed.has(id))
+  if (allClaimed && !state.fullClearClaimed) {
+    fullClearBonus = DEFI_FULL_CLEAR_BONUS_CENTS
+    state.fullClearClaimed = true
+    if (!badges.includes('Trio du soir')) badges.push('Trio du soir')
+  }
+
+  state.claimed = [...claimed]
+  state.badges = badges
+  save(state)
+
+  const totalCents = rewards.reduce((sum, r) => sum + r.cents, 0) + fullClearBonus
+  return { rewards, fullClearBonus, badges, totalCents }
 }
 
 export type DefiEvent =
@@ -170,4 +239,8 @@ export function trackDefiEvent(event: DefiEvent, live: DefiBaseline): DefiDaySta
 export function completedCount(live: DefiBaseline): { done: number; total: number } {
   const views = listDefiViews(live)
   return { done: views.filter((v) => v.done).length, total: views.length }
+}
+
+export function todaysBadges(live: DefiBaseline): string[] {
+  return ensureDefiDay(live).badges
 }

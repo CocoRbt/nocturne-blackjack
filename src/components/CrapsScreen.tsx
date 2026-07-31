@@ -66,13 +66,13 @@ const BET_COPY: Record<
     badge: 'Le plus simple',
     win: 'Gagne si 7 ou 11 tout de suite, ou si le point sort avant un 7',
     lose: 'Perd sur 2, 3, 12 au come-out, ou sur un 7 avant le point',
-    tip: 'Mise classique du shooter — commence ici.',
+    tip: 'Mise classique du shooter — commencez ici.',
   },
   dont_pass: {
     title: 'Don’t Pass',
     win: 'Gagne sur 2 ou 3 au come-out, ou si un 7 sort avant le point',
-    lose: 'Perd sur 7 ou 11 ; sur 12 tu es remboursé (bar)',
-    tip: 'Tu joues contre le shooter.',
+    lose: 'Perd sur 7 ou 11 ; sur 12 vous êtes remboursé (bar)',
+    tip: 'Vous jouez contre le shooter.',
   },
   field: {
     title: 'Field',
@@ -171,26 +171,26 @@ function coachCopy(round: CrapsRound, hasLine: boolean, hasAnyBet: boolean): {
     return {
       step: 'Étape 3',
       title: `Point ${round.point} en jeu`,
-      body: `Il faut refaire un ${round.point} avant un 7. Tu peux ajouter des Odds derrière Pass, ou du Field à chaque lancer.`,
+      body: `Il faut refaire un ${round.point} avant un 7. Vous pouvez ajouter des Odds derrière Pass, ou du Field à chaque lancer.`,
     };
   }
   if (!hasAnyBet) {
     return {
       step: 'Étape 1',
-      title: 'Place une mise',
-      body: 'Commence par Pass Line (recommandé) : tu gagnes tout de suite sur 7 ou 11. Don’t Pass joue l’inverse. Field = un seul lancer.',
+      title: 'Placez une mise',
+      body: 'Commencez par Pass Line (recommandé) : vous gagnez tout de suite sur 7 ou 11. Don’t Pass joue l’inverse. Field = un seul lancer.',
     };
   }
   if (!hasLine && round.bets.field > 0) {
     return {
       step: 'Étape 2',
-      title: 'Lance les dés',
-      body: 'Tu n’as que du Field : le résultat se joue sur ce lancer uniquement (2,3,4,9,10,11,12 gagnent).',
+      title: 'Lancez les dés',
+      body: 'Vous n’avez que du Field : le résultat se joue sur ce lancer uniquement (2,3,4,9,10,11,12 gagnent).',
     };
   }
   return {
     step: 'Étape 2',
-    title: 'Lance les dés',
+    title: 'Lancez les dés',
     body: 'Come-out : 7 ou 11 = Pass gagne. 2, 3, 12 = Pass perd. Autre total = on établit le point.',
   };
 }
@@ -428,7 +428,7 @@ export function CrapsScreen() {
           </ul>
 
           <p className="craps-footnote">
-            Clique une zone pour y poser le jeton · ⓘ pour le guide complet
+            Cliquez une zone pour y poser le jeton · ⓘ pour le guide complet
           </p>
         </aside>
 

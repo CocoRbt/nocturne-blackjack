@@ -23,6 +23,17 @@ export interface DefiDef {
   target: number
   /** Pour mines_mult / crash_mult : seuil multiplicateur. */
   threshold?: number
+  /** Récompense en centimes à la complétion (défaut 5 crédits). */
+  rewardCents?: number
+}
+
+/** Récompense standard par défi. */
+export const DEFI_REWARD_CENTS = 5_00
+/** Bonus si les 3 défis du jour sont faits. */
+export const DEFI_FULL_CLEAR_BONUS_CENTS = 15_00
+
+export function defiRewardCents(def: DefiDef): number {
+  return def.rewardCents ?? DEFI_REWARD_CENTS
 }
 
 export const DEFI_CATALOG: DefiDef[] = [

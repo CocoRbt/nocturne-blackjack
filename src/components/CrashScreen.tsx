@@ -243,12 +243,12 @@ export function CrashScreen() {
           }}
           aria-label="Retour lobby"
           disabled={inFlight}
-          title={inFlight ? 'Attends la fin du vol' : 'Retour'}
+          title={inFlight ? 'Attendez la fin du vol' : 'Retour'}
         >
           ←
         </button>
         <div className="crash-brand">
-          <span className="mono">Salon des jeux · Stake-like</span>
+          <span className="mono">Salon des jeux · Crash</span>
           <h1>Crash</h1>
         </div>
         <button
@@ -381,7 +381,7 @@ export function CrashScreen() {
                 disabled={!canBet}
                 onChange={(e) => setAutoOn(e.target.checked)}
               />
-              Auto cashout
+              Encaissement auto
             </label>
             <div className="crash-auto-row">
               <input

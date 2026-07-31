@@ -1,5 +1,18 @@
 import { fmtNet } from '../lib/format';
-import { useGame } from '../store/gameStore';
+import { useGame, type GoalId } from '../store/gameStore';
+
+function goalShort(id: GoalId): string {
+  switch (id) {
+    case 'reach6100':
+      return 'Objectif +1 100';
+    case 'hands20':
+      return 'Objectif 20 manches';
+    case 'bj2':
+      return 'Objectif 2 blackjacks';
+    default:
+      return 'Objectif';
+  }
+}
 
 /** HUD session : net, streak, objectif soft. */
 export function SessionHud() {
@@ -17,7 +30,9 @@ export function SessionHud() {
       {streak >= 2 && <span className="session-streak">×{streak}</span>}
       {session.goalId !== 'none' && (
         <span className={`session-goal ${session.goalDone ? 'done' : ''}`}>
-          {session.goalDone ? 'Objectif ✓' : `${goalPct}%`}
+          {session.goalDone
+            ? `${goalShort(session.goalId)} ✓`
+            : `${goalShort(session.goalId)} · ${goalPct}%`}
         </span>
       )}
     </div>

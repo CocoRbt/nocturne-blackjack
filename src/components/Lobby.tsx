@@ -9,7 +9,9 @@ import {
   type PrivateLimits,
   type TableConfig,
 } from '../engine/rules';
+import { completedCount } from '../defis/store';
 import { fmt } from '../lib/format';
+import { STARTING_BALANCE } from '../store/persistence';
 import { useGame } from '../store/gameStore';
 import { formatGamesBeforePeak } from '../store/peakMeta';
 import { CircleDrawer } from './CircleDrawer';
@@ -47,6 +49,11 @@ export function Lobby() {
 
   const tables = useMemo(() => allLobbyTables(privateLimits), [privateLimits]);
   const broke = balance < tables[0].rules.minBet;
+  const firstRun = peakBalance <= STARTING_BALANCE && balance <= STARTING_BALANCE * 2;
+  const handsPlayed = useGame((s) => s.stats.handsPlayed);
+  const wins = useGame((s) => s.stats.wins);
+  const blackjacks = useGame((s) => s.stats.blackjacks);
+  const defis = completedCount({ handsPlayed, wins, blackjacks, balance });
 
   const onEnter = (t: TableConfig) => {
     if (t.id === PRIVATE_TABLE_ID) {
@@ -163,12 +170,26 @@ export function Lobby() {
           Pic {fmt(peakBalance)}
           <span className="peak-meta"> · {formatGamesBeforePeak(gamesBeforePeak)}</span>
         </span>
+        <p className="lobby-peak-hint">
+          Le pic est votre record — il ouvre les tables plus hautes. Vous pouvez toujours redescendre.
+        </p>
         {broke && (
           <button className="btn primary" onClick={refill} style={{ marginLeft: 10 }}>
             Reconstituer
           </button>
         )}
       </motion.div>
+
+      <div className="lobby-quick-actions">
+        <button
+          type="button"
+          className={`lobby-defis-pill ${defis.done === defis.total ? 'done' : ''}`}
+          onClick={() => setCircleOpen(true)}
+        >
+          Défis {defis.done}/{defis.total}
+          <span className="dim"> · cercle &amp; classement</span>
+        </button>
+      </div>
 
       {notice && (
         <div className="lobby-notice" role="status">
@@ -187,7 +208,9 @@ export function Lobby() {
           return (
             <motion.button
               key={t.id}
-              className={`table-card ${locked ? 'locked' : ''} ${!canSit && unlocked ? 'too-poor' : ''}`}
+              className={`table-card ${locked ? 'locked' : ''} ${!canSit && unlocked ? 'too-poor' : ''} ${
+                firstRun && t.id === 'emeraude' && unlocked ? 'first-run' : ''
+              } ${firstRun && t.id !== 'emeraude' ? 'first-run-dim' : ''}`}
               data-felt={t.felt}
               disabled={locked}
               onClick={() => onEnter(t)}
@@ -197,6 +220,9 @@ export function Lobby() {
             >
               <div className="felt-preview" />
               <div className="body">
+                {firstRun && t.id === 'emeraude' && unlocked && (
+                  <span className="start-here">Commencez ici</span>
+                )}
                 <h2>{t.name}</h2>
                 <p className="tagline">{t.tagline}</p>
                 <p className="table-motto-card">{t.identity.motto}</p>
@@ -245,7 +271,7 @@ export function Lobby() {
             </div>
             <div className="mines-card-body">
               <h3>Mines</h3>
-              <p>Grille 5×5 · choisis tes bombes · diamants &amp; multiplicateur · encaisser quand tu veux.</p>
+              <p>Grille 5×5 · choisissez vos bombes · diamants &amp; multiplicateur · encaisser quand vous voulez.</p>
               <span className="enter">Entrer dans le salon →</span>
             </div>
           </motion.button>
@@ -292,7 +318,7 @@ export function Lobby() {
         <div className="private-modal" role="dialog" aria-modal="true">
           <div className="private-panel">
             <h3>Table Privée</h3>
-            <p>Choisis tes limites — bornées, pour garder un vrai salon VIP.</p>
+            <p>Choisissez vos limites — bornées, pour garder un vrai salon VIP.</p>
             <label>
               Mise minimale
               <select
@@ -347,7 +373,7 @@ export function Lobby() {
       <div className="lobby-foot">
         <p>
           Jeu fictif : jetons virtuels uniquement, sans argent réel, dépôt ni retrait.
-          Les tables se débloquent avec ton pic de crédit — tu peux toujours redescendre.
+          Les tables se débloquent avec votre pic de crédit — vous pouvez toujours redescendre.
         </p>
         <button
           className="btn ghost"

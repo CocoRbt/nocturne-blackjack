@@ -275,27 +275,27 @@ function CrashRules() {
     <>
       <IlluCrash />
       <p className="rules-lead">
-        Un multiplicateur part de 1,00× et grimpe. Encaisse avant que l’avion ne crash — sinon la mise est perdue.
+        Un multiplicateur part de 1,00× et grimpe. Encaissez avant que l’avion ne crash — sinon la mise est perdue.
       </p>
       <section className="rules-section">
         <h3>Déroulement</h3>
         <ol className="rules-steps">
           <li>
             <span className="n">1</span>
-            <span>Choisis ta mise (et optionnellement un auto-cashout), puis Décoller.</span>
+            <span>Choisissez votre mise (et optionnellement un encaissement auto), puis Décoller.</span>
           </li>
           <li>
             <span className="n">2</span>
-            <span>Le multiplicateur monte en temps réel. Clique Encaisser quand tu veux.</span>
+            <span>Le multiplicateur monte en temps réel. Cliquez Encaisser quand vous voulez.</span>
           </li>
           <li>
             <span className="n">3</span>
-            <span>Si l’avion crash avant ton encaissement, tu perds. Gain = mise × multiplicateur.</span>
+            <span>Si l’avion crash avant votre encaissement, vous perdez. Gain = mise × multiplicateur.</span>
           </li>
         </ol>
       </section>
       <section className="rules-section">
-        <h3>Fairness · Stake-like</h3>
+        <h3>Équité du tirage</h3>
         <div className="rules-grid">
           <RuleRow label="RTP" value="99 %" />
           <RuleRow label="Instant crash ~1 %" value="1,00×" />
@@ -304,8 +304,8 @@ function CrashRules() {
         </div>
       </section>
       <div className="rules-callout">
-        <strong>Auto cashout</strong>
-        <span>Définis un seuil (ex. 2×) pour encaisser automatiquement dès qu’il est atteint.</span>
+        <strong>Encaissement auto</strong>
+        <span>Définissez un seuil (ex. 2×) pour encaisser automatiquement dès qu’il est atteint.</span>
       </div>
       <p className="rules-foot">Point de crash tiré au décollage · crypto.getRandomValues · crédit partagé</p>
     </>
@@ -317,8 +317,8 @@ function CrapsRules() {
     <>
       <IlluCraps />
       <p className="rules-lead">
-        Scraps — tu lances toujours. Commence par Pass Line : 7 ou 11 = tu gagnes tout de suite.
-        Sinon un « point » est fixé, et tu dois le refaire avant un 7.
+        Scraps — vous lancez toujours. Commencez par Pass Line : 7 ou 11 = vous gagnez tout de suite.
+        Sinon un « point » est fixé, et vous devez le refaire avant un 7.
       </p>
       <section className="rules-section">
         <h3>En 3 étapes</h3>
@@ -326,7 +326,7 @@ function CrapsRules() {
           <li>
             <span className="n">1</span>
             <span>
-              <strong>Mise</strong> — pose un jeton sur Pass Line (le plus simple). Don’t Pass = l’inverse. Field = un seul lancer.
+              <strong>Mise</strong> — posez un jeton sur Pass Line (le plus simple). Don’t Pass = l’inverse. Field = un seul lancer.
             </span>
           </li>
           <li>
@@ -338,7 +338,7 @@ function CrapsRules() {
           <li>
             <span className="n">3</span>
             <span>
-              <strong>Point</strong> — refais le point avant un 7. Odds = cotes vraies derrière Pass.
+              <strong>Point</strong> — refaites le point avant un 7. Odds = cotes vraies derrière Pass.
             </span>
           </li>
         </ol>
@@ -369,7 +369,7 @@ const META: Record<RulesGame, { eyebrow: string; title: string }> = {
   blackjack: { eyebrow: 'Table · guide de salle', title: 'Blackjack' },
   mines: { eyebrow: 'Salon des jeux · guide', title: 'Mines' },
   craps: { eyebrow: 'Salon des jeux · Scraps', title: 'Craps' },
-  crash: { eyebrow: 'Salon des jeux · Stake-like', title: 'Crash' },
+  crash: { eyebrow: 'Salon des jeux · Crash', title: 'Crash' },
 };
 
 export function RulesGuide({

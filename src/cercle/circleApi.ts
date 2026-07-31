@@ -135,14 +135,7 @@ export async function leaveCircleCloud(): Promise<void> {
   if (uid) {
     const { error: rpcErr } = await sb.rpc('leave_circle');
     if (rpcErr) {
-      // Fallback : pas de RPC / pas encore migrée — update direct (policy profiles update self)
-      const { error: updErr } = await sb
-        .from('profiles')
-        .update({ circle_id: null })
-        .eq('id', uid);
-      if (updErr) {
-        console.warn('[cercle] detach profile', updErr.message);
-      }
+      console.warn('[cercle] leave_circle', rpcErr.message);
     }
   }
 

@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react';
-import { completedCount, listDefiViews, syncDefiProgress, type DefiView } from '../defis/store';
+import { fmt } from '../lib/format';
+import {
+  claimPendingDefiRewards,
+  completedCount,
+  listDefiViews,
+  syncDefiProgress,
+  todaysBadges,
+  type DefiView,
+} from '../defis/store';
 import { useGame } from '../store/gameStore';
 
 const GAME_LABEL: Record<string, string> = {
@@ -20,6 +28,15 @@ function liveBaseline() {
   };
 }
 
+function applyDefiClaims() {
+  const claim = claimPendingDefiRewards(liveBaseline());
+  if (claim.totalCents <= 0) return;
+  const parts = claim.rewards.map((r) => r.title);
+  if (claim.fullClearBonus > 0) parts.push('Trio du soir');
+  useGame.getState().creditDefiReward(claim.totalCents, parts.join(' · '));
+  window.dispatchEvent(new Event('nocturne-defis'));
+}
+
 export function useDefiSync() {
   const balance = useGame((s) => s.balance);
   const handsPlayed = useGame((s) => s.stats.handsPlayed);
@@ -33,6 +50,7 @@ export function useDefiSync() {
       blackjacks,
       balance,
     });
+    applyDefiClaims();
     window.dispatchEvent(new Event('nocturne-defis'));
   }, [balance, handsPlayed, wins, blackjacks]);
 }
@@ -44,17 +62,13 @@ export function DailyChallenges({ compact = false }: { compact?: boolean }) {
   const blackjacks = useGame((s) => s.stats.blackjacks);
 
   const [views, setViews] = useState<DefiView[]>(() => listDefiViews(liveBaseline()));
+  const [badges, setBadges] = useState<string[]>(() => todaysBadges(liveBaseline()));
 
   useEffect(() => {
     const refresh = () => {
-      setViews(
-        listDefiViews({
-          handsPlayed,
-          wins,
-          blackjacks,
-          balance,
-        }),
-      );
+      const live = { handsPlayed, wins, blackjacks, balance };
+      setViews(listDefiViews(live));
+      setBadges(todaysBadges(live));
     };
     refresh();
     window.addEventListener('nocturne-defis', refresh);
@@ -92,13 +106,26 @@ export function DailyChallenges({ compact = false }: { compact?: boolean }) {
                 {v.done ? '✓' : `${v.progress}/${v.target}`}
               </span>
             </div>
+            <div className="defis-meta">
+              <span className="defis-reward">+{fmt(v.rewardCents)}</span>
+              {v.claimed && <span className="defis-claimed">Récompensé</span>}
+            </div>
             <div className="defis-bar" aria-hidden>
               <span style={{ width: `${v.pct}%` }} />
             </div>
           </li>
         ))}
       </ul>
+      {done === total && total > 0 && (
+        <p className="defis-bonus-hint">Trio du soir · bonus +{fmt(15_00)} + badge</p>
+      )}
+      {badges.length > 0 && (
+        <ul className="defis-badges" aria-label="Badges du jour">
+          {badges.map((b) => (
+            <li key={b}>{b}</li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
-

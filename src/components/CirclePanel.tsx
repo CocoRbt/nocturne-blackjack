@@ -13,53 +13,47 @@ import {
   type Leaderboards,
   type LocalCircleState,
 } from '../cercle/circleStore';
+import { consumeScoreDirty, onScoreDirty } from '../cercle/scoreSync';
 import { useGame } from '../store/gameStore';
 import { formatGamesBeforePeak } from '../store/peakMeta';
 import { DailyChallenges } from './DailyChallenges';
 
 type BoardTab = 'live' | 'peak';
 
-/** Garde les scores cloud à jour même si le tiroir est fermé. */
-export function useCircleKeepalive() {
-  const balance = useGame((s) => s.balance);
-  const peakBalance = useGame((s) => s.peakBalance);
-  const gamesPlayed = useGame((s) => s.gamesPlayed);
-  const gamesBeforePeak = useGame((s) => s.gamesBeforePeak);
-  const stats = useGame((s) => s.stats);
-  const tableId = useGame((s) => s.tableId);
+function currentScoreSeed() {
+  const s = useGame.getState();
+  return {
+    balance: s.balance,
+    peakBalance: s.peakBalance,
+    handsPlayed: s.stats.handsPlayed,
+    blackjacks: s.stats.blackjacks,
+    bestStreak: s.stats.longestWinStreak,
+    highestTable: s.tableId,
+    gamesBeforePeak: s.gamesBeforePeak,
+    gamesPlayed: s.gamesPlayed,
+  };
+}
 
+/** Pousse le score cloud uniquement après une action de jeu (dirty). */
+export function useCircleKeepalive() {
   useEffect(() => {
-    const state = loadCircle();
-    if (!state?.circleCode) return;
-    let cancelled = false;
-    const seed = {
-      balance,
-      peakBalance,
-      handsPlayed: stats.handsPlayed,
-      blackjacks: stats.blackjacks,
-      bestStreak: stats.longestWinStreak,
-      highestTable: tableId,
-      gamesBeforePeak,
-      gamesPlayed,
+    let timer: number | undefined;
+    const schedule = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        if (!consumeScoreDirty()) return;
+        const state = loadCircle();
+        if (!state?.circleCode) return;
+        void pushScore(state, currentScoreSeed()).catch(() => undefined);
+      }, 450);
     };
-    const t = window.setTimeout(() => {
-      void pushScore(state, seed).catch(() => undefined);
-    }, 500);
+    const unsub = onScoreDirty(schedule);
+    schedule();
     return () => {
-      cancelled = true;
-      window.clearTimeout(t);
-      void cancelled;
+      unsub();
+      window.clearTimeout(timer);
     };
-  }, [
-    balance,
-    peakBalance,
-    gamesPlayed,
-    gamesBeforePeak,
-    stats.handsPlayed,
-    stats.blackjacks,
-    stats.longestWinStreak,
-    tableId,
-  ]);
+  }, []);
 }
 
 export function CirclePanel() {
@@ -99,15 +93,18 @@ export function CirclePanel() {
     const t = window.setTimeout(() => {
       void (async () => {
         try {
-          const next = await pushScore(circle, seed);
-          if (cancelled) return;
-          setCircle(next);
+          const dirty = consumeScoreDirty();
+          let next = circle;
+          if (dirty) {
+            next = await pushScore(circle, seed);
+            if (cancelled) return;
+            setCircle(next);
+          }
           const refreshed = await refreshLeaderboards(next);
           if (cancelled) return;
           setCircle(refreshed.state);
           setBoards(refreshed.boards);
         } catch {
-          // garde le local
           if (circle) setBoards(leaderboardsFromLocal(circle));
         }
       })();
@@ -151,8 +148,10 @@ export function CirclePanel() {
     setBusy(true);
     setError(null);
     try {
-      // Changer de code : on reste sur la même session anonyme,
-      // join_circle bascule le circle_id (pas besoin du dashboard).
+      // Changer de code : quitte d’abord (scores retirés) puis rejoint.
+      if (switching && circle?.circleCode) {
+        await exitCircle();
+      }
       const next = await enterCircle(name, joinCode || undefined, seed);
       setCircle(next);
       setJoinCode(next.circleCode ?? '');
@@ -217,7 +216,7 @@ export function CirclePanel() {
   return (
     <div className={`circle-panel-in-drawer ${joined ? 'is-joined' : ''}`}>
       <p className="circle-drawer-lead">
-        Classement entre potes — pseudo + code, sans compte.
+        Classement entre amis — pseudo + code, sans compte.
         {cloud ? (
           <span className="circle-badge on">en ligne</span>
         ) : (
@@ -230,12 +229,12 @@ export function CirclePanel() {
           <DailyChallenges compact />
           {switching && (
             <p className="circle-hint">
-              Tu quittes <strong>{circle?.circleCode}</strong> pour rejoindre un autre code.
+              Vous quittez <strong>{circle?.circleCode}</strong> pour rejoindre un autre code.
             </p>
           )}
           {!switching && (
             <p className="circle-hint">
-              Laisse le code vide pour créer un cercle. Sinon colle le code exact d&rsquo;un pote.
+              Laissez le code vide pour créer un cercle. Sinon collez le code exact d&rsquo;un ami.
             </p>
           )}
           <div className="circle-form-row">

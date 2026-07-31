@@ -364,7 +364,7 @@ export function MinesScreen() {
           </div>
 
           <p className="mines-footnote">
-            Grille 5×5 · RTP 99&nbsp;% · multiplicateurs type Stake · jetons virtuels uniquement
+            Grille 5×5 · RTP 99&nbsp;% · multiplicateurs progressifs · jetons virtuels uniquement
           </p>
         </aside>
 

@@ -16,7 +16,8 @@
    - `supabase/migrations/20260730140000_cercle.sql`
    - `supabase/migrations/20260730190000_fix_join_leave.sql` (si la 1ʳᵉ a déjà été jouée)
    - `supabase/migrations/20260730220000_games_before_peak.sql` (parties avant le record)
-   - `supabase/migrations/20260731080000_sync_games_before_peak_backfill.sql` (**requis** si le classement Record affiche « dès le départ » pour tout le monde)
+   - `supabase/migrations/20260731080000_sync_games_before_peak_backfill.sql`
+   - `supabase/migrations/20260731100000_score_integrity.sql` (**anti-triche** : plus d’UPDATE direct des scores ; sync via parties)
 
 4. **Project Settings → API** : copier `Project URL` + `anon public` key
 5. Local : créer `.env` (gitignoré) :

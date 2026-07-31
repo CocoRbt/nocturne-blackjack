@@ -1,15 +1,42 @@
-import { CrapsScreen } from './components/CrapsScreen';
-import { CrashScreen } from './components/CrashScreen';
+import { Suspense, lazy } from 'react';
 import { Lobby } from './components/Lobby';
-import { MinesScreen } from './components/MinesScreen';
-import { TableScreen } from './components/TableScreen';
 import { useGame } from './store/gameStore';
+
+const TableScreen = lazy(() =>
+  import('./components/TableScreen').then((m) => ({ default: m.TableScreen })),
+);
+const MinesScreen = lazy(() =>
+  import('./components/MinesScreen').then((m) => ({ default: m.MinesScreen })),
+);
+const CrapsScreen = lazy(() =>
+  import('./components/CrapsScreen').then((m) => ({ default: m.CrapsScreen })),
+);
+const CrashScreen = lazy(() =>
+  import('./components/CrashScreen').then((m) => ({ default: m.CrashScreen })),
+);
+
+function ScreenFallback() {
+  return (
+    <div className="screen-fallback grain" role="status">
+      Ouverture du salon…
+    </div>
+  );
+}
 
 export default function App() {
   const screen = useGame((s) => s.screen);
   if (screen === 'lobby') return <Lobby />;
-  if (screen === 'mines') return <MinesScreen />;
-  if (screen === 'craps') return <CrapsScreen />;
-  if (screen === 'crash') return <CrashScreen />;
-  return <TableScreen />;
+  return (
+    <Suspense fallback={<ScreenFallback />}>
+      {screen === 'mines' ? (
+        <MinesScreen />
+      ) : screen === 'craps' ? (
+        <CrapsScreen />
+      ) : screen === 'crash' ? (
+        <CrashScreen />
+      ) : (
+        <TableScreen />
+      )}
+    </Suspense>
+  );
 }
