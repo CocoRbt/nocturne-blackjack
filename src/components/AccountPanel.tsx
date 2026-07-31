@@ -20,6 +20,7 @@ export function AccountPanel() {
   const [info, setInfo] = useState<string | null>(null);
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [isAnonymous, setIsAnonymous] = useState(true);
+  const [emailPending, setEmailPending] = useState(false);
 
   const cloud = isSupabaseConfigured();
 
@@ -27,6 +28,7 @@ export function AccountPanel() {
     const s = await getAccountSession();
     setSessionEmail(s.email);
     setIsAnonymous(s.isAnonymous);
+    setEmailPending(s.emailPending);
   };
 
   useEffect(() => {
@@ -39,10 +41,14 @@ export function AccountPanel() {
     setBusy(true);
     try {
       if (mode === 'register') {
-        await registerAccount(email, password);
-        setInfo(
-          'Compte créé. Si un e-mail de confirmation arrive, validez-le puis reconnectez-vous sur vos autres appareils.',
-        );
+        const result = await registerAccount(email, password);
+        if (result.needsEmailConfirmation) {
+          setInfo(
+            `Un e-mail de confirmation vous a été envoyé. Ouvrez le lien (il renvoie vers ${result.redirectTo}), puis utilisez « Se connecter » sur vos autres appareils.`,
+          );
+        } else {
+          setInfo('Compte créé. Vous pouvez vous connecter sur un autre appareil avec le même e-mail.');
+        }
         setPassword('');
         await refreshSession();
       } else {
@@ -90,7 +96,14 @@ export function AccountPanel() {
 
       {sessionEmail && !isAnonymous ? (
         <div className="account-session">
-          <span className="account-email">{sessionEmail}</span>
+          <div>
+            <span className="account-email">{sessionEmail}</span>
+            {emailPending && (
+              <p className="circle-hint" style={{ marginTop: 6 }}>
+                Confirmation e-mail en attente — ouvrez le lien reçu.
+              </p>
+            )}
+          </div>
           <button
             type="button"
             className="btn ghost"

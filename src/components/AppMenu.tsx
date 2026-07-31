@@ -7,18 +7,36 @@ import { CircleDrawer } from './CircleDrawer';
 import { circleJoinedLabel } from './CirclePanel';
 
 type AppMenuProps = {
-  /** Afficher les raccourcis vers les salons (lobby uniquement). */
-  showSalonLinks?: boolean;
+  /**
+   * Mode compact (icône seule) — salons / table, évite la superposition
+   * avec crédit / topbar.
+   */
+  compact?: boolean;
+  /** Bloque la navigation (ex. Crash en vol). */
+  navLocked?: boolean;
+  navLockedReason?: string;
 };
 
+type SalonTarget = 'lobby' | 'mines' | 'craps' | 'crash';
+
 /**
- * Menu hamburger fixe (haut droite) — présent sur toutes les pages.
- * Ouvre le cercle d’amis (+ raccourcis salons sur le lobby).
+ * Menu hamburger fixe (haut droite) — toutes les pages.
+ * Navigation Lobby / salons + cercle + compte.
  */
-export function AppMenu({ showSalonLinks = false }: AppMenuProps) {
+export function AppMenu({
+  compact = false,
+  navLocked = false,
+  navLockedReason,
+}: AppMenuProps) {
+  const screen = useGame((s) => s.screen);
   const enterMines = useGame((s) => s.enterMines);
   const enterCraps = useGame((s) => s.enterCraps);
   const enterCrash = useGame((s) => s.enterCrash);
+  const leaveTable = useGame((s) => s.leaveTable);
+  const leaveMines = useGame((s) => s.leaveMines);
+  const leaveCraps = useGame((s) => s.leaveCraps);
+  const leaveCrash = useGame((s) => s.leaveCrash);
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [circleOpen, setCircleOpen] = useState(false);
   const [joinedAs, setJoinedAs] = useState(() => circleJoinedLabel());
@@ -33,9 +51,34 @@ export function AppMenu({ showSalonLinks = false }: AppMenuProps) {
     return () => window.removeEventListener('nocturne-open-circle', openCircle);
   }, []);
 
+  const goTo = (target: SalonTarget) => {
+    if (navLocked) return;
+    setMenuOpen(false);
+    if (target === 'lobby') {
+      if (screen === 'lobby') return;
+      if (screen === 'mines') leaveMines();
+      else if (screen === 'craps') leaveCraps();
+      else if (screen === 'crash') leaveCrash();
+      else leaveTable();
+      return;
+    }
+    if (target === 'mines') {
+      if (screen === 'mines') return;
+      enterMines();
+      return;
+    }
+    if (target === 'craps') {
+      if (screen === 'craps') return;
+      enterCraps();
+      return;
+    }
+    if (screen === 'crash') return;
+    enterCrash();
+  };
+
   return (
     <>
-      <div className="lobby-menu app-menu">
+      <div className={`lobby-menu app-menu ${compact ? 'is-compact' : ''}`}>
         <button
           type="button"
           className={`lobby-menu-btn ${joinedAs ? 'has-circle' : ''}`}
@@ -48,7 +91,7 @@ export function AppMenu({ showSalonLinks = false }: AppMenuProps) {
             <span />
             <span />
           </span>
-          <span className="lobby-menu-text">Menu</span>
+          {!compact && <span className="lobby-menu-text">Menu</span>}
         </button>
         <AnimatePresence>
           {menuOpen && (
@@ -59,8 +102,13 @@ export function AppMenu({ showSalonLinks = false }: AppMenuProps) {
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.22 }}
             >
+              {navLocked && (
+                <p className="lobby-menu-locked">{navLockedReason ?? 'Navigation indisponible'}</p>
+              )}
+
               <button
                 type="button"
+                disabled={navLocked}
                 onClick={() => {
                   setMenuOpen(false);
                   requestCircleSection('cercle');
@@ -72,6 +120,7 @@ export function AppMenu({ showSalonLinks = false }: AppMenuProps) {
               </button>
               <button
                 type="button"
+                disabled={navLocked}
                 onClick={() => {
                   setMenuOpen(false);
                   requestCircleSection('compte');
@@ -81,51 +130,47 @@ export function AppMenu({ showSalonLinks = false }: AppMenuProps) {
                 Compte
                 <span className="dim">sync PC · téléphone</span>
               </button>
-              {showSalonLinks && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      enterMines();
-                    }}
-                  >
-                    Mines
-                    <span className="dim">diamants · bombes</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      enterCraps();
-                    }}
-                  >
-                    Craps
-                    <span className="dim">Scraps · dés</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      enterCrash();
-                    }}
-                  >
-                    Crash
-                    <span className="dim">avion · multiplicateur</span>
-                  </button>
-                </>
+
+              <div className="lobby-menu-sep" aria-hidden />
+
+              {screen !== 'lobby' && (
+                <button type="button" disabled={navLocked} onClick={() => goTo('lobby')}>
+                  Lobby
+                  <span className="dim">accueil</span>
+                </button>
+              )}
+              {screen !== 'mines' && (
+                <button type="button" disabled={navLocked} onClick={() => goTo('mines')}>
+                  Mines
+                  <span className="dim">diamants · bombes</span>
+                </button>
+              )}
+              {screen !== 'craps' && (
+                <button type="button" disabled={navLocked} onClick={() => goTo('craps')}>
+                  Craps
+                  <span className="dim">Scraps · dés</span>
+                </button>
+              )}
+              {screen !== 'crash' && (
+                <button type="button" disabled={navLocked} onClick={() => goTo('crash')}>
+                  Crash
+                  <span className="dim">avion · multiplicateur</span>
+                </button>
               )}
               {joinedAs && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    void exitCircle().finally(() => setJoinedAs(null));
-                  }}
-                >
-                  Quitter le cercle
-                  <span className="dim">garde votre crédit local</span>
-                </button>
+                <>
+                  <div className="lobby-menu-sep" aria-hidden />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      void exitCircle().finally(() => setJoinedAs(null));
+                    }}
+                  >
+                    Quitter le cercle
+                    <span className="dim">garde votre crédit local</span>
+                  </button>
+                </>
               )}
             </motion.div>
           )}

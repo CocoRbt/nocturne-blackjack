@@ -3,8 +3,8 @@
  * ou connecte un compte existant sur un autre appareil.
  */
 
-import { getSupabase, isSupabaseConfigured } from './supabaseClient';
 import { fetchMyScore, type MyScore } from './circleApi';
+import { getSupabase, isSupabaseConfigured } from './supabaseClient';
 
 const ACCOUNT_KEY = 'nocturne-account-email';
 
@@ -32,26 +32,49 @@ export function clearSavedAccountEmail() {
   }
 }
 
+/** URL de retour après confirmation email (jamais localhost en prod). */
+export function authEmailRedirectTo(): string {
+  const fromEnv = (import.meta.env.VITE_SITE_URL as string | undefined)?.replace(/\/$/, '');
+  if (fromEnv && /^https?:\/\//i.test(fromEnv)) return fromEnv;
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    const origin = window.location.origin;
+    // Évite de renvoyer un lien useless si on est encore en file:// 
+    if (origin.startsWith('http')) return origin;
+  }
+  return 'https://nocturne-blackjack.vercel.app';
+}
+
 export async function getAccountSession(): Promise<{
   email: string | null;
   isAnonymous: boolean;
   userId: string | null;
+  emailPending: boolean;
 }> {
   const sb = getSupabase();
-  if (!sb) return { email: null, isAnonymous: true, userId: null };
+  if (!sb) return { email: null, isAnonymous: true, userId: null, emailPending: false };
   const { data } = await sb.auth.getSession();
   const user = data.session?.user;
-  if (!user) return { email: null, isAnonymous: true, userId: null };
+  if (!user) return { email: null, isAnonymous: true, userId: null, emailPending: false };
   const isAnonymous = Boolean(user.is_anonymous);
+  const pending = Boolean(
+    (user as { new_email?: string }).new_email ||
+      (!user.email_confirmed_at && user.email && !isAnonymous),
+  );
   return {
     email: user.email ?? savedAccountEmail(),
     isAnonymous,
     userId: user.id,
+    emailPending: pending,
   };
 }
 
+export type RegisterResult = {
+  needsEmailConfirmation: boolean;
+  redirectTo: string;
+};
+
 /** Lie email + mot de passe à la session anonyme courante (conserve uid). */
-export async function registerAccount(email: string, password: string): Promise<void> {
+export async function registerAccount(email: string, password: string): Promise<RegisterResult> {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase non configuré');
   const e = email.trim().toLowerCase();
@@ -64,15 +87,25 @@ export async function registerAccount(email: string, password: string): Promise<
     if (error) throw error;
   }
 
-  const { data, error } = await sb.auth.updateUser({ email: e, password });
+  const redirectTo = authEmailRedirectTo();
+  const { data, error } = await sb.auth.updateUser(
+    { email: e, password },
+    { emailRedirectTo: redirectTo },
+  );
   if (error) {
     if (/already|registered|exists/i.test(error.message)) {
       throw new Error('Cet email a déjà un compte — utilisez « Se connecter ».');
     }
     throw new Error(error.message || 'Impossible de créer le compte');
   }
-  if (data.user?.email) rememberEmail(data.user.email);
-  else rememberEmail(e);
+  rememberEmail(e);
+
+  const needsEmailConfirmation = Boolean(
+    (data.user as { new_email?: string } | null)?.new_email ||
+      (data.user && !data.user.email_confirmed_at),
+  );
+
+  return { needsEmailConfirmation, redirectTo };
 }
 
 /** Connexion sur un autre appareil — remplace la session locale. */
@@ -83,6 +116,9 @@ export async function loginAccount(email: string, password: string): Promise<MyS
   const { error } = await sb.auth.signInWithPassword({ email: e, password });
   if (error) {
     if (/invalid/i.test(error.message)) throw new Error('Email ou mot de passe incorrect');
+    if (/confirm|verified|not confirmed/i.test(error.message)) {
+      throw new Error('Confirmez d’abord votre email (lien reçu), puis reconnectez-vous.');
+    }
     throw new Error(error.message || 'Connexion impossible');
   }
   rememberEmail(e);

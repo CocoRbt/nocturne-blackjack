@@ -138,7 +138,7 @@ export function TableScreen() {
         } as CSSProperties
       }
     >
-      <AppMenu />
+      <AppMenu compact />
       <div className="topbar">
         <button className="back" onClick={leaveTable}>
           ← Lobby

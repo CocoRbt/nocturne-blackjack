@@ -5,6 +5,18 @@
 - **Compte email optionnel** (Menu → Compte) : lie la session anonyme pour retrouver le même crédit sur PC / téléphone.
 - Dashboard : activer aussi **Authentication → Providers → Email**.
 
+### URLs email (sinon le lien renvoie vers localhost)
+**Authentication → URL Configuration** :
+1. **Site URL** = `https://nocturne-blackjack.vercel.app` (pas `http://localhost:3000`)
+2. **Redirect URLs** (ajouter) :
+   - `https://nocturne-blackjack.vercel.app`
+   - `https://nocturne-blackjack.vercel.app/**`
+   - `http://localhost:5173/**` (dev local)
+   - éventuellement `https://*-team.vercel.app/**` pour les previews
+
+Le code envoie `emailRedirectTo` = `VITE_SITE_URL` ou `window.location.origin`.
+Sans allowlist, Supabase retombe sur Site URL → localhost cassé.
+
 ## Classements
 1. **Crédit actuel** — solde live (`balance`)
 2. **Record** — plus haut crédit atteint (`peak_balance`) + parties avant ce record (`games_before_peak`)
@@ -25,8 +37,9 @@
    ```
    VITE_SUPABASE_URL=...
    VITE_SUPABASE_ANON_KEY=...
+   VITE_SITE_URL=https://nocturne-blackjack.vercel.app
    ```
-6. Vercel → Project → Settings → Environment Variables : mêmes clés (Production + Preview)
+6. Vercel → Project → Settings → Environment Variables : mêmes clés + `VITE_SITE_URL` (Production + Preview)
 7. Redeploy
 
 ## Comportement important

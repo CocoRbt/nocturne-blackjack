@@ -14,6 +14,9 @@ type GameShellProps = {
   backTitle?: string;
   onRules: () => void;
   rulesLabel: string;
+  /** Bloque menu nav (Crash en vol). */
+  navLocked?: boolean;
+  navLockedReason?: string;
 };
 
 /**
@@ -29,6 +32,8 @@ export function GameShell({
   backTitle,
   onRules,
   rulesLabel,
+  navLocked = false,
+  navLockedReason,
 }: GameShellProps) {
   const balance = useGame((s) => s.balance);
   const peakBalance = useGame((s) => s.peakBalance);
@@ -37,7 +42,11 @@ export function GameShell({
 
   return (
     <>
-      <AppMenu />
+      <AppMenu
+        compact
+        navLocked={navLocked || backDisabled}
+        navLockedReason={navLockedReason ?? backTitle}
+      />
       <header className="game-topbar" data-accent={accent}>
         <button
           type="button"

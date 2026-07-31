@@ -553,6 +553,36 @@ button:disabled {
 .app-menu {
   z-index: 40;
 }
+.app-menu.is-compact .lobby-menu-btn {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  justify-content: center;
+  gap: 0;
+  border-radius: 12px;
+}
+.app-menu.is-compact .lobby-menu-icon {
+  width: 18px;
+}
+.lobby-menu-sep {
+  height: 1px;
+  margin: 4px 8px;
+  background: rgba(233, 228, 216, 0.1);
+}
+.lobby-menu-locked {
+  margin: 4px 10px 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  background: rgba(224, 120, 90, 0.1);
+  border: 1px solid rgba(224, 120, 90, 0.25);
+}
+.lobby-menu-panel button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
 .section-tabs {
   margin-bottom: 12px;
@@ -1222,7 +1252,7 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: max(10px, env(safe-area-inset-top)) 96px 10px 18px;
+  padding: max(10px, env(safe-area-inset-top)) 64px 10px 18px;
   z-index: 10;
   flex-shrink: 0;
   position: sticky;
@@ -2725,7 +2755,8 @@ button:disabled {
   }
 
   .topbar {
-    padding: 10px 12px;
+    /* garde la place pour le menu compact (icône) */
+    padding: 10px 56px 10px 12px;
     gap: 8px;
     flex-wrap: wrap;
   }
@@ -3060,7 +3091,7 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: max(14px, env(safe-area-inset-top)) 96px 12px 4px;
+  padding: max(14px, env(safe-area-inset-top)) 64px 12px 4px;
   position: sticky;
   top: 0;
   z-index: 12;
@@ -4367,7 +4398,8 @@ button:disabled {
   }
   .game-topbar {
     gap: 8px;
-    padding-inline: 0;
+    /* ne pas annuler le padding-right — sinon menu sur le crédit */
+    padding-inline: 0 56px;
   }
   .game-shell-back {
     padding: 8px 6px;

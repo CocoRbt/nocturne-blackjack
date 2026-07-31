@@ -66,7 +66,7 @@ export function Lobby() {
 
   return (
     <div className="lobby grain">
-      <AppMenu showSalonLinks />
+      <AppMenu />
 
       <motion.div
         className="lobby-brand"

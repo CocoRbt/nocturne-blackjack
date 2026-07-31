@@ -16,7 +16,9 @@ export function getSupabase(): SupabaseClient | null {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: false,
+        // Requis pour le lien de confirmation email (retour sur le site).
+        detectSessionInUrl: true,
+        flowType: 'pkce',
         storageKey: 'nocturne-supabase-auth',
       },
     });
