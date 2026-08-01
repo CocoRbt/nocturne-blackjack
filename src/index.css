@@ -689,7 +689,8 @@ button:disabled {
 }
 .mines-card,
 .craps-card,
-.crash-card {
+.crash-card,
+.plinko-card {
   width: 100%;
   max-width: none;
   margin: 0;
@@ -717,6 +718,12 @@ button:disabled {
     linear-gradient(145deg, rgba(224, 120, 90, 0.1), transparent 52%),
     rgba(16, 12, 12, 0.9);
 }
+.plinko-card {
+  border-color: rgba(212, 160, 90, 0.34);
+  background:
+    linear-gradient(145deg, rgba(212, 160, 90, 0.12), transparent 52%),
+    rgba(14, 12, 10, 0.9);
+}
 .mines-card:hover {
   border-color: rgba(62, 207, 173, 0.45);
   transform: translateY(-2px);
@@ -727,6 +734,10 @@ button:disabled {
 }
 .crash-card:hover {
   border-color: rgba(224, 120, 90, 0.55);
+  transform: translateY(-2px);
+}
+.plinko-card:hover {
+  border-color: rgba(212, 160, 90, 0.55);
   transform: translateY(-2px);
 }
 .mines-card-visual {
@@ -754,12 +765,14 @@ button:disabled {
 }
 .mines-card-body,
 .craps-card-body,
-.crash-card-body {
+.crash-card-body,
+.plinko-card-body {
   padding: 18px 18px 16px 8px;
 }
 .mines-card-body h3,
 .craps-card-body h3,
-.crash-card-body h3 {
+.crash-card-body h3,
+.plinko-card-body h3 {
   font-family: var(--font-display);
   font-weight: 420;
   font-size: 26px;
@@ -768,7 +781,8 @@ button:disabled {
 }
 .mines-card-body p,
 .craps-card-body p,
-.crash-card-body p {
+.crash-card-body p,
+.plinko-card-body p {
   font-size: 13px;
   color: var(--ink-dim);
   line-height: 1.45;
@@ -791,6 +805,46 @@ button:disabled {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #e8a090;
+}
+.plinko-card-body .enter {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #e0c080;
+}
+.plinko-card-visual {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 16px 12px;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(212, 160, 90, 0.2), transparent 60%),
+    #120e0c;
+  overflow: hidden;
+}
+.plinko-card-pegs {
+  width: 54px;
+  height: 54px;
+  background:
+    radial-gradient(circle at 20% 20%, #d4a05a 1.6px, transparent 1.8px),
+    radial-gradient(circle at 50% 20%, #d4a05a 1.6px, transparent 1.8px),
+    radial-gradient(circle at 80% 20%, #d4a05a 1.6px, transparent 1.8px),
+    radial-gradient(circle at 35% 48%, #d4a05a 1.6px, transparent 1.8px),
+    radial-gradient(circle at 65% 48%, #d4a05a 1.6px, transparent 1.8px),
+    radial-gradient(circle at 20% 76%, #d4a05a 1.6px, transparent 1.8px),
+    radial-gradient(circle at 50% 76%, #d4a05a 1.6px, transparent 1.8px),
+    radial-gradient(circle at 80% 76%, #d4a05a 1.6px, transparent 1.8px);
+  opacity: 0.85;
+}
+.plinko-card-ball {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #f4efe3, #c2a15f);
+  top: 28%;
+  left: 52%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 .crash-card-visual {
   position: relative;
@@ -3163,6 +3217,9 @@ button:disabled {
 .game-topbar[data-accent='crash'] .game-brand .mono {
   color: var(--crash-accent, #e0785a);
 }
+.game-topbar[data-accent='plinko'] .game-brand .mono {
+  color: var(--plinko-accent, #d4a05a);
+}
 .game-brand h1 {
   font-family: var(--font-display);
   font-weight: 380;
@@ -3446,7 +3503,8 @@ button:disabled {
   }
   .mines-card,
   .craps-card,
-  .crash-card {
+  .crash-card,
+  .plinko-card {
     grid-template-columns: 88px 1fr;
   }
 }
@@ -4377,6 +4435,300 @@ button:disabled {
   color: #e8a090;
   border-color: rgba(224, 120, 90, 0.4);
   background: rgba(224, 120, 90, 0.08);
+}
+
+/* ============================================================
+   PLINKO
+   ============================================================ */
+.plinko-screen {
+  --plinko-accent: #d4a05a;
+  --plinko-accent-soft: rgba(212, 160, 90, 0.18);
+  height: 100%;
+  max-height: 100%;
+  overflow-x: clip;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background:
+    radial-gradient(90% 70% at 65% -10%, rgba(212, 160, 90, 0.12), transparent 55%),
+    radial-gradient(70% 50% at 10% 100%, rgba(194, 161, 95, 0.07), transparent 50%),
+    var(--bg-0);
+  display: flex;
+  flex-direction: column;
+  padding: 0 16px 28px;
+}
+.plinko-screen .game-topbar {
+  padding-bottom: 12px;
+}
+.plinko-history {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  width: min(1100px, 100%);
+  margin: 0 auto 12px;
+  padding: 0 2px 4px;
+  scrollbar-width: thin;
+}
+.plinko-pill {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--ink-dim);
+}
+.plinko-pill.low {
+  color: var(--lose);
+  border-color: rgba(207, 143, 143, 0.35);
+}
+.plinko-pill.mid {
+  color: var(--brass);
+  border-color: rgba(194, 161, 95, 0.35);
+}
+.plinko-pill.high {
+  color: var(--win);
+  border-color: rgba(143, 207, 168, 0.4);
+}
+.plinko-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+  gap: clamp(18px, 3vw, 28px);
+  align-items: start;
+  width: min(1100px, 100%);
+  margin: 0 auto;
+  flex: 1;
+}
+.plinko-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--line-strong);
+  background: rgba(12, 14, 16, 0.75);
+  backdrop-filter: blur(8px);
+}
+.plinko-panel-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.plinko-label {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.plinko-bet-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.plinko-bet-input {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 28px;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px 10px;
+  outline: none;
+}
+.plinko-bet-input:focus {
+  border-color: var(--plinko-accent);
+  background: var(--plinko-accent-soft);
+}
+.plinko-presets,
+.plinko-rows,
+.plinko-risks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.plinko-chip {
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--ink-dim);
+  background: transparent;
+}
+.plinko-chip.on,
+.plinko-chip:not(:disabled):hover {
+  border-color: var(--plinko-accent);
+  color: #f0d6a8;
+  background: var(--plinko-accent-soft);
+}
+.plinko-chip.risk-high.on {
+  border-color: rgba(224, 120, 90, 0.55);
+  color: #f0b8a8;
+  background: rgba(224, 120, 90, 0.12);
+}
+.plinko-chip.risk-low.on {
+  border-color: rgba(143, 207, 168, 0.45);
+  color: #b8e0c8;
+  background: rgba(143, 207, 168, 0.1);
+}
+.plinko-stats {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--line);
+}
+.plinko-stats > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+.plinko-stats .k {
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+.plinko-stats .v.brass {
+  color: var(--brass);
+  font-family: var(--font-display);
+}
+.plinko-stats .v.win {
+  color: var(--win);
+}
+.plinko-stats .v.lose {
+  color: var(--lose);
+}
+.plinko-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.plinko-cta {
+  width: 100%;
+  min-height: 52px;
+  font-size: 13px;
+}
+.plinko-footnote {
+  font-size: 11px;
+  color: var(--ink-faint);
+  line-height: 1.45;
+}
+.plinko-stage {
+  position: relative;
+  min-height: 380px;
+  border-radius: 22px;
+  border: 1px solid rgba(212, 160, 90, 0.22);
+  background:
+    radial-gradient(90% 80% at 50% 10%, rgba(212, 160, 90, 0.08), transparent 55%),
+    linear-gradient(180deg, #141210, #0a0b0e);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 12px 20px;
+}
+.plinko-board-wrap {
+  width: min(100%, 420px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.plinko-board {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.plinko-peg {
+  fill: rgba(212, 160, 90, 0.7);
+}
+.plinko-ball {
+  fill: #f0d6a8;
+  stroke: #c2a15f;
+  stroke-width: 1;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+  transition: cx 0.14s linear, cy 0.14s linear;
+}
+.plinko-buckets {
+  display: grid;
+  grid-template-columns: repeat(var(--slots, 13), minmax(0, 1fr));
+  gap: 3px;
+  width: 100%;
+}
+.plinko-buckets[data-slots='9'] {
+  --slots: 9;
+}
+.plinko-buckets[data-slots='13'] {
+  --slots: 13;
+}
+.plinko-buckets[data-slots='17'] {
+  --slots: 17;
+}
+.plinko-bucket {
+  text-align: center;
+  padding: 6px 2px;
+  border-radius: 6px;
+  font-size: clamp(8px, 2.2vw, 11px);
+  font-variant-numeric: tabular-nums;
+  border: 1px solid rgba(233, 228, 216, 0.12);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--ink-dim);
+  transition: border-color 0.2s, background 0.2s, color 0.2s, transform 0.2s;
+}
+.plinko-bucket.warm {
+  color: var(--brass);
+  border-color: rgba(194, 161, 95, 0.3);
+}
+.plinko-bucket.hot {
+  color: #f0d6a8;
+  border-color: rgba(212, 160, 90, 0.45);
+  background: rgba(212, 160, 90, 0.12);
+}
+.plinko-bucket.cold {
+  color: var(--lose);
+}
+.plinko-bucket.hit {
+  transform: translateY(-2px);
+  border-color: rgba(143, 207, 168, 0.65);
+  background: rgba(143, 207, 168, 0.16);
+  color: var(--win);
+}
+.rules-guide-panel.tone-plinko {
+  border-color: rgba(212, 160, 90, 0.35);
+  background:
+    linear-gradient(165deg, rgba(212, 160, 90, 0.1), transparent 42%),
+    linear-gradient(180deg, #1a1612 0%, #0f0e0c 100%);
+}
+.tone-plinko .rules-guide-head .mono,
+.tone-plinko .rules-section h3 {
+  color: #e0c080;
+}
+.tone-plinko .rules-steps .n {
+  color: #e0c080;
+  border-color: rgba(212, 160, 90, 0.4);
+  background: rgba(212, 160, 90, 0.08);
+}
+
+@media (max-width: 860px) {
+  .plinko-layout {
+    grid-template-columns: 1fr;
+  }
+  .plinko-panel {
+    order: 1;
+  }
+  .plinko-stage {
+    order: 2;
+    min-height: 280px;
+  }
 }
 
 @media (max-width: 860px) {

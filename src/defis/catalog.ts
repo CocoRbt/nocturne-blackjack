@@ -1,6 +1,6 @@
 /** Catalogue des défis du jour — sélection déterministe par date. */
 
-export type DefiGame = 'blackjack' | 'mines' | 'craps' | 'crash' | 'global'
+export type DefiGame = 'blackjack' | 'mines' | 'craps' | 'crash' | 'plinko' | 'global'
 
 export type DefiMetric =
   | 'bj_hands'
@@ -12,6 +12,8 @@ export type DefiMetric =
   | 'craps_pass_wins'
   | 'crash_cashouts'
   | 'crash_mult'
+  | 'plinko_rounds'
+  | 'plinko_mult'
   | 'gain_cents'
 
 export interface DefiDef {
@@ -21,7 +23,7 @@ export interface DefiDef {
   game: DefiGame
   metric: DefiMetric
   target: number
-  /** Pour mines_mult / crash_mult : seuil multiplicateur. */
+  /** Pour mines_mult / crash_mult / plinko_mult : seuil multiplicateur. */
   threshold?: number
   /** Récompense en centimes à la complétion (défaut 5 crédits). */
   rewardCents?: number
@@ -110,6 +112,23 @@ export const DEFI_CATALOG: DefiDef[] = [
     metric: 'crash_mult',
     target: 1,
     threshold: 2,
+  },
+  {
+    id: 'plinko_rounds_5',
+    title: 'Pluie de billes',
+    description: 'Lance 5 drops au Plinko',
+    game: 'plinko',
+    metric: 'plinko_rounds',
+    target: 5,
+  },
+  {
+    id: 'plinko_mult_5',
+    title: 'Slot doré',
+    description: 'Atterris au Plinko à 5× ou plus',
+    game: 'plinko',
+    metric: 'plinko_mult',
+    target: 1,
+    threshold: 5,
   },
   {
     id: 'gain_25',

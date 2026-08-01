@@ -6,7 +6,7 @@ Dernière mise à jour : 2026-07-30.
 ## Vision
 
 Casino fictif (jetons virtuels). Enjeu principal = **mises, jetons, progression de crédit**.  
-Jeux : **blackjack** (tables) + **Mines** + **Craps / Scraps** + **Crash** (salon des jeux). Même crédit / pic / cercle.  
+Jeux : **blackjack** (tables) + **Mines** + **Craps / Scraps** + **Crash** + **Plinko** (salon des jeux). Même crédit / pic / cercle.  
 Les micro-différences de règles blackjack (S17/H17, etc.) sont **secondaires** ; ambiance / enjeux priment.
 
 ## Mines
@@ -27,6 +27,13 @@ Les micro-différences de règles blackjack (S17/H17, etc.) sont **secondaires**
 - Multiplicateur exponentiel style Stake (RTP 99 %), cashout manuel / auto, avion animé.
 - Accès : menu lobby + carte « Salon des jeux ».
 - Détail : `docs/CRASH.md`.
+
+## Plinko
+
+- Pyramide binomiale style Stake (lignes 8/12/16, risques Low/Medium/High), RTP ~99 %.
+- Chemin RNG → slot (animation honnête), une mise = un drop.
+- Accès : menu lobby + carte « Salon des jeux ».
+- Détail : `docs/PLINKO.md`.
 
 ## Tables
 
@@ -61,7 +68,7 @@ Les micro-différences de règles blackjack (S17/H17, etc.) sont **secondaires**
 
 - Pseudo + **code de cercle** (pas de matchmaking public).
 - Stats : solde, pic, table max, mains, BJ, séries, net session.
-- **Défis du jour** : 3 défis déterministes par date, visibles dans le panneau classement (local). BJ / Mines / Craps / Crash / gain.
+- **Défis du jour** : 3 défis déterministes par date, visibles dans le panneau classement (local). BJ / Mines / Craps / Crash / Plinko / gain.
 - Challenges futurs : saison (bankroll partagée), défis 1v1 cloud.
 - Pas de multiplayer temps réel sur la même table (trop lourd pour le besoin).
 - Stack cible : **Supabase** (auth légère + Postgres + leaderboard).

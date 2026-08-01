@@ -14,6 +14,9 @@ const CrapsScreen = lazy(() =>
 const CrashScreen = lazy(() =>
   import('./components/CrashScreen').then((m) => ({ default: m.CrashScreen })),
 );
+const PlinkoScreen = lazy(() =>
+  import('./components/PlinkoScreen').then((m) => ({ default: m.PlinkoScreen })),
+);
 
 function ScreenFallback() {
   return (
@@ -34,6 +37,8 @@ export default function App() {
         <CrapsScreen />
       ) : screen === 'crash' ? (
         <CrashScreen />
+      ) : screen === 'plinko' ? (
+        <PlinkoScreen />
       ) : (
         <TableScreen />
       )}

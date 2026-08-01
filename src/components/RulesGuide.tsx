@@ -5,7 +5,7 @@ import { SIDE_BET_DEFS } from '../engine/sidebets';
 import { fmt, fmtPays } from '../lib/format';
 import { useGame } from '../store/gameStore';
 
-export type RulesGame = 'blackjack' | 'mines' | 'craps' | 'crash';
+export type RulesGame = 'blackjack' | 'mines' | 'craps' | 'crash' | 'plinko';
 
 function IlluBlackjack() {
   return (
@@ -312,6 +312,94 @@ function CrashRules() {
   );
 }
 
+function IlluPlinko() {
+  return (
+    <svg className="rules-illu" viewBox="0 0 280 120" aria-hidden>
+      <defs>
+        <linearGradient id="rg-plinko-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#16120e" />
+          <stop offset="100%" stopColor="#0a0b0e" />
+        </linearGradient>
+      </defs>
+      <rect width="280" height="120" rx="14" fill="url(#rg-plinko-bg)" />
+      {[0, 1, 2, 3, 4].map((row) =>
+        Array.from({ length: row + 3 }, (_, col) => {
+          const count = row + 3;
+          const x = 140 - ((count - 1) * 14) / 2 + col * 14;
+          const y = 18 + row * 14;
+          return <circle key={`${row}-${col}`} cx={x} cy={y} r="2.4" fill="rgba(212,160,90,0.75)" />;
+        }),
+      )}
+      <circle cx="148" cy="28" r="5" fill="#f0d6a8" stroke="#c2a15f" strokeWidth="1" />
+      {[0, 1, 2, 3, 4, 5, 6].map((i) => {
+        const x = 68 + i * 24;
+        const hot = i === 0 || i === 6;
+        return (
+          <rect
+            key={i}
+            x={x}
+            y={96}
+            width="20"
+            height="12"
+            rx="3"
+            fill={hot ? 'rgba(212,160,90,0.35)' : 'rgba(233,228,216,0.08)'}
+            stroke={hot ? 'rgba(212,160,90,0.7)' : 'rgba(233,228,216,0.2)'}
+          />
+        );
+      })}
+      <text x="140" y="114" textAnchor="middle" fill="rgba(212,160,90,0.8)" fontSize="9" letterSpacing="3" fontFamily="sans-serif">
+        PLINKO
+      </text>
+    </svg>
+  );
+}
+
+function PlinkoRules() {
+  return (
+    <>
+      <IlluPlinko />
+      <p className="rules-lead">
+        Une bille tombe dans une pyramide de picots. À chaque rangée elle part à gauche ou à droite
+        (50/50). Le slot d’arrivée fixe le multiplicateur.
+      </p>
+      <section className="rules-section">
+        <h3>Déroulement</h3>
+        <ol className="rules-steps">
+          <li>
+            <span className="n">1</span>
+            <span>
+              Choisissez la mise, le nombre de lignes (8 / 12 / 16) et le risque (Faible / Moyen /
+              Élevé).
+            </span>
+          </li>
+          <li>
+            <span className="n">2</span>
+            <span>Drop — la bille suit un chemin aléatoire réel jusqu’à un bucket.</span>
+          </li>
+          <li>
+            <span className="n">3</span>
+            <span>Gain = mise × multiplicateur du bucket. Les bords paient plus, le centre plus souvent.</span>
+          </li>
+        </ol>
+      </section>
+      <section className="rules-section">
+        <h3>Équité</h3>
+        <div className="rules-grid">
+          <RuleRow label="RTP cible" value="~99 %" />
+          <RuleRow label="Chemin" value="Binôme · 50/50 par rangée" />
+          <RuleRow label="Risque" value="Change les mults, pas les proba" />
+          <RuleRow label="Max (16 · Élevé)" value="1 000×" />
+        </div>
+      </section>
+      <div className="rules-callout">
+        <strong>Pas de trucage d’animation</strong>
+        <span>Le chemin est tiré d’abord ; l’animation suit ce chemin — pas l’inverse.</span>
+      </div>
+      <p className="rules-foot">Distribution binomiale · crypto.getRandomValues · crédit partagé</p>
+    </>
+  );
+}
+
 function CrapsRules() {
   return (
     <>
@@ -370,6 +458,7 @@ const META: Record<RulesGame, { eyebrow: string; title: string }> = {
   mines: { eyebrow: 'Salon des jeux · guide', title: 'Mines' },
   craps: { eyebrow: 'Salon des jeux · Scraps', title: 'Craps' },
   crash: { eyebrow: 'Salon des jeux · Crash', title: 'Crash' },
+  plinko: { eyebrow: 'Salon des jeux · Plinko', title: 'Plinko' },
 };
 
 export function RulesGuide({
@@ -428,6 +517,7 @@ export function RulesGuide({
               {game === 'mines' && <MinesRules />}
               {game === 'craps' && <CrapsRules />}
               {game === 'crash' && <CrashRules />}
+              {game === 'plinko' && <PlinkoRules />}
             </div>
             <footer className="rules-guide-foot">
               <button type="button" className="btn primary" onClick={onClose}>

@@ -28,6 +28,7 @@ export function Lobby() {
   const enterMines = useGame((s) => s.enterMines);
   const enterCraps = useGame((s) => s.enterCraps);
   const enterCrash = useGame((s) => s.enterCrash);
+  const enterPlinko = useGame((s) => s.enterPlinko);
   const configurePrivateLimits = useGame((s) => s.configurePrivateLimits);
   const resetAll = useGame((s) => s.resetAll);
   const refill = useGame((s) => s.refill);
@@ -240,6 +241,24 @@ export function Lobby() {
             <div className="crash-card-body">
               <h3>Crash</h3>
               <p>Avion · multiplicateur qui monte · encaisse avant le crash · RTP 99&nbsp;%.</p>
+              <span className="enter">Entrer dans le salon →</span>
+            </div>
+          </motion.button>
+          <motion.button
+            type="button"
+            className="plinko-card"
+            onClick={enterPlinko}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.85, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="plinko-card-visual" aria-hidden>
+              <span className="plinko-card-pegs" />
+              <span className="plinko-card-ball" />
+            </div>
+            <div className="plinko-card-body">
+              <h3>Plinko</h3>
+              <p>Bille · pyramide · lignes &amp; risque · multiplicateurs · RTP 99&nbsp;%.</p>
               <span className="enter">Entrer dans le salon →</span>
             </div>
           </motion.button>

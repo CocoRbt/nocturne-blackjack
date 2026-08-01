@@ -15,6 +15,7 @@ const GAME_LABEL: Record<string, string> = {
   mines: 'Mines',
   craps: 'Craps',
   crash: 'Crash',
+  plinko: 'Plinko',
   global: 'Salon',
 };
 

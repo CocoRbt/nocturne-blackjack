@@ -86,7 +86,7 @@ interface GameState {
   /** Parties jouées avant le record actuel. */
   gamesBeforePeak: number;
   refills: number;
-  screen: 'lobby' | 'table' | 'mines' | 'craps' | 'crash';
+  screen: 'lobby' | 'table' | 'mines' | 'craps' | 'crash' | 'plinko';
   tableId: string;
   soundMuted: boolean;
   gameSpeed: GameSpeed;
@@ -131,6 +131,12 @@ interface GameState {
   crashDebit(bet: number): boolean;
   /** Crédite un payout Crash (ou 0 si crash). Compte 1 partie par défaut. */
   crashCredit(payout: number, countGame?: boolean): void;
+  enterPlinko(): void;
+  leavePlinko(): void;
+  /** Débite une mise Plinko. false si solde insuffisant. */
+  plinkoDebit(bet: number): boolean;
+  /** Crédite un payout Plinko. Compte 1 partie par défaut. */
+  plinkoCredit(payout: number, countGame?: boolean): void;
   configurePrivateLimits(limits: PrivateLimits): void;
   selectChip(denom: number): void;
   selectSeat(seatIndex: number): void;
@@ -774,6 +780,57 @@ export const useGame = create<GameState>((set, get) => {
 
     leaveCrash() {
       set({ screen: 'lobby', notice: null });
+    },
+
+    enterPlinko() {
+      presentToken++;
+      shoe = null;
+      set({
+        screen: 'plinko',
+        round: null,
+        stacks: emptyTableStacks(get().seatCapacity),
+        placementOrder: [],
+        display: idleDisplay(),
+        session: null,
+        notice: null,
+      });
+    },
+
+    leavePlinko() {
+      set({ screen: 'lobby', notice: null });
+    },
+
+    plinkoDebit(bet) {
+      const s = get();
+      const amount = Math.floor(bet);
+      if (amount <= 0 || amount > s.balance) return false;
+      set({
+        balance: s.balance - amount,
+        notice: null,
+      });
+      persist();
+      markScoreDirty();
+      return true;
+    },
+
+    plinkoCredit(payout, countGame = true) {
+      const s = get();
+      const meta = {
+        peakBalance: s.peakBalance,
+        gamesPlayed: s.gamesPlayed,
+        gamesBeforePeak: s.gamesBeforePeak,
+      };
+      const settled = countGame
+        ? settleGamePeak(s.balance, payout, meta)
+        : creditWithoutGame(s.balance, payout, meta);
+      set({
+        balance: settled.balance,
+        peakBalance: settled.peakBalance,
+        gamesPlayed: settled.gamesPlayed,
+        gamesBeforePeak: settled.gamesBeforePeak,
+      });
+      persist();
+      markScoreDirty();
     },
 
     crashDebit(bet) {

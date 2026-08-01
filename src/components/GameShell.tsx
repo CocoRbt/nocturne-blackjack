@@ -3,7 +3,7 @@ import { STARTING_BALANCE } from '../store/persistence';
 import { useGame } from '../store/gameStore';
 import { AppMenu } from './AppMenu';
 
-export type GameShellAccent = 'mines' | 'craps' | 'crash';
+export type GameShellAccent = 'mines' | 'craps' | 'crash' | 'plinko';
 
 type GameShellProps = {
   title: string;

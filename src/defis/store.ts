@@ -57,6 +57,8 @@ function emptyCounters(): Partial<Record<DefiMetric, number>> {
     craps_pass_wins: 0,
     crash_cashouts: 0,
     crash_mult: 0,
+    plinko_rounds: 0,
+    plinko_mult: 0,
     gain_cents: 0,
   }
 }
@@ -214,6 +216,8 @@ export type DefiEvent =
   | { type: 'mines_cashout'; mult: number }
   | { type: 'craps_pass_win' }
   | { type: 'crash_cashout'; mult: number }
+  | { type: 'plinko_start' }
+  | { type: 'plinko_drop'; mult: number }
 
 export function trackDefiEvent(event: DefiEvent, live: DefiBaseline): DefiDayState {
   const state = ensureDefiDay(live)
@@ -229,6 +233,10 @@ export function trackDefiEvent(event: DefiEvent, live: DefiBaseline): DefiDaySta
   } else if (event.type === 'crash_cashout') {
     c.crash_cashouts = (c.crash_cashouts ?? 0) + 1
     if (event.mult >= 2) c.crash_mult = (c.crash_mult ?? 0) + 1
+  } else if (event.type === 'plinko_start') {
+    c.plinko_rounds = (c.plinko_rounds ?? 0) + 1
+  } else if (event.type === 'plinko_drop') {
+    if (event.mult >= 5) c.plinko_mult = (c.plinko_mult ?? 0) + 1
   }
 
   state.counters = c

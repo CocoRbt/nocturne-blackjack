@@ -16,7 +16,7 @@ type AppMenuProps = {
   navLockedReason?: string;
 };
 
-type SalonTarget = 'lobby' | 'mines' | 'craps' | 'crash';
+type SalonTarget = 'lobby' | 'mines' | 'craps' | 'crash' | 'plinko';
 
 /**
  * Menu hamburger fixe (haut droite) — toutes les pages.
@@ -31,10 +31,12 @@ export function AppMenu({
   const enterMines = useGame((s) => s.enterMines);
   const enterCraps = useGame((s) => s.enterCraps);
   const enterCrash = useGame((s) => s.enterCrash);
+  const enterPlinko = useGame((s) => s.enterPlinko);
   const leaveTable = useGame((s) => s.leaveTable);
   const leaveMines = useGame((s) => s.leaveMines);
   const leaveCraps = useGame((s) => s.leaveCraps);
   const leaveCrash = useGame((s) => s.leaveCrash);
+  const leavePlinko = useGame((s) => s.leavePlinko);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [circleOpen, setCircleOpen] = useState(false);
@@ -58,6 +60,7 @@ export function AppMenu({
       if (screen === 'mines') leaveMines();
       else if (screen === 'craps') leaveCraps();
       else if (screen === 'crash') leaveCrash();
+      else if (screen === 'plinko') leavePlinko();
       else leaveTable();
       return;
     }
@@ -71,8 +74,13 @@ export function AppMenu({
       enterCraps();
       return;
     }
-    if (screen === 'crash') return;
-    enterCrash();
+    if (target === 'crash') {
+      if (screen === 'crash') return;
+      enterCrash();
+      return;
+    }
+    if (screen === 'plinko') return;
+    enterPlinko();
   };
 
   return (
@@ -154,6 +162,12 @@ export function AppMenu({
                 <button type="button" disabled={navLocked} onClick={() => goTo('crash')}>
                   Crash
                   <span className="dim">avion · multiplicateur</span>
+                </button>
+              )}
+              {screen !== 'plinko' && (
+                <button type="button" disabled={navLocked} onClick={() => goTo('plinko')}>
+                  Plinko
+                  <span className="dim">bille · pyramide</span>
                 </button>
               )}
             </motion.div>
