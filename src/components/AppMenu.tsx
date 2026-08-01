@@ -79,8 +79,10 @@ export function AppMenu({
       enterCrash();
       return;
     }
-    if (screen === 'plinko') return;
-    enterPlinko();
+    if (target === 'plinko') {
+      if (screen === 'plinko') return;
+      enterPlinko();
+    }
   };
 
   return (

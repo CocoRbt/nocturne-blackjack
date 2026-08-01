@@ -57,9 +57,9 @@
 - [x] docs/PLINKO.md (ce fichier)
 
 ### E. QA
-- [ ] Simulations multi-config (RTP empirique)
-- [ ] Situations : broke, leave pendant drop, double-click, min mise
-- [ ] Build + suite vitest
+- [x] Simulations multi-config (RTP empirique)
+- [x] Situations : broke, leave pendant drop, double-click, min mise
+- [x] Build + suite vitest (173)
 
 ---
 

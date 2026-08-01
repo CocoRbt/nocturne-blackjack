@@ -20,7 +20,7 @@ type GameShellProps = {
 };
 
 /**
- * Topbar partagée des salons (Mines / Craps / Crash) :
+ * Topbar partagée des salons (Mines / Craps / Crash / Plinko) :
  * retour Lobby, marque, règles, crédit + pic, recharge si fauché.
  */
 export function GameShell({

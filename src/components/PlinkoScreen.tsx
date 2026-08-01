@@ -129,7 +129,7 @@ function PlinkoBoard({
               className={`plinko-bucket ${cool} ${hit ? 'hit' : ''}`}
               title={`${fmtMult(m)}`}
             >
-              {m % 1 === 0 ? `${m}×` : `${m}×`}
+              {fmtMult(m)}
             </div>
           );
         })}
@@ -156,11 +156,13 @@ export function PlinkoScreen() {
   const [rulesOpen, setRulesOpen] = useState(false);
   const histId = useRef(0);
   const dropToken = useRef(0);
+  const dropLock = useRef(false);
   const credited = useRef(false);
   const roundRef = useRef(round);
 
   const dropping = round.phase === 'dropping';
   const canConfigure = !dropping;
+  const stakeReady = Math.min(bet, balance);
 
   useEffect(() => {
     roundRef.current = round;
@@ -172,11 +174,20 @@ export function PlinkoScreen() {
   }, []);
 
   useEffect(() => {
+    if (dropping) return;
+    if (bet <= balance) return;
+    const next = Math.max(1_00, balance);
+    setBet(next);
+    setBetDraft(String(next / 100));
+  }, [balance, bet, dropping]);
+
+  useEffect(() => {
     if (!dropping) return;
     const token = ++dropToken.current;
     credited.current = false;
     setBounceIndex(0);
     let step = 0;
+    let settleTimer = 0;
     const pathLen = roundRef.current.path.length;
     const id = window.setInterval(() => {
       if (token !== dropToken.current) return;
@@ -184,9 +195,10 @@ export function PlinkoScreen() {
       setBounceIndex(step);
       if (step >= pathLen) {
         window.clearInterval(id);
-        window.setTimeout(() => {
+        settleTimer = window.setTimeout(() => {
           if (token !== dropToken.current || credited.current) return;
           credited.current = true;
+          dropLock.current = false;
           const current = roundRef.current;
           const settled = settleDrop(current);
           setRound(settled);
@@ -207,20 +219,25 @@ export function PlinkoScreen() {
         }, 220);
       }
     }, MS_PER_ROW);
-    return () => window.clearInterval(id);
+    return () => {
+      window.clearInterval(id);
+      window.clearTimeout(settleTimer);
+    };
   }, [dropping, round.path, plinkoCredit]);
 
   const commitBet = (cents: number) => {
-    const clamped = Math.max(1_00, Math.min(balance, Math.floor(cents)));
-    setBet(clamped);
-    setBetDraft(String(clamped / 100));
+    const floor = balance < 1_00 ? Math.max(0, balance) : 1_00;
+    const clamped = Math.max(floor, Math.min(balance, Math.floor(cents)));
+    setBet(clamped || 1_00);
+    setBetDraft(String((clamped || 1_00) / 100));
   };
 
   const onDrop = () => {
-    if (dropping) return;
+    if (dropping || dropLock.current) return;
     const stake = Math.min(bet, balance);
     if (stake < 1_00) return;
     if (!plinkoDebit(stake)) return;
+    dropLock.current = true;
     notifyDefi({ type: 'plinko_start' });
     const next = startDrop(stake, rows, risk);
     setRound(next);
@@ -385,10 +402,10 @@ export function PlinkoScreen() {
             <button
               type="button"
               className="btn primary plinko-cta"
-              disabled={dropping || bet < 1_00 || bet > balance}
+              disabled={dropping || stakeReady < 1_00}
               onClick={onDrop}
             >
-              {dropping ? 'En chute…' : `Drop · ${fmt(Math.min(bet, balance))}`}
+              {dropping ? 'En chute…' : `Drop · ${fmt(stakeReady)}`}
             </button>
             {round.phase === 'settled' && (
               <button
