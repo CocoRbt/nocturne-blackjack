@@ -4443,12 +4443,12 @@ button:disabled {
 .plinko-screen {
   --plinko-accent: #e848a8;
   --plinko-accent-soft: rgba(232, 72, 168, 0.16);
-  --plinko-dock-h: 0px;
   height: 100%;
   max-height: 100%;
   overflow-x: clip;
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   background:
     radial-gradient(90% 70% at 70% -10%, rgba(232, 72, 168, 0.14), transparent 55%),
     radial-gradient(70% 50% at 10% 100%, rgba(62, 120, 220, 0.08), transparent 50%),
@@ -4667,11 +4667,11 @@ button:disabled {
     radial-gradient(80% 60% at 50% 0%, rgba(232, 72, 168, 0.1), transparent 55%),
     linear-gradient(180deg, #121826, #070a10);
   box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
-  overflow: hidden;
+  overflow: visible;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   padding: 14px 10px 16px;
   order: 1;
 }
@@ -4692,11 +4692,15 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 .plinko-board {
   width: 100%;
   height: auto;
   display: block;
+  flex: 0 1 auto;
+  min-height: 0;
 }
 .plinko-peg {
   fill: #9aa4b8;
@@ -4781,32 +4785,49 @@ button:disabled {
 
 @media (max-width: 860px) {
   .plinko-screen {
-    --plinko-dock-h: calc(76px + env(safe-area-inset-bottom, 0px));
-    padding-bottom: var(--plinko-dock-h);
+    /* Pas de flex:1 qui écrase : le contenu doit pouvoir scroller. */
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   }
   .plinko-layout {
-    grid-template-columns: 1fr;
-    gap: 10px;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: 8px;
+    /* Empêche le layout de rester collé à 100% sans overflow scrollable. */
+    height: auto;
   }
-  /* Contrôles compacts → planche → Drop fixe en bas (toujours visible). */
+  /* Contrôles compacts → planche + buckets + Drop (tout empilé, rien de coupé). */
   .plinko-panel {
     order: 1;
-    padding: 10px 12px;
-    gap: 8px;
+    flex: 0 0 auto;
+    padding: 8px 10px;
+    gap: 6px;
   }
   .plinko-stage {
     order: 2;
+    flex: 1 1 auto;
     min-height: 0;
-    padding: 8px 4px 10px;
+    /* Place planche + buckets + Drop dans le viewport restant. */
+    max-height: none;
+    padding: 6px 4px 8px;
+    gap: 6px;
+    overflow: visible;
+  }
+  .plinko-panel-top {
+    gap: 6px;
+  }
+  .plinko-bet-block .plinko-label {
+    display: none;
+  }
+  /* Input gros masqué : les presets suffisent sur mobile. */
+  .plinko-bet-row {
+    display: none;
   }
   .plinko-config-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-  .plinko-bet-input {
-    font-size: 22px;
-    padding: 4px 8px;
+    gap: 6px;
   }
   .plinko-presets {
     gap: 4px;
@@ -4822,9 +4843,21 @@ button:disabled {
   }
   .plinko-board-wrap {
     width: min(100%, 520px);
+    flex: 1 1 auto;
+    min-height: 140px;
+    gap: 6px;
+  }
+  /* La SVG rétrécit pour laisser buckets + Drop toujours visibles. */
+  .plinko-board {
+    width: 100%;
+    height: auto;
+    max-height: min(42svh, 280px);
+  }
+  .plinko-buckets {
+    flex: 0 0 auto;
   }
   .plinko-bucket {
-    padding: 8px 0;
+    padding: 7px 0;
     font-size: clamp(7px, 2.6vw, 10px);
     border-radius: 5px;
   }
@@ -4832,27 +4865,28 @@ button:disabled {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 4px;
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 50;
-    padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
-    background:
-      linear-gradient(180deg, rgba(7, 9, 14, 0), rgba(7, 9, 14, 0.92) 28%, #07090e 55%);
-    border-top: 1px solid rgba(232, 72, 168, 0.2);
-    backdrop-filter: blur(10px);
+    gap: 2px;
+    flex: 0 0 auto;
+    width: min(100%, 520px);
+    margin: 0 auto;
+    padding: 0;
+    position: relative;
+    background: none;
+    border: none;
+    backdrop-filter: none;
   }
   .plinko-drop-dock .plinko-cta {
-    min-height: 52px;
+    min-height: 48px;
     margin: 0;
   }
   .plinko-dock-meta {
     text-align: center;
-    font-size: 11px;
+    font-size: 10px;
     color: var(--ink-faint);
     letter-spacing: 0.04em;
+  }
+  .plinko-history {
+    margin-bottom: 6px;
   }
 }
 

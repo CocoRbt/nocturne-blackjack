@@ -589,27 +589,26 @@ export function PlinkoScreen() {
               {liveCount} billes
             </div>
           )}
+          {/* Sous les buckets : toujours visible, sans recouvrir les mults. */}
+          <div className="plinko-drop-dock">
+            <button
+              type="button"
+              className="btn primary plinko-cta"
+              disabled={!canDrop}
+              onClick={onDrop}
+            >
+              Drop · {fmt(stakeReady)}
+            </button>
+            {liveCount > 0 ? (
+              <span className="plinko-dock-meta">
+                {liveCount} en vol
+                {lastSettle ? ` · dernier ${fmtBucket(lastSettle.mult)}×` : ''}
+              </span>
+            ) : (
+              <span className="plinko-dock-meta">Spam pour lancer plusieurs billes</span>
+            )}
+          </div>
         </main>
-      </div>
-
-      {/* Dock Drop fixe mobile : spam sans perdre la planche. */}
-      <div className="plinko-drop-dock">
-        <button
-          type="button"
-          className="btn primary plinko-cta"
-          disabled={!canDrop}
-          onClick={onDrop}
-        >
-          Drop · {fmt(stakeReady)}
-        </button>
-        {liveCount > 0 ? (
-          <span className="plinko-dock-meta">
-            {liveCount} en vol
-            {lastSettle ? ` · dernier ${fmtBucket(lastSettle.mult)}×` : ''}
-          </span>
-        ) : (
-          <span className="plinko-dock-meta">Spam pour lancer plusieurs billes</span>
-        )}
       </div>
 
       <AnimatePresence>
