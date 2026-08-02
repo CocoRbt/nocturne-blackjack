@@ -4326,9 +4326,32 @@ button:disabled {
     width: clamp(56px, 16vw, 72px);
     height: clamp(56px, 16vw, 72px);
   }
-  .craps-goal {
-    margin: 10px 0 0;
-    font-size: 13px;
+  .craps-board-hint {
+    margin: 0 0 8px;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+  .craps-board-nums {
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .craps-num-col {
+    padding: 8px 8px 7px;
+    border-radius: 10px;
+  }
+  .craps-num-label {
+    margin-bottom: 5px;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+  }
+  .craps-num-row {
+    gap: 4px;
+  }
+  .craps-num {
+    min-width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    font-size: 15px;
   }
   .craps-stats {
     display: flex;

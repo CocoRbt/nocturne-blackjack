@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import {
+  boardNumbers,
   canRoll,
   createCrapsRound,
   cryptoUnit,
@@ -191,6 +192,7 @@ export function CrapsScreen() {
   const canBet = !rolling && round.phase === 'come_out';
   const rollReady = canRoll(round) && !rolling;
   const coach = coachCopy(round);
+  const board = boardNumbers(round);
   const mult = currentMult(round);
   const total = faces[0] + faces[1];
   const canPlace = canBet && Math.min(chip, balance) >= 1_00;
@@ -357,12 +359,29 @@ export function CrapsScreen() {
               </div>
             </div>
 
-            {round.phase === 'point' && round.point != null && (
-              <div className="craps-goal" aria-live="polite">
-                Jet {round.pointRolls}/{POINT_ROLLS_BEFORE_PUSH} ·{' '}
-                <strong>{round.point}</strong> avant <strong className="sev">7</strong>
+            <p className="craps-board-hint">{board.hint}</p>
+            <div className="craps-board-nums" aria-live="polite">
+              <div className="craps-num-col win">
+                <span className="craps-num-label">Gagne</span>
+                <div className="craps-num-row">
+                  {board.wins.map((n) => (
+                    <span key={n} className="craps-num">
+                      {n}
+                    </span>
+                  ))}
+                </div>
               </div>
-            )}
+              <div className="craps-num-col lose">
+                <span className="craps-num-label">Perd</span>
+                <div className="craps-num-row">
+                  {board.loses.map((n) => (
+                    <span key={n} className="craps-num">
+                      {n}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
           {round.history.length > 0 && (
