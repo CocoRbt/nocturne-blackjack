@@ -4691,9 +4691,10 @@ button:disabled {
   width: min(100%, 440px);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   flex: 1 1 auto;
   min-height: 0;
+  position: relative;
 }
 .plinko-board {
   width: 100%;
@@ -4730,6 +4731,33 @@ button:disabled {
   gap: 2px;
   width: 100%;
   padding: 0 2px;
+  margin-top: -6px;
+  position: relative;
+  z-index: 2;
+}
+.plinko-sink-ball {
+  position: absolute;
+  top: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  z-index: 3;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  border: 1.5px solid rgba(255, 255, 255, 0.75);
+  background: #ff4fa3;
+}
+.plinko-sink-ball.risk-low {
+  background: #4ade80;
+}
+.plinko-sink-ball.risk-medium {
+  background: #f5c542;
+}
+.plinko-sink-ball.risk-high {
+  background: #ff4fa3;
+}
+.plinko-sink-ball.is-landed {
+  top: 4px;
 }
 .plinko-bucket {
   text-align: center;

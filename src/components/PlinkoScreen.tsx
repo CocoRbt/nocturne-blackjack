@@ -25,7 +25,12 @@ const MAX_LIVE_BALLS = 24;
  * Un peu plus lent en haut (gravité), accélère légèrement.
  */
 const MS_PER_ROW = 300;
-const SETTLE_HOLD_MS = 320;
+/** Chute finale picots → bucket (visible). */
+const DROP_IN_MS = 260;
+/** Unité de progression pour la chute dans le bucket. */
+const DROP_IN_UNITS = 1;
+/** Temps où la bille reste visible dans le gain. */
+const SETTLE_HOLD_MS = 520;
 /** Légère accélération gravitationnelle (1 = linéaire). */
 const GRAVITY_EASE = 1.18;
 
@@ -46,12 +51,34 @@ type LiveBall = {
   paid: boolean;
 };
 
-/** Progression continue 0 → path.length, avec ease gravité. */
+type BallLayout = {
+  cx: number;
+  top: number;
+  pegBottom: number;
+  sinkY: number;
+  spacing: number;
+  pegRows: number;
+  left: number;
+};
+
+function fallDurationMs(rows: number): number {
+  return rows * MS_PER_ROW + DROP_IN_MS;
+}
+
+/** Progression 0 → path.length + DROP_IN_UNITS (sink dans le bucket). */
 function ballProgress(ball: LiveBall, now: number): number {
-  if (ball.landed) return ball.path.length;
-  const duration = Math.max(1, ball.path.length * MS_PER_ROW);
+  const totalUnits = ball.path.length + DROP_IN_UNITS;
+  if (ball.landed) return totalUnits;
+  const duration = Math.max(1, fallDurationMs(ball.path.length));
   const raw = Math.min(1, Math.max(0, (now - ball.bornAt) / duration));
-  return Math.pow(raw, GRAVITY_EASE) * ball.path.length;
+  return Math.pow(raw, GRAVITY_EASE) * totalUnits;
+}
+
+function isFallComplete(ball: LiveBall, now: number): boolean {
+  const totalUnits = ball.path.length + DROP_IN_UNITS;
+  if (ball.landed) return true;
+  const overdue = now - ball.bornAt > fallDurationMs(ball.path.length) + 400;
+  return overdue || ballProgress(ball, now) >= totalUnits - 1e-6;
 }
 
 /** Label bucket compact façon Stake : `110` / `1.5` / `0.3`. */
@@ -75,55 +102,46 @@ function bucketTone(m: number, slots: number, index: number): string {
   return 'tone-green';
 }
 
-function posAtStep(
-  ball: LiveBall,
-  step: number,
-  layout: {
-    cx: number;
-    top: number;
-    bottom: number;
-    spacing: number;
-    pegRows: number;
-    left: number;
-  },
-): { x: number; y: number } {
-  const { cx, top, bottom, spacing, pegRows, left } = layout;
+function posAtStep(ball: LiveBall, step: number, layout: BallLayout): { x: number; y: number } {
+  const { cx, top, pegBottom, spacing, pegRows, left } = layout;
   const s = Math.min(Math.max(step, 0), ball.path.length);
   if (s >= ball.path.length) {
-    return { x: left + ball.slot * spacing, y: bottom + 8 };
+    return { x: left + ball.slot * spacing, y: pegBottom };
   }
   let rights = 0;
   for (let i = 0; i < s; i++) if (ball.path[i]) rights += 1;
   const x = cx + (2 * rights - s) * (spacing / 2);
-  const y = s === 0 ? top - 2 : top + ((s - 0.12) / pegRows) * (bottom - top);
+  const y = s === 0 ? top - 2 : top + ((s - 0.12) / pegRows) * (pegBottom - top);
   return { x, y };
 }
 
-/** Interpolation fluide + petit rebond à chaque picot (feel IRL). */
-function ballXY(
-  ball: LiveBall,
-  layout: {
-    cx: number;
-    top: number;
-    bottom: number;
-    spacing: number;
-    pegRows: number;
-    left: number;
-  },
-  now: number,
-): { x: number; y: number } {
-  if (ball.landed) return posAtStep(ball, ball.path.length, layout);
+function sinkPos(ball: LiveBall, layout: BallLayout): { x: number; y: number } {
+  return { x: layout.left + ball.slot * layout.spacing, y: layout.sinkY };
+}
+
+/** Interpolation fluide + rebond picots + chute finale dans le bucket. */
+function ballXY(ball: LiveBall, layout: BallLayout, now: number): { x: number; y: number } {
+  if (ball.landed) return sinkPos(ball, layout);
 
   const progress = ballProgress(ball, now);
-  if (progress >= ball.path.length) return posAtStep(ball, ball.path.length, layout);
+  const pegEnd = ball.path.length;
+
+  if (progress >= pegEnd) {
+    const t = Math.min(1, (progress - pegEnd) / DROP_IN_UNITS);
+    const ease = 1 - (1 - t) * (1 - t);
+    const a = posAtStep(ball, pegEnd, layout);
+    const b = sinkPos(ball, layout);
+    return {
+      x: a.x + (b.x - a.x) * ease,
+      y: a.y + (b.y - a.y) * ease,
+    };
+  }
 
   const i0 = Math.floor(progress);
   const frac = progress - i0;
-  // ease entre deux picots (ralentit au contact)
   const t = frac * frac * (3 - 2 * frac);
   const a = posAtStep(ball, i0, layout);
-  const b = posAtStep(ball, Math.min(i0 + 1, ball.path.length), layout);
-  // Arc de rebond : soulève un peu au milieu du trajet entre deux rangées
+  const b = posAtStep(ball, Math.min(i0 + 1, pegEnd), layout);
   const bounce = Math.sin(frac * Math.PI) * 3.2;
   return {
     x: a.x + (b.x - a.x) * t,
@@ -149,9 +167,11 @@ function PlinkoBoard({
   const pegRows = rows;
 
   const width = 360;
-  const height = 352;
-  const top = 20;
-  const bottom = height - 18;
+  /** Zone picots + zone sink qui chevauche les buckets HTML. */
+  const height = 392;
+  const top = 18;
+  const pegBottom = 318;
+  const sinkY = 368;
   const cx = width / 2;
   /** Toujours pleine largeur — 8/12/16 lignes occupent le même cadre (look 16L). */
   const padX = 18;
@@ -164,16 +184,16 @@ function PlinkoBoard({
     const pegs: { x: number; y: number }[] = [];
     for (let r = 0; r < pegRows; r++) {
       const count = r + 2;
-      const y = top + ((r + 0.42) / pegRows) * (bottom - top);
+      const y = top + ((r + 0.42) / pegRows) * (pegBottom - top);
       const rowLeft = cx - ((count - 1) * spacing) / 2;
       for (let c = 0; c < count; c++) {
         pegs.push({ x: rowLeft + c * spacing, y });
       }
     }
     return pegs;
-  }, [pegRows, top, bottom, cx, spacing]);
+  }, [pegRows, top, pegBottom, cx, spacing]);
 
-  const layout = { cx, top, bottom, spacing, pegRows, left };
+  const layout: BallLayout = { cx, top, pegBottom, sinkY, spacing, pegRows, left };
 
   return (
     <div className="plinko-board-wrap">
@@ -195,9 +215,10 @@ function PlinkoBoard({
         {pegPositions.map((p, i) => (
           <circle key={i} cx={p.x} cy={p.y} r={pegR} className="plinko-peg" />
         ))}
-        {/* Pas de bille landed ici (évite fantômes SVG) — flash bucket seulement. */}
+        {/* Billes encore dans les picots (la chute bucket est en overlay HTML). */}
         {balls.map((b) => {
-          if (b.landed || b.rows !== rows) return null;
+          if (b.rows !== rows || b.landed) return null;
+          if (ballProgress(b, now) >= b.path.length) return null;
           const { x, y } = ballXY(b, layout, now);
           return (
             <circle
@@ -220,6 +241,27 @@ function PlinkoBoard({
             <span>{fmtBucket(m)}</span>
           </div>
         ))}
+        {/* Overlay : bille qui tombe clairement dans le multiplicateur. */}
+        {balls.map((b) => {
+          if (b.rows !== rows) return null;
+          const progress = ballProgress(b, now);
+          if (!b.landed && progress < b.path.length) return null;
+          const t = b.landed
+            ? 1
+            : Math.min(1, Math.max(0, (progress - b.path.length) / DROP_IN_UNITS));
+          const ease = 1 - (1 - t) * (1 - t);
+          return (
+            <span
+              key={`sink-${b.id}`}
+              className={`plinko-sink-ball risk-${b.risk}${b.landed ? ' is-landed' : ''}`}
+              style={{
+                left: `${((b.slot + 0.5) / slots) * 100}%`,
+                transform: `translate(-50%, ${-22 + ease * 22}px)`,
+                opacity: 0.55 + 0.45 * ease,
+              }}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -320,9 +362,7 @@ export function PlinkoScreen() {
           next.push(b);
           continue;
         }
-        const progress = ballProgress(b, now);
-        const overdue = now - b.bornAt > b.path.length * MS_PER_ROW + 500;
-        if (progress >= b.path.length - 1e-6 || overdue) {
+        if (isFallComplete(b, now)) {
           const landed: LiveBall = { ...b, landed: true, paid: true };
           if (!b.paid && !paidIds.current.has(b.id)) newlyPaid.push(landed);
           next.push(landed);
