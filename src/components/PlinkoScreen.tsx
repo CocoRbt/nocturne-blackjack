@@ -150,11 +150,15 @@ function PlinkoBoard({
 
   const width = 360;
   const height = 352;
-  const top = 24;
-  const bottom = height - 22;
+  const top = 20;
+  const bottom = height - 18;
   const cx = width / 2;
-  const spacing = Math.min(30, (width - 40) / Math.max(slots - 1, 8));
-  const left = cx - ((slots - 1) * spacing) / 2;
+  /** Toujours pleine largeur — 8/12/16 lignes occupent le même cadre (look 16L). */
+  const padX = 18;
+  const spacing = (width - padX * 2) / Math.max(slots - 1, 1);
+  const left = padX;
+  const pegR = Math.max(2.8, Math.min(4.5, spacing * 0.145));
+  const ballR = Math.max(5.8, Math.min(8.2, spacing * 0.3));
 
   const pegPositions = useMemo(() => {
     const pegs: { x: number; y: number }[] = [];
@@ -176,6 +180,7 @@ function PlinkoBoard({
       <svg
         className="plinko-board"
         viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="xMidYMid meet"
         role="img"
         aria-label="Planche Plinko"
       >
@@ -188,7 +193,7 @@ function PlinkoBoard({
         <rect x="0" y="0" width={width} height={height} rx="18" fill="#0b0f16" />
         <rect x="0" y="0" width={width} height={height} rx="18" fill="url(#plinko-stage-glow)" />
         {pegPositions.map((p, i) => (
-          <circle key={i} cx={p.x} cy={p.y} r={3.5} className="plinko-peg" />
+          <circle key={i} cx={p.x} cy={p.y} r={pegR} className="plinko-peg" />
         ))}
         {/* Pas de bille landed ici (évite fantômes SVG) — flash bucket seulement. */}
         {balls.map((b) => {
@@ -199,7 +204,7 @@ function PlinkoBoard({
               key={b.id}
               cx={x}
               cy={y}
-              r={6.8}
+              r={ballR}
               className={`plinko-ball risk-${b.risk}`}
             />
           );
