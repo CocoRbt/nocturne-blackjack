@@ -4691,17 +4691,23 @@ button:disabled {
   width: min(100%, 440px);
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 0;
   flex: 1 1 auto;
   min-height: 0;
   position: relative;
+  overflow: visible;
 }
 .plinko-board {
   width: 100%;
   height: auto;
+  max-height: 100%;
   display: block;
+  /* Ratio viewBox préservé — évite le letterboxing qui éloignait les cases. */
   flex: 0 1 auto;
   min-height: 0;
+  overflow: visible;
 }
 .plinko-peg {
   fill: #9aa4b8;
@@ -4725,77 +4731,24 @@ button:disabled {
   fill: #ff4fa3;
   stroke: #ffd0e8;
 }
-.plinko-buckets {
-  display: grid;
-  grid-template-columns: repeat(var(--slots, 13), minmax(0, 1fr));
-  gap: 2px;
-  width: 100%;
-  padding: 0 2px;
-  margin-top: -6px;
-  position: relative;
-  z-index: 2;
+.plinko-ball.is-landed {
+  opacity: 0.92;
 }
-.plinko-sink-ball {
-  position: absolute;
-  top: 2px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  z-index: 3;
-  pointer-events: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
-  border: 1.5px solid rgba(255, 255, 255, 0.75);
-  background: #ff4fa3;
-}
-.plinko-sink-ball.risk-low {
-  background: #4ade80;
-}
-.plinko-sink-ball.risk-medium {
-  background: #f5c542;
-}
-.plinko-sink-ball.risk-high {
-  background: #ff4fa3;
-}
-.plinko-sink-ball.is-landed {
-  top: 4px;
-}
-.plinko-bucket {
-  text-align: center;
-  padding: 7px 1px;
-  border-radius: 6px;
-  font-size: clamp(8px, 2.1vw, 11px);
+.plinko-bucket-label {
+  fill: #0b0f14;
+  font-size: 9px;
   font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
-  color: #0b0f14;
-  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
-  overflow: hidden;
-  line-height: 1.1;
+  pointer-events: none;
+  user-select: none;
 }
-.plinko-bucket span {
-  display: block;
-  white-space: nowrap;
+.plinko-bucket-g.is-hit rect {
+  filter: brightness(1.18);
 }
-.plinko-bucket.tone-red {
-  background: linear-gradient(180deg, #ff6b7a, #e0344a);
-}
-.plinko-bucket.tone-orange {
-  background: linear-gradient(180deg, #ffb14a, #e8891a);
-}
-.plinko-bucket.tone-yellow {
-  background: linear-gradient(180deg, #ffe36a, #e6c020);
-}
-.plinko-bucket.tone-lime {
-  background: linear-gradient(180deg, #c8f06a, #8fd320);
-}
-.plinko-bucket.tone-green {
-  background: linear-gradient(180deg, #6dffb0, #22c56b);
-}
-.plinko-bucket.hit {
-  transform: translateY(-3px) scale(1.04);
-  filter: brightness(1.15);
-  box-shadow: 0 0 14px rgba(255, 255, 255, 0.35);
-  z-index: 1;
+.plinko-bucket-g.is-hit .plinko-bucket-label {
+  font-size: 9.5px;
 }
 .rules-guide-panel.tone-plinko {
   border-color: rgba(232, 72, 168, 0.35);
@@ -4903,25 +4856,22 @@ button:disabled {
     width: min(100%, 560px);
     flex: 1 1 auto;
     min-height: 0;
-    gap: 4px;
+    gap: 0;
     display: flex;
     flex-direction: column;
+    align-items: center;
+    justify-content: center;
   }
-  /* Occupe tout l’espace restant (plus de plafond 42svh). */
+  /* Garde le ratio : cases toujours collées aux picots dans le viewBox. */
   .plinko-board {
     width: 100%;
-    flex: 1 1 auto;
-    min-height: 180px;
-    max-height: none;
-    height: 100%;
+    height: auto;
+    max-height: 100%;
+    min-height: 0;
+    flex: 0 1 auto;
   }
-  .plinko-buckets {
-    flex: 0 0 auto;
-  }
-  .plinko-bucket {
-    padding: 6px 0;
-    font-size: clamp(7px, 2.5vw, 10px);
-    border-radius: 5px;
+  .plinko-bucket-label {
+    font-size: 8px;
   }
   .plinko-drop-dock {
     display: flex;
