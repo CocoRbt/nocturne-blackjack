@@ -184,21 +184,15 @@ function PlinkoBoard({
             <stop offset="0%" stopColor="rgba(232, 72, 168, 0.14)" />
             <stop offset="50%" stopColor="rgba(20, 24, 36, 0)" />
           </radialGradient>
-          <filter id="plinko-ball-glow" x="-60%" y="-60%" width="220%" height="220%">
-            <feGaussianBlur stdDeviation="1.8" result="b" />
-            <feMerge>
-              <feMergeNode in="b" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
         </defs>
         <rect x="0" y="0" width={width} height={height} rx="18" fill="#0b0f16" />
         <rect x="0" y="0" width={width} height={height} rx="18" fill="url(#plinko-stage-glow)" />
         {pegPositions.map((p, i) => (
           <circle key={i} cx={p.x} cy={p.y} r={3.5} className="plinko-peg" />
         ))}
+        {/* Pas de bille landed ici (évite fantômes SVG) — flash bucket seulement. */}
         {balls.map((b) => {
-          if (b.rows !== rows) return null;
+          if (b.landed || b.rows !== rows) return null;
           const { x, y } = ballXY(b, layout, now);
           return (
             <circle
@@ -207,7 +201,6 @@ function PlinkoBoard({
               cy={y}
               r={6.8}
               className={`plinko-ball risk-${b.risk}`}
-              filter="url(#plinko-ball-glow)"
             />
           );
         })}
@@ -250,14 +243,15 @@ export function PlinkoScreen() {
   const histId = useRef(0);
   const ballId = useRef(0);
   const ballsRef = useRef(balls);
-  const rafRef = useRef(0);
   const removeTimers = useRef<Map<number, number>>(new Map());
+  const paidIds = useRef<Set<number>>(new Set());
   const plinkoCreditRef = useRef(plinkoCredit);
   plinkoCreditRef.current = plinkoCredit;
 
   const liveCount = balls.filter((b) => !b.landed).length;
+  const flying = liveCount > 0;
   const busy = balls.length > 0;
-  const canConfigure = liveCount === 0;
+  const canConfigure = !flying;
   const stakeReady = Math.min(bet, balance);
   const canDrop = stakeReady >= 1_00 && liveCount < MAX_LIVE_BALLS;
 
@@ -271,16 +265,15 @@ export function PlinkoScreen() {
   }, []);
 
   useEffect(() => {
-    if (busy) return;
+    if (flying) return;
     if (bet <= balance) return;
     const next = Math.max(1_00, balance);
     setBet(next);
     setBetDraft(String(next / 100));
-  }, [balance, bet, busy]);
+  }, [balance, bet, flying]);
 
   useEffect(() => {
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       for (const t of removeTimers.current.values()) window.clearTimeout(t);
       removeTimers.current.clear();
     };
@@ -290,6 +283,7 @@ export function PlinkoScreen() {
     if (removeTimers.current.has(id)) return;
     const t = window.setTimeout(() => {
       removeTimers.current.delete(id);
+      paidIds.current.delete(id);
       setBalls((prev) => {
         const filtered = prev.filter((b) => b.id !== id);
         ballsRef.current = filtered;
@@ -299,10 +293,15 @@ export function PlinkoScreen() {
     removeTimers.current.set(id, t);
   };
 
-  const ensureLoop = () => {
-    if (rafRef.current) return;
+  /** Boucle d’anim robuste : redémarre dès qu’il y a des billes en vol. */
+  useEffect(() => {
+    if (!flying) return;
+
+    let alive = true;
+    let raf = 0;
 
     const loop = (now: number) => {
+      if (!alive) return;
       setNowMs(now);
 
       const list = ballsRef.current;
@@ -316,9 +315,11 @@ export function PlinkoScreen() {
           next.push(b);
           continue;
         }
-        if (ballProgress(b, now) >= b.path.length - 1e-6) {
+        const progress = ballProgress(b, now);
+        const overdue = now - b.bornAt > b.path.length * MS_PER_ROW + 500;
+        if (progress >= b.path.length - 1e-6 || overdue) {
           const landed: LiveBall = { ...b, landed: true, paid: true };
-          if (!b.paid) newlyPaid.push(landed);
+          if (!b.paid && !paidIds.current.has(b.id)) newlyPaid.push(landed);
           next.push(landed);
           hits.add(b.slot);
           changed = true;
@@ -334,6 +335,7 @@ export function PlinkoScreen() {
 
       if (newlyPaid.length > 0) {
         for (const b of newlyPaid) {
+          paidIds.current.add(b.id);
           plinkoCreditRef.current(b.payout);
           notifyDefi({ type: 'plinko_drop', mult: b.multiplier });
           histId.current += 1;
@@ -365,15 +367,17 @@ export function PlinkoScreen() {
         }, SETTLE_HOLD_MS);
       }
 
-      if (ballsRef.current.length > 0) {
-        rafRef.current = requestAnimationFrame(loop);
-      } else {
-        rafRef.current = 0;
+      if (ballsRef.current.some((b) => !b.landed)) {
+        raf = requestAnimationFrame(loop);
       }
     };
 
-    rafRef.current = requestAnimationFrame(loop);
-  };
+    raf = requestAnimationFrame(loop);
+    return () => {
+      alive = false;
+      cancelAnimationFrame(raf);
+    };
+  }, [flying]);
 
   const commitBet = (cents: number) => {
     const floor = balance < 1_00 ? Math.max(0, balance) : 1_00;
@@ -412,7 +416,6 @@ export function PlinkoScreen() {
       ballsRef.current = next;
       return next;
     });
-    ensureLoop();
   };
 
   const table = paytable(rows, risk);

@@ -4709,6 +4709,8 @@ button:disabled {
   fill: #ff4fa3;
   stroke: #ffd0e8;
   stroke-width: 1.2;
+  /* Pas de filter SVG (fantômes iOS) — ombre CSS légère. */
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
 }
 .plinko-ball.risk-low {
   fill: #4ade80;
@@ -4784,57 +4786,73 @@ button:disabled {
 }
 
 @media (max-width: 860px) {
+  /* Remplit le viewport : planche grande, buckets + Drop toujours visibles. */
   .plinko-screen {
-    /* Pas de flex:1 qui écrase : le contenu doit pouvoir scroller. */
-    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    padding: 0 10px calc(10px + env(safe-area-inset-bottom, 0px));
+    overflow: hidden;
+  }
+  .plinko-screen .game-topbar {
+    padding-top: 8px;
+    padding-bottom: 4px;
+    flex-shrink: 0;
+  }
+  .plinko-screen .game-brand h1 {
+    font-size: clamp(22px, 6vw, 28px);
+  }
+  .plinko-history {
+    flex-shrink: 0;
+    margin: 0 auto 6px;
+    min-height: 0;
   }
   .plinko-layout {
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
     min-height: 0;
-    gap: 8px;
-    /* Empêche le layout de rester collé à 100% sans overflow scrollable. */
+    gap: 6px;
     height: auto;
   }
-  /* Contrôles compacts → planche + buckets + Drop (tout empilé, rien de coupé). */
   .plinko-panel {
     order: 1;
     flex: 0 0 auto;
-    padding: 8px 10px;
-    gap: 6px;
+    padding: 6px 8px;
+    gap: 4px;
   }
   .plinko-stage {
     order: 2;
     flex: 1 1 auto;
     min-height: 0;
-    /* Place planche + buckets + Drop dans le viewport restant. */
-    max-height: none;
-    padding: 6px 4px 8px;
-    gap: 6px;
-    overflow: visible;
+    padding: 4px 2px 6px;
+    gap: 4px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
   .plinko-panel-top {
-    gap: 6px;
+    gap: 4px;
   }
   .plinko-bet-block .plinko-label {
     display: none;
   }
-  /* Input gros masqué : les presets suffisent sur mobile. */
   .plinko-bet-row {
     display: none;
   }
   .plinko-config-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 6px;
+    gap: 4px;
   }
   .plinko-presets {
     gap: 4px;
   }
   .plinko-chip {
-    padding: 6px 8px;
+    padding: 5px 7px;
     font-size: 10px;
+  }
+  .plinko-label {
+    font-size: 9px;
+    margin-bottom: 0;
   }
   .plinko-stats,
   .plinko-footnote,
@@ -4842,23 +4860,27 @@ button:disabled {
     display: none;
   }
   .plinko-board-wrap {
-    width: min(100%, 520px);
+    width: min(100%, 560px);
     flex: 1 1 auto;
-    min-height: 140px;
-    gap: 6px;
+    min-height: 0;
+    gap: 4px;
+    display: flex;
+    flex-direction: column;
   }
-  /* La SVG rétrécit pour laisser buckets + Drop toujours visibles. */
+  /* Occupe tout l’espace restant (plus de plafond 42svh). */
   .plinko-board {
     width: 100%;
-    height: auto;
-    max-height: min(42svh, 280px);
+    flex: 1 1 auto;
+    min-height: 180px;
+    max-height: none;
+    height: 100%;
   }
   .plinko-buckets {
     flex: 0 0 auto;
   }
   .plinko-bucket {
-    padding: 7px 0;
-    font-size: clamp(7px, 2.6vw, 10px);
+    padding: 6px 0;
+    font-size: clamp(7px, 2.5vw, 10px);
     border-radius: 5px;
   }
   .plinko-drop-dock {
@@ -4867,7 +4889,7 @@ button:disabled {
     align-items: stretch;
     gap: 2px;
     flex: 0 0 auto;
-    width: min(100%, 520px);
+    width: min(100%, 560px);
     margin: 0 auto;
     padding: 0;
     position: relative;
@@ -4876,7 +4898,7 @@ button:disabled {
     backdrop-filter: none;
   }
   .plinko-drop-dock .plinko-cta {
-    min-height: 48px;
+    min-height: 46px;
     margin: 0;
   }
   .plinko-dock-meta {
@@ -4884,9 +4906,6 @@ button:disabled {
     font-size: 10px;
     color: var(--ink-faint);
     letter-spacing: 0.04em;
-  }
-  .plinko-history {
-    margin-bottom: 6px;
   }
 }
 
