@@ -26,7 +26,9 @@
 3. RTP cible **99 %** (aligné Mines/Crash), vérifié par tests EV.
 4. Une mise → un drop → un payout (pas de side bets).
 5. Animation : chemin réel (bounces), pas un résultat maquillé.
-6. Crédit partagé, GameShell, règles, défis, menu.
+6. **Multi-balles** : spam Drop jusqu’à 24 billes en vol (meilleure sensation que le 1×1 Stake pur).
+7. UI Stake-like : pyramide espacée, buckets rouge→vert, bille rose, labels compacts.
+8. Crédit partagé, GameShell, règles, défis, menu.
 
 ---
 
@@ -59,12 +61,13 @@
 ### E. QA
 - [x] Simulations multi-config (RTP empirique)
 - [x] Situations : broke, leave pendant drop, double-click, min mise
-- [x] Build + suite vitest (173)
+- [x] Build + suite vitest
+- [x] Refonte UI Stake-like + multi-balles (v1.1)
 
 ---
 
-## 3. Hors scope v1
+## 3. Hors scope
 - Mode Expert / 10 000×
-- Auto-bet / turbo multi-balles
+- Auto-bet programmé (on-win / on-loss) — le spam manuel couvre le besoin
 - Provably fair UI seed (RNG crypto interne suffit, comme Mines)
 - Sons dédiés (réutilise chip/click si besoin)

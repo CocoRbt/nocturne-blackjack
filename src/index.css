@@ -3218,7 +3218,7 @@ button:disabled {
   color: var(--crash-accent, #e0785a);
 }
 .game-topbar[data-accent='plinko'] .game-brand .mono {
-  color: var(--plinko-accent, #d4a05a);
+  color: var(--plinko-accent, #e848a8);
 }
 .game-brand h1 {
   font-family: var(--font-display);
@@ -4438,63 +4438,64 @@ button:disabled {
 }
 
 /* ============================================================
-   PLINKO
+   PLINKO (Stake-like board + multi-ball)
    ============================================================ */
 .plinko-screen {
-  --plinko-accent: #d4a05a;
-  --plinko-accent-soft: rgba(212, 160, 90, 0.18);
+  --plinko-accent: #e848a8;
+  --plinko-accent-soft: rgba(232, 72, 168, 0.16);
   height: 100%;
   max-height: 100%;
   overflow-x: clip;
   overflow-y: auto;
   overscroll-behavior: contain;
   background:
-    radial-gradient(90% 70% at 65% -10%, rgba(212, 160, 90, 0.12), transparent 55%),
-    radial-gradient(70% 50% at 10% 100%, rgba(194, 161, 95, 0.07), transparent 50%),
-    var(--bg-0);
+    radial-gradient(90% 70% at 70% -10%, rgba(232, 72, 168, 0.14), transparent 55%),
+    radial-gradient(70% 50% at 10% 100%, rgba(62, 120, 220, 0.08), transparent 50%),
+    #07090e;
   display: flex;
   flex-direction: column;
-  padding: 0 16px 28px;
+  padding: 0 12px 24px;
 }
 .plinko-screen .game-topbar {
-  padding-bottom: 12px;
+  padding-bottom: 8px;
 }
 .plinko-history {
   display: flex;
   flex-wrap: nowrap;
-  gap: 6px;
+  gap: 5px;
   overflow-x: auto;
   width: min(1100px, 100%);
-  margin: 0 auto 12px;
+  margin: 0 auto 10px;
   padding: 0 2px 4px;
   scrollbar-width: thin;
 }
 .plinko-pill {
   flex: 0 0 auto;
-  padding: 5px 10px;
-  border-radius: 999px;
-  font-size: 12px;
+  padding: 4px 9px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  border: 1px solid var(--line);
-  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid transparent;
+  background: rgba(0, 0, 0, 0.35);
   color: var(--ink-dim);
 }
 .plinko-pill.low {
-  color: var(--lose);
-  border-color: rgba(207, 143, 143, 0.35);
+  color: #7dffb0;
+  background: rgba(40, 140, 80, 0.22);
 }
 .plinko-pill.mid {
-  color: var(--brass);
-  border-color: rgba(194, 161, 95, 0.35);
+  color: #ffe08a;
+  background: rgba(180, 130, 30, 0.22);
 }
 .plinko-pill.high {
-  color: var(--win);
-  border-color: rgba(143, 207, 168, 0.4);
+  color: #ffb0c8;
+  background: rgba(200, 50, 100, 0.28);
 }
 .plinko-layout {
   display: grid;
-  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
-  gap: clamp(18px, 3vw, 28px);
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 290px);
+  gap: clamp(14px, 2.5vw, 24px);
   align-items: start;
   width: min(1100px, 100%);
   margin: 0 auto;
@@ -4503,12 +4504,13 @@ button:disabled {
 .plinko-panel {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 18px 16px;
-  border-radius: 18px;
-  border: 1px solid var(--line-strong);
-  background: rgba(12, 14, 16, 0.75);
+  gap: 12px;
+  padding: 16px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(12, 16, 24, 0.88);
   backdrop-filter: blur(8px);
+  order: 2;
 }
 .plinko-panel-block {
   display: flex;
@@ -4534,8 +4536,8 @@ button:disabled {
   font-size: 28px;
   letter-spacing: 0.04em;
   color: var(--ink);
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   padding: 6px 10px;
   outline: none;
@@ -4553,36 +4555,41 @@ button:disabled {
 }
 .plinko-chip {
   padding: 7px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   font-size: 11px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: var(--ink-dim);
-  background: transparent;
+  background: rgba(0, 0, 0, 0.2);
 }
 .plinko-chip.on,
 .plinko-chip:not(:disabled):hover {
-  border-color: var(--plinko-accent);
-  color: #f0d6a8;
+  border-color: rgba(232, 72, 168, 0.55);
+  color: #ffc0e0;
   background: var(--plinko-accent-soft);
 }
-.plinko-chip.risk-high.on {
-  border-color: rgba(224, 120, 90, 0.55);
-  color: #f0b8a8;
-  background: rgba(224, 120, 90, 0.12);
-}
 .plinko-chip.risk-low.on {
-  border-color: rgba(143, 207, 168, 0.45);
-  color: #b8e0c8;
-  background: rgba(143, 207, 168, 0.1);
+  border-color: rgba(80, 220, 140, 0.55);
+  color: #b8ffd0;
+  background: rgba(80, 220, 140, 0.12);
+}
+.plinko-chip.risk-medium.on {
+  border-color: rgba(240, 190, 60, 0.55);
+  color: #ffe9a0;
+  background: rgba(240, 190, 60, 0.12);
+}
+.plinko-chip.risk-high.on {
+  border-color: rgba(255, 90, 110, 0.6);
+  color: #ffb0bc;
+  background: rgba(255, 90, 110, 0.12);
 }
 .plinko-stats {
   display: grid;
   gap: 8px;
   padding: 12px;
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 .plinko-stats > div {
   display: flex;
@@ -4597,24 +4604,39 @@ button:disabled {
   font-size: 10px;
 }
 .plinko-stats .v.brass {
-  color: var(--brass);
+  color: #ffb0d0;
   font-family: var(--font-display);
 }
 .plinko-stats .v.win {
-  color: var(--win);
+  color: #7dffb0;
 }
 .plinko-stats .v.lose {
-  color: var(--lose);
+  color: #ff8a9a;
 }
 .plinko-actions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 .plinko-cta {
   width: 100%;
-  min-height: 52px;
-  font-size: 13px;
+  min-height: 54px;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  background: linear-gradient(160deg, #f06ab8, #c02878) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  box-shadow: 0 8px 28px rgba(232, 72, 168, 0.28);
+}
+.plinko-cta:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+}
+.plinko-cta-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--ink-faint);
 }
 .plinko-footnote {
   font-size: 11px;
@@ -4623,25 +4645,38 @@ button:disabled {
 }
 .plinko-stage {
   position: relative;
-  min-height: 380px;
-  border-radius: 22px;
-  border: 1px solid rgba(212, 160, 90, 0.22);
+  min-height: 420px;
+  border-radius: 20px;
+  border: 1px solid rgba(232, 72, 168, 0.18);
   background:
-    radial-gradient(90% 80% at 50% 10%, rgba(212, 160, 90, 0.08), transparent 55%),
-    linear-gradient(180deg, #141210, #0a0b0e);
-  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.4);
+    radial-gradient(80% 60% at 50% 0%, rgba(232, 72, 168, 0.1), transparent 55%),
+    linear-gradient(180deg, #121826, #070a10);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 16px 12px 20px;
+  padding: 14px 10px 16px;
+  order: 1;
+}
+.plinko-live-count {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: #ffc0e0;
+  background: rgba(232, 72, 168, 0.18);
+  border: 1px solid rgba(232, 72, 168, 0.35);
 }
 .plinko-board-wrap {
-  width: min(100%, 420px);
+  width: min(100%, 440px);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 .plinko-board {
   width: 100%;
@@ -4649,85 +4684,110 @@ button:disabled {
   display: block;
 }
 .plinko-peg {
-  fill: rgba(212, 160, 90, 0.7);
+  fill: #9aa4b8;
 }
 .plinko-ball {
-  fill: #f0d6a8;
-  stroke: #c2a15f;
-  stroke-width: 1;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
-  transition: cx 0.14s linear, cy 0.14s linear;
+  fill: #ff4fa3;
+  stroke: #ffd0e8;
+  stroke-width: 1.2;
+}
+.plinko-ball.risk-low {
+  fill: #4ade80;
+  stroke: #d1fae5;
+}
+.plinko-ball.risk-medium {
+  fill: #f5c542;
+  stroke: #fff3c4;
+}
+.plinko-ball.risk-high {
+  fill: #ff4fa3;
+  stroke: #ffd0e8;
 }
 .plinko-buckets {
   display: grid;
   grid-template-columns: repeat(var(--slots, 13), minmax(0, 1fr));
-  gap: 3px;
+  gap: 2px;
   width: 100%;
-}
-.plinko-buckets[data-slots='9'] {
-  --slots: 9;
-}
-.plinko-buckets[data-slots='13'] {
-  --slots: 13;
-}
-.plinko-buckets[data-slots='17'] {
-  --slots: 17;
+  padding: 0 2px;
 }
 .plinko-bucket {
   text-align: center;
-  padding: 6px 2px;
+  padding: 7px 1px;
   border-radius: 6px;
-  font-size: clamp(8px, 2.2vw, 11px);
+  font-size: clamp(8px, 2.1vw, 11px);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  border: 1px solid rgba(233, 228, 216, 0.12);
-  background: rgba(0, 0, 0, 0.35);
-  color: var(--ink-dim);
-  transition: border-color 0.2s, background 0.2s, color 0.2s, transform 0.2s;
+  letter-spacing: -0.02em;
+  color: #0b0f14;
+  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+  overflow: hidden;
+  line-height: 1.1;
 }
-.plinko-bucket.warm {
-  color: var(--brass);
-  border-color: rgba(194, 161, 95, 0.3);
+.plinko-bucket span {
+  display: block;
+  white-space: nowrap;
 }
-.plinko-bucket.hot {
-  color: #f0d6a8;
-  border-color: rgba(212, 160, 90, 0.45);
-  background: rgba(212, 160, 90, 0.12);
+.plinko-bucket.tone-red {
+  background: linear-gradient(180deg, #ff6b7a, #e0344a);
 }
-.plinko-bucket.cold {
-  color: var(--lose);
+.plinko-bucket.tone-orange {
+  background: linear-gradient(180deg, #ffb14a, #e8891a);
+}
+.plinko-bucket.tone-yellow {
+  background: linear-gradient(180deg, #ffe36a, #e6c020);
+}
+.plinko-bucket.tone-lime {
+  background: linear-gradient(180deg, #c8f06a, #8fd320);
+}
+.plinko-bucket.tone-green {
+  background: linear-gradient(180deg, #6dffb0, #22c56b);
 }
 .plinko-bucket.hit {
-  transform: translateY(-2px);
-  border-color: rgba(143, 207, 168, 0.65);
-  background: rgba(143, 207, 168, 0.16);
-  color: var(--win);
+  transform: translateY(-3px) scale(1.04);
+  filter: brightness(1.15);
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.35);
+  z-index: 1;
 }
 .rules-guide-panel.tone-plinko {
-  border-color: rgba(212, 160, 90, 0.35);
+  border-color: rgba(232, 72, 168, 0.35);
   background:
-    linear-gradient(165deg, rgba(212, 160, 90, 0.1), transparent 42%),
-    linear-gradient(180deg, #1a1612 0%, #0f0e0c 100%);
+    linear-gradient(165deg, rgba(232, 72, 168, 0.12), transparent 42%),
+    linear-gradient(180deg, #16121a 0%, #0c0e12 100%);
 }
 .tone-plinko .rules-guide-head .mono,
 .tone-plinko .rules-section h3 {
-  color: #e0c080;
+  color: #ffb0d0;
 }
 .tone-plinko .rules-steps .n {
-  color: #e0c080;
-  border-color: rgba(212, 160, 90, 0.4);
-  background: rgba(212, 160, 90, 0.08);
+  color: #ffb0d0;
+  border-color: rgba(232, 72, 168, 0.4);
+  background: rgba(232, 72, 168, 0.1);
 }
 
 @media (max-width: 860px) {
   .plinko-layout {
     grid-template-columns: 1fr;
   }
-  .plinko-panel {
-    order: 1;
-  }
   .plinko-stage {
+    order: 1;
+    min-height: 0;
+    padding: 10px 6px 12px;
+  }
+  .plinko-panel {
     order: 2;
-    min-height: 280px;
+  }
+  .plinko-board-wrap {
+    width: min(100%, 520px);
+  }
+  .plinko-bucket {
+    padding: 8px 0;
+    font-size: clamp(7px, 2.6vw, 10px);
+    border-radius: 5px;
+  }
+  .plinko-cta {
+    position: sticky;
+    bottom: 8px;
+    z-index: 2;
   }
 }
 

@@ -374,7 +374,9 @@ function PlinkoRules() {
           </li>
           <li>
             <span className="n">2</span>
-            <span>Drop — la bille suit un chemin aléatoire réel jusqu’à un bucket.</span>
+            <span>
+              Drop — spampez le bouton : plusieurs billes peuvent chuter en même temps (jusqu’à 24).
+            </span>
           </li>
           <li>
             <span className="n">3</span>
