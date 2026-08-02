@@ -17,6 +17,12 @@ type GameShellProps = {
   /** Bloque menu nav (Crash en vol). */
   navLocked?: boolean;
   navLockedReason?: string;
+  /**
+   * Bloque la recharge (ex. Plinko : billes encore en vol / payouts en attente).
+   * Évite de recharger à 0 pendant que des gains vont encore arriver.
+   */
+  refillLocked?: boolean;
+  refillLockedReason?: string;
 };
 
 /**
@@ -34,11 +40,14 @@ export function GameShell({
   rulesLabel,
   navLocked = false,
   navLockedReason,
+  refillLocked = false,
+  refillLockedReason,
 }: GameShellProps) {
   const balance = useGame((s) => s.balance);
   const peakBalance = useGame((s) => s.peakBalance);
   const refill = useGame((s) => s.refill);
   const broke = balance < 1_00;
+  const canRefill = broke && !refillLocked;
 
   return (
     <>
@@ -69,7 +78,7 @@ export function GameShell({
           <span className="label">Crédit</span>
           <span className="value">{fmt(balance)}</span>
           <span className="peak">Pic {fmt(peakBalance)}</span>
-          {broke && (
+          {canRefill && (
             <button
               type="button"
               className="btn primary game-refill-btn"
@@ -83,10 +92,16 @@ export function GameShell({
       </header>
       {broke && (
         <div className="game-broke-banner" role="status">
-          <span>Crédit épuisé — rechargez pour continuer.</span>
-          <button type="button" className="btn primary" onClick={refill}>
-            Recharger {fmt(STARTING_BALANCE)}
-          </button>
+          {refillLocked ? (
+            <span>{refillLockedReason ?? 'Attendez la fin de la manche pour recharger.'}</span>
+          ) : (
+            <>
+              <span>Crédit épuisé — rechargez pour continuer.</span>
+              <button type="button" className="btn primary" onClick={refill}>
+                Recharger {fmt(STARTING_BALANCE)}
+              </button>
+            </>
+          )}
         </div>
       )}
     </>

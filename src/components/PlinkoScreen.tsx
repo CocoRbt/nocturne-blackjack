@@ -433,6 +433,8 @@ export function PlinkoScreen() {
         backTitle={busy ? 'Attendez la fin des billes' : 'Retour Lobby'}
         navLocked={busy}
         navLockedReason="Attendez la fin des billes"
+        refillLocked={busy}
+        refillLockedReason="Attendez que toutes les billes soient tombées avant de recharger."
         onRules={() => setRulesOpen(true)}
         rulesLabel="Règles Plinko"
       />
