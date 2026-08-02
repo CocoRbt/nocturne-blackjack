@@ -63,33 +63,33 @@ const BET_COPY: Record<
   { title: string; win: string; lose: string; tip: string; pay: string; badge?: string }
 > = {
   pass: {
-    title: 'Pass Line',
-    badge: 'Reco',
-    win: 'Gagne si 7 ou 11 tout de suite, ou si le point sort avant un 7',
-    lose: 'Perd sur 2, 3, 12 au come-out, ou sur un 7 avant le point',
-    tip: 'Mise classique du shooter — commencez ici.',
-    pay: '1:1 · 7 / 11',
+    title: 'Gagner',
+    badge: 'Simple',
+    win: 'Tu gagnes si tu fais 7 ou 11 tout de suite, ou si tu retombes sur ta cible avant un 7.',
+    lose: 'Tu perds sur 2, 3 ou 12 au premier lancer, ou si un 7 sort avant ta cible.',
+    tip: 'Le plus simple : commence ici.',
+    pay: '×2 si 7 ou 11',
   },
   dont_pass: {
-    title: 'Don’t Pass',
-    win: 'Gagne sur 2 ou 3 au come-out, ou si un 7 sort avant le point',
-    lose: 'Perd sur 7 ou 11 ; sur 12 vous êtes remboursé (bar)',
-    tip: 'Vous jouez contre le shooter.',
-    pay: '1:1 · contre',
+    title: 'Contre',
+    win: 'Tu gagnes sur 2 ou 3 au premier lancer, ou si un 7 sort avant la cible.',
+    lose: 'Tu perds sur 7 ou 11. Sur 12, on te rend juste ta mise.',
+    tip: 'Tu paries que les dés vont mal tourner.',
+    pay: '×2 si 2 ou 3',
   },
   field: {
-    title: 'Field',
-    win: 'Gagne sur 2, 3, 4, 9, 10, 11, 12 (un seul lancer)',
-    lose: 'Perd sur 5, 6, 7 ou 8',
-    tip: '2 paie double, 12 paie triple.',
-    pay: '2× / 3× · 1 lancer',
+    title: 'Ce coup',
+    win: 'Tu gagnes sur 2, 3, 4, 9, 10, 11 ou 12 — ce lancer uniquement.',
+    lose: 'Tu perds sur 5, 6, 7 ou 8.',
+    tip: 'Rapide : un seul lancer. 2 paie double, 12 paie triple.',
+    pay: 'Un seul lancer',
   },
   odds: {
-    title: 'Odds',
-    win: 'Derrière Pass : gagne si le point sort avant un 7',
-    lose: 'Perd avec le seven-out',
-    tip: 'Cotes vraies (0 % de commission) — dispo seulement après un point.',
-    pay: 'Cotes vraies',
+    title: 'Miser plus',
+    win: 'Tu gagnes en plus si tu atteins ta cible avant un 7.',
+    lose: 'Tu perds aussi si un 7 sort trop tôt.',
+    tip: 'Dispo seulement quand tu as une cible. Meilleur rapport du jeu.',
+    pay: 'Sur ta cible',
   },
 };
 
@@ -174,29 +174,29 @@ function coachCopy(round: CrapsRound, hasLine: boolean, hasAnyBet: boolean): {
 } {
   if (round.phase === 'point' && round.point != null) {
     return {
-      step: 'Étape 3',
-      title: `Point ${round.point} en jeu`,
-      body: `Il faut refaire un ${round.point} avant un 7. Vous pouvez ajouter des Odds derrière Pass, ou du Field à chaque lancer.`,
+      step: 'Suite',
+      title: `Cible : ${round.point}`,
+      body: `Refais un ${round.point} avant un 7. Tu peux « Miser plus » sur ta cible, ou jouer « Ce coup » à chaque lancer.`,
     };
   }
   if (!hasAnyBet) {
     return {
-      step: 'Étape 1',
-      title: 'Placez une mise',
-      body: 'Commencez par Pass Line (recommandé) : vous gagnez tout de suite sur 7 ou 11. Don’t Pass joue l’inverse. Field = un seul lancer.',
+      step: '1 · Mise',
+      title: 'Pose un jeton',
+      body: 'Commence par « Gagner » : 7 ou 11 = tu gagnes tout de suite. « Contre » = l’inverse. « Ce coup » = un seul lancer.',
     };
   }
   if (!hasLine && round.bets.field > 0) {
     return {
-      step: 'Étape 2',
-      title: 'Lancez les dés',
-      body: 'Vous n’avez que du Field : le résultat se joue sur ce lancer uniquement (2,3,4,9,10,11,12 gagnent).',
+      step: '2 · Lancer',
+      title: 'Lance les dés',
+      body: 'Tu n’as que « Ce coup » : 2, 3, 4, 9, 10, 11 ou 12 = tu gagnes. Sinon tu perds.',
     };
   }
   return {
-    step: 'Étape 2',
-    title: 'Lancez les dés',
-    body: 'Come-out : 7 ou 11 = Pass gagne. 2, 3, 12 = Pass perd. Autre total = on établit le point.',
+    step: '2 · Lancer',
+    title: 'Lance les dés',
+    body: '7 ou 11 = tu gagnes. 2, 3 ou 12 = tu perds. Autre total = on fixe une cible à refaire.',
   };
 }
 
@@ -339,7 +339,7 @@ export function CrapsScreen() {
         eyebrow="Salon des jeux"
         onBack={leaveCraps}
         onRules={() => setRulesOpen(true)}
-        rulesLabel="Règles Craps"
+        rulesLabel="Comment jouer"
       />
 
       <div className="craps-layout">
@@ -351,7 +351,7 @@ export function CrapsScreen() {
           </div>
 
           <div className="craps-panel-block">
-            <label className="craps-label">Jeton à poser</label>
+            <label className="craps-label">Combien tu mises</label>
             <div className="craps-presets">
               {BET_PRESETS.map((p) => (
                 <button
@@ -389,13 +389,13 @@ export function CrapsScreen() {
             </div>
             {round.phase === 'point' && (
               <div>
-                <span className="k">Odds max</span>
+                <span className="k">Encore dispo</span>
                 <span className="v">{fmt(oddsMax)}</span>
               </div>
             )}
             {round.lastRoll && !rolling && (
               <div>
-                <span className="k">Dernier lancer</span>
+                <span className="k">Dernier jet</span>
                 <span className="v brass">
                   {round.lastRoll.d1}+{round.lastRoll.d2} = {round.lastRoll.total}
                 </span>
@@ -409,7 +409,7 @@ export function CrapsScreen() {
             disabled={!canRoll}
             onClick={onRoll}
           >
-            {rolling ? 'Les dés volent…' : working === 0 ? 'Mise d’abord, puis lance' : 'Lancer les dés'}
+            {rolling ? 'Les dés volent…' : working === 0 ? 'Mise d’abord…' : 'Lancer !'}
           </button>
 
           <ul className="craps-settle">
@@ -423,7 +423,7 @@ export function CrapsScreen() {
           </ul>
 
           <p className="craps-footnote">
-            Cliquez une zone pour y poser le jeton · ⓘ pour le guide complet
+            Tape une case pour y poser ton jeton · ⓘ si tu bloques
           </p>
         </aside>
 
@@ -445,7 +445,7 @@ export function CrapsScreen() {
           <div className={`craps-felt ${round.phase === 'point' ? 'point-on' : ''} ${rolling ? 'is-rolling' : ''}`}>
             <div className="craps-puck-row">
               <div className={`craps-puck ${round.phase === 'point' ? 'on' : 'off'}`}>
-                <span className="puck-label">{round.phase === 'point' ? 'ON' : 'OFF'}</span>
+                <span className="puck-label">{round.phase === 'point' ? 'Cible' : 'Libre'}</span>
                 <span className="puck-value">
                   {round.phase === 'point' ? round.point : '—'}
                 </span>
@@ -476,7 +476,7 @@ export function CrapsScreen() {
 
             {round.phase === 'point' && round.point != null && (
               <div className="craps-goal" aria-live="polite">
-                Objectif : <strong>{round.point}</strong> avant <strong className="sev">7</strong>
+                Il faut un <strong>{round.point}</strong>… sans faire <strong className="sev">7</strong>
               </div>
             )}
 

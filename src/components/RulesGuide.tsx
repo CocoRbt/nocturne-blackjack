@@ -407,8 +407,8 @@ function CrapsRules() {
     <>
       <IlluCraps />
       <p className="rules-lead">
-        Scraps — vous lancez toujours. Commencez par Pass Line : 7 ou 11 = vous gagnez tout de suite.
-        Sinon un « point » est fixé, et vous devez le refaire avant un 7.
+        Deux dés, tu lances, tu gagnes ou tu perds. Commence par « Gagner » : 7 ou 11 = gagné tout de suite.
+        Sinon on fixe une cible — refais-la avant un 7.
       </p>
       <section className="rules-section">
         <h3>En 3 étapes</h3>
@@ -416,41 +416,41 @@ function CrapsRules() {
           <li>
             <span className="n">1</span>
             <span>
-              <strong>Mise</strong> — posez un jeton sur Pass Line (le plus simple). Don’t Pass = l’inverse. Field = un seul lancer.
+              <strong>Mise</strong> — pose un jeton sur « Gagner » (le plus simple). « Contre » = l’inverse. « Ce coup » = un seul lancer.
             </span>
           </li>
           <li>
             <span className="n">2</span>
             <span>
-              <strong>Come-out</strong> — 7/11 Pass gagne · 2/3/12 Pass perd · autre total = point établi.
+              <strong>Premier lancer</strong> — 7 ou 11 = tu gagnes · 2, 3 ou 12 = tu perds · autre total = on fixe une cible.
             </span>
           </li>
           <li>
             <span className="n">3</span>
             <span>
-              <strong>Point</strong> — refaites le point avant un 7. Odds = cotes vraies derrière Pass.
+              <strong>Cible</strong> — refais ce chiffre avant un 7. Tu peux « Miser plus » pour augmenter les gains.
             </span>
           </li>
         </ol>
       </section>
       <section className="rules-section">
-        <h3>Paris</h3>
+        <h3>Les cases</h3>
         <div className="rules-grid">
-          <RuleRow label="Pass Line" value="7/11 win · 2/3/12 lose · 1:1" />
-          <RuleRow label="Don’t Pass" value="2/3 win · 7/11 lose · 12 push" />
-          <RuleRow label="Field" value="1:1 · 2→2:1 · 12→3:1" />
-          <RuleRow label="Odds (Pass)" value="Cotes vraies · 0 % HE" />
+          <RuleRow label="Gagner" value="7 / 11 gagnent · 2 / 3 / 12 perdent · ×2" />
+          <RuleRow label="Contre" value="2 / 3 gagnent · 7 / 11 perdent · 12 remboursé" />
+          <RuleRow label="Ce coup" value="Un lancer · 2×2 · 12×3" />
+          <RuleRow label="Miser plus" value="Sur ta cible · meilleur rapport" />
         </div>
       </section>
       <section className="rules-section">
-        <h3>Odds max (table 3-4-5×)</h3>
+        <h3>Combien tu peux « Miser plus »</h3>
         <div className="rules-grid">
-          <RuleRow label="Point 4 ou 10" value="3× · paie 2:1" />
-          <RuleRow label="Point 5 ou 9" value="4× · paie 3:2" />
-          <RuleRow label="Point 6 ou 8" value="5× · paie 6:5" />
+          <RuleRow label="Cible 4 ou 10" value="jusqu’à 3× · paie ×2" />
+          <RuleRow label="Cible 5 ou 9" value="jusqu’à 4× · paie ×1,5" />
+          <RuleRow label="Cible 6 ou 8" value="jusqu’à 5× · paie ×1,2" />
         </div>
       </section>
-      <p className="rules-foot">Deux dés · crypto.getRandomValues · crédit partagé NOCTURNE</p>
+      <p className="rules-foot">Deux dés · jetons virtuels · crédit partagé NOCTURNE</p>
     </>
   );
 }
@@ -458,7 +458,7 @@ function CrapsRules() {
 const META: Record<RulesGame, { eyebrow: string; title: string }> = {
   blackjack: { eyebrow: 'Table · guide de salle', title: 'Blackjack' },
   mines: { eyebrow: 'Salon des jeux · guide', title: 'Mines' },
-  craps: { eyebrow: 'Salon des jeux · Scraps', title: 'Craps' },
+  craps: { eyebrow: 'Salon des jeux · guide', title: 'Craps' },
   crash: { eyebrow: 'Salon des jeux · Crash', title: 'Crash' },
   plinko: { eyebrow: 'Salon des jeux · Plinko', title: 'Plinko' },
 };
