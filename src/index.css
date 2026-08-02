@@ -707,10 +707,10 @@ button:disabled {
   transition: border-color 0.3s var(--ease-lux), transform 0.3s var(--ease-lux);
 }
 .craps-card {
-  border-color: rgba(194, 161, 95, 0.28);
+  border-color: rgba(232, 201, 106, 0.32);
   background:
-    linear-gradient(145deg, rgba(194, 161, 95, 0.1), transparent 52%),
-    rgba(14, 12, 10, 0.88);
+    linear-gradient(145deg, rgba(232, 201, 106, 0.12), transparent 52%),
+    rgba(10, 16, 14, 0.9);
 }
 .crash-card {
   border-color: rgba(224, 120, 90, 0.32);
@@ -729,7 +729,7 @@ button:disabled {
   transform: translateY(-2px);
 }
 .craps-card:hover {
-  border-color: rgba(194, 161, 95, 0.5);
+  border-color: rgba(232, 201, 106, 0.55);
   transform: translateY(-2px);
 }
 .crash-card:hover {
@@ -798,7 +798,7 @@ button:disabled {
   font-size: 11px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--brass);
+  color: #e8c96a;
 }
 .crash-card-body .enter {
   font-size: 11px;
@@ -876,22 +876,33 @@ button:disabled {
 }
 .craps-card-visual {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: 10px;
   padding: 16px 12px;
   background:
-    radial-gradient(circle at 50% 30%, rgba(194, 161, 95, 0.16), transparent 65%),
-    linear-gradient(180deg, #123529, #071810);
+    radial-gradient(circle at 50% 28%, rgba(232, 201, 106, 0.22), transparent 60%),
+    linear-gradient(180deg, #1a6b52, #0a2e24 55%, #061810);
+  position: relative;
+  overflow: hidden;
+}
+.craps-card-visual::before {
+  content: '';
+  position: absolute;
+  inset: 10px;
+  border: 1px solid rgba(232, 201, 106, 0.22);
+  border-radius: 10px;
+  pointer-events: none;
 }
 .craps-card-die {
   width: 34px;
   height: 34px;
   border-radius: 8px;
-  background: linear-gradient(160deg, #f4efe3, #d8d0bf);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+  background: linear-gradient(160deg, #f7f1e4, #e4d8c0);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   position: relative;
+  z-index: 1;
 }
 .craps-card-die::before {
   content: '';
@@ -900,6 +911,14 @@ button:disabled {
   background:
     radial-gradient(circle at 30% 30%, #2a2620 0 2.2px, transparent 2.4px),
     radial-gradient(circle at 70% 70%, #2a2620 0 2.2px, transparent 2.4px);
+}
+.craps-card-die[data-pips='5']::before {
+  background:
+    radial-gradient(circle at 30% 30%, #2a2620 0 2.2px, transparent 2.4px),
+    radial-gradient(circle at 70% 30%, #2a2620 0 2.2px, transparent 2.4px),
+    radial-gradient(circle at 30% 70%, #2a2620 0 2.2px, transparent 2.4px),
+    radial-gradient(circle at 70% 70%, #2a2620 0 2.2px, transparent 2.4px),
+    radial-gradient(circle at 50% 50%, #2a2620 0 2.2px, transparent 2.4px);
 }
 
 .circle-panel-in-drawer {
@@ -3212,7 +3231,7 @@ button:disabled {
   color: var(--mines-gem);
 }
 .game-topbar[data-accent='craps'] .game-brand .mono {
-  color: var(--brass);
+  color: var(--craps-accent, #e8c96a);
 }
 .game-topbar[data-accent='crash'] .game-brand .mono {
   color: var(--crash-accent, #e0785a);
@@ -3513,17 +3532,22 @@ button:disabled {
    CRAPS / SCRAPS
    ============================================================ */
 .craps-screen {
-  --craps-felt: #0f2e24;
-  --craps-felt-deep: #071810;
-  --craps-line: rgba(233, 228, 216, 0.22);
+  /* Identité salon : jaune table casino sur feutre émeraude profond */
+  --craps-accent: #e8c96a;
+  --craps-accent-soft: rgba(232, 201, 106, 0.16);
+  --craps-felt: #145a45;
+  --craps-felt-mid: #0e3f31;
+  --craps-felt-deep: #071f18;
+  --craps-line: rgba(242, 235, 224, 0.3);
+  --craps-ivory: #f2ebe0;
   height: 100%;
   max-height: 100%;
   overflow-x: clip;
   overflow-y: auto;
   overscroll-behavior: contain;
   background:
-    radial-gradient(90% 70% at 20% -10%, rgba(194, 161, 95, 0.12), transparent 55%),
-    radial-gradient(70% 50% at 90% 100%, rgba(18, 53, 41, 0.45), transparent 50%),
+    radial-gradient(95% 70% at 15% -12%, rgba(232, 201, 106, 0.14), transparent 55%),
+    radial-gradient(80% 55% at 95% 105%, rgba(20, 90, 69, 0.45), transparent 52%),
     var(--bg-0);
   display: flex;
   flex-direction: column;
@@ -3541,11 +3565,13 @@ button:disabled {
 .craps-panel {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   padding: 18px 16px;
   border-radius: 18px;
-  border: 1px solid var(--line-strong);
-  background: rgba(12, 14, 16, 0.72);
+  border: 1px solid rgba(232, 201, 106, 0.18);
+  background:
+    linear-gradient(165deg, rgba(232, 201, 106, 0.06), transparent 42%),
+    rgba(10, 14, 12, 0.78);
   backdrop-filter: blur(8px);
 }
 .craps-panel-block {
@@ -3572,20 +3598,21 @@ button:disabled {
   letter-spacing: 0.08em;
   color: var(--ink-dim);
   background: transparent;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
 }
 .craps-chip.on,
 .craps-chip:not(:disabled):hover {
-  border-color: var(--brass);
-  color: var(--brass);
-  background: var(--brass-faint);
+  border-color: var(--craps-accent);
+  color: var(--craps-accent);
+  background: var(--craps-accent-soft);
 }
 .craps-stats {
   display: grid;
   gap: 8px;
   padding: 12px;
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(232, 201, 106, 0.14);
 }
 .craps-stats > div {
   display: flex;
@@ -3600,7 +3627,7 @@ button:disabled {
   font-size: 10px;
 }
 .craps-stats .v.brass {
-  color: var(--brass);
+  color: var(--craps-accent);
   font-family: var(--font-display);
   font-size: 16px;
 }
@@ -3610,25 +3637,25 @@ button:disabled {
   gap: 6px;
   padding: 14px 14px 12px;
   border-radius: 14px;
-  border: 1px solid rgba(194, 161, 95, 0.28);
+  border: 1px solid rgba(232, 201, 106, 0.32);
   background:
-    linear-gradient(145deg, rgba(194, 161, 95, 0.12), transparent 55%),
-    rgba(0, 0, 0, 0.28);
+    linear-gradient(145deg, rgba(232, 201, 106, 0.14), transparent 55%),
+    rgba(0, 0, 0, 0.3);
 }
 .craps-coach[data-phase='point'] {
-  border-color: rgba(143, 207, 168, 0.3);
+  border-color: rgba(120, 210, 168, 0.38);
   background:
-    linear-gradient(145deg, rgba(143, 207, 168, 0.1), transparent 55%),
-    rgba(0, 0, 0, 0.28);
+    linear-gradient(145deg, rgba(120, 210, 168, 0.12), transparent 55%),
+    rgba(0, 0, 0, 0.3);
 }
 .craps-coach-step {
   font-size: 10px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--brass);
+  color: var(--craps-accent);
 }
 .craps-coach[data-phase='point'] .craps-coach-step {
-  color: var(--win);
+  color: #8fdcb4;
 }
 .craps-coach strong {
   font-family: var(--font-display);
@@ -3647,23 +3674,23 @@ button:disabled {
   gap: 4px;
   padding: 12px;
   border-radius: 12px;
-  border: 1px solid var(--line);
-  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(232, 201, 106, 0.12);
+  background: rgba(0, 0, 0, 0.26);
   font-size: 12px;
   line-height: 1.4;
   color: var(--ink-dim);
 }
 .craps-hint-k {
   font-family: var(--font-display);
-  font-size: 14px;
+  font-size: 15px;
   letter-spacing: 0.06em;
-  color: var(--ink);
+  color: var(--craps-ivory);
 }
 .craps-hint p {
   margin: 0;
 }
 .craps-hint .win {
-  color: var(--win);
+  color: #8fdcb4;
 }
 .craps-hint .lose {
   color: var(--lose);
@@ -3672,13 +3699,22 @@ button:disabled {
   width: 100%;
   min-height: 52px;
   font-size: 13px;
+  letter-spacing: 0.1em;
+  color: #1a1408 !important;
+  background: linear-gradient(180deg, #f3dfa0, #d4af4a 55%, #b8922e) !important;
+  border: 1px solid rgba(255, 236, 180, 0.35) !important;
+  box-shadow: 0 10px 28px rgba(180, 140, 40, 0.22);
+}
+.craps-cta:disabled {
+  opacity: 0.45;
+  box-shadow: none;
 }
 .craps-cta.pulse:not(:disabled) {
   animation: craps-cta-pulse 1.8s var(--ease-lux) infinite;
 }
 @keyframes craps-cta-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(194, 161, 95, 0.25); }
-  50% { box-shadow: 0 0 0 8px rgba(194, 161, 95, 0); }
+  0%, 100% { box-shadow: 0 10px 28px rgba(180, 140, 40, 0.22), 0 0 0 0 rgba(232, 201, 106, 0.35); }
+  50% { box-shadow: 0 10px 28px rgba(180, 140, 40, 0.28), 0 0 0 10px rgba(232, 201, 106, 0); }
 }
 .craps-settle {
   list-style: none;
@@ -3691,7 +3727,7 @@ button:disabled {
   min-height: 1.2em;
 }
 .craps-settle li.ok {
-  color: var(--win);
+  color: #8fdcb4;
 }
 .craps-settle li.bad {
   color: var(--lose);
@@ -3705,7 +3741,7 @@ button:disabled {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
 }
 .craps-banner {
@@ -3719,9 +3755,9 @@ button:disabled {
   align-self: center;
 }
 .craps-banner.win {
-  color: var(--win);
-  border-color: rgba(143, 207, 168, 0.4);
-  background: rgba(143, 207, 168, 0.1);
+  color: #8fdcb4;
+  border-color: rgba(120, 210, 168, 0.45);
+  background: rgba(120, 210, 168, 0.12);
 }
 .craps-banner.lose {
   color: var(--lose);
@@ -3734,42 +3770,60 @@ button:disabled {
 }
 .craps-felt {
   position: relative;
-  border-radius: 28px;
-  padding: clamp(18px, 3vw, 28px);
-  border: 1px solid rgba(194, 161, 95, 0.22);
+  border-radius: 26px;
+  padding: clamp(16px, 2.8vw, 26px);
+  border: 1px solid rgba(232, 201, 106, 0.28);
   background:
-    radial-gradient(120% 80% at 50% -20%, rgba(194, 161, 95, 0.14), transparent 45%),
-    radial-gradient(80% 60% at 80% 100%, rgba(0, 0, 0, 0.35), transparent 50%),
-    linear-gradient(165deg, var(--craps-felt), var(--craps-felt-deep));
+    radial-gradient(110% 70% at 50% -15%, rgba(232, 201, 106, 0.18), transparent 48%),
+    radial-gradient(70% 50% at 85% 110%, rgba(0, 0, 0, 0.4), transparent 55%),
+    linear-gradient(165deg, var(--craps-felt) 0%, var(--craps-felt-mid) 48%, var(--craps-felt-deep) 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 28px 70px rgba(0, 0, 0, 0.4);
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.25),
+    0 28px 70px rgba(0, 0, 0, 0.45);
   overflow: hidden;
 }
+/* Rail de table + marquage losange subtil */
 .craps-felt::before {
   content: '';
   position: absolute;
-  inset: 10px;
-  border-radius: 22px;
-  border: 1px dashed rgba(233, 228, 216, 0.12);
+  inset: 8px;
+  border-radius: 20px;
+  border: 2px solid rgba(232, 201, 106, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(242, 235, 224, 0.06);
+  pointer-events: none;
+}
+.craps-felt::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.07;
+  background-image:
+    linear-gradient(45deg, rgba(242, 235, 224, 0.5) 1px, transparent 1px),
+    linear-gradient(-45deg, rgba(242, 235, 224, 0.5) 1px, transparent 1px);
+  background-size: 28px 28px;
   pointer-events: none;
 }
 .craps-felt.point-on {
+  border-color: rgba(232, 201, 106, 0.45);
   box-shadow:
-    inset 0 0 0 1px rgba(194, 161, 95, 0.2),
-    0 28px 70px rgba(0, 0, 0, 0.4);
+    inset 0 0 0 1px rgba(232, 201, 106, 0.18),
+    inset 0 0 50px rgba(232, 201, 106, 0.06),
+    0 28px 70px rgba(0, 0, 0, 0.45);
 }
 .craps-felt.is-rolling {
-  box-shadow:
-    inset 0 0 40px rgba(194, 161, 95, 0.08),
-    0 28px 70px rgba(0, 0, 0, 0.4);
+  animation: craps-felt-pulse 1.6s var(--ease-lux) infinite;
+}
+@keyframes craps-felt-pulse {
+  0%, 100% { box-shadow: inset 0 0 30px rgba(232, 201, 106, 0.05), 0 28px 70px rgba(0, 0, 0, 0.45); }
+  50% { box-shadow: inset 0 0 55px rgba(232, 201, 106, 0.12), 0 28px 70px rgba(0, 0, 0, 0.45); }
 }
 .craps-puck-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   position: relative;
   z-index: 1;
 }
@@ -3784,10 +3838,10 @@ button:disabled {
   gap: 2px;
   font-family: var(--font-display);
   letter-spacing: 0.08em;
-  border: 3px solid rgba(233, 228, 216, 0.35);
+  border: 3px solid rgba(242, 235, 224, 0.28);
   background: radial-gradient(circle at 35% 30%, #3a3530, #12100e);
   color: var(--ink-dim);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
   flex-shrink: 0;
 }
 .craps-puck .puck-label {
@@ -3800,8 +3854,8 @@ button:disabled {
 }
 .craps-puck.on {
   color: #1a1208;
-  border-color: rgba(194, 161, 95, 0.7);
-  background: radial-gradient(circle at 35% 30%, #e8d7a8, #c2a15f 55%, #8a6f35);
+  border-color: rgba(255, 236, 180, 0.75);
+  background: radial-gradient(circle at 35% 30%, #f6e7b0, #e8c96a 50%, #b8922e);
   animation: craps-puck-in 0.45s var(--ease-lux);
 }
 @keyframes craps-puck-in {
@@ -3810,14 +3864,17 @@ button:disabled {
 }
 .craps-throw {
   flex: 1;
-  min-height: 130px;
+  min-height: 140px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   position: relative;
   perspective: 600px;
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 55%, rgba(0, 0, 0, 0.28), transparent 70%);
 }
 .craps-dice {
   display: flex;
@@ -3827,8 +3884,8 @@ button:disabled {
 }
 .craps-die-slot {
   position: relative;
-  width: clamp(64px, 12vw, 84px);
-  height: clamp(64px, 12vw, 84px);
+  width: clamp(68px, 13vw, 88px);
+  height: clamp(68px, 13vw, 88px);
 }
 .craps-die-shadow {
   position: absolute;
@@ -3837,7 +3894,7 @@ button:disabled {
   bottom: -6px;
   height: 14px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.5);
   filter: blur(4px);
   pointer-events: none;
 }
@@ -3847,31 +3904,31 @@ button:disabled {
   position: relative;
   z-index: 1;
   transform-style: preserve-3d;
-  filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.35));
+  filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.4));
 }
 .craps-die.is-throwing {
-  filter: drop-shadow(0 22px 28px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 22px 28px rgba(0, 0, 0, 0.5));
 }
 .craps-die-svg {
   width: 100%;
   height: 100%;
 }
 .craps-die-face {
-  fill: #f3eee2;
-  stroke: rgba(40, 36, 30, 0.2);
+  fill: var(--craps-ivory);
+  stroke: rgba(40, 36, 30, 0.18);
   stroke-width: 2;
 }
 .craps-die-pip {
-  fill: #2a2620;
+  fill: #1f1c18;
 }
 .craps-total {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  padding: 4px 14px;
+  padding: 5px 16px;
   border-radius: 999px;
-  border: 1px solid rgba(194, 161, 95, 0.4);
-  background: rgba(10, 12, 10, 0.65);
+  border: 1px solid rgba(232, 201, 106, 0.5);
+  background: rgba(8, 14, 12, 0.72);
 }
 .craps-total-k {
   font-size: 10px;
@@ -3881,32 +3938,32 @@ button:disabled {
 }
 .craps-total strong {
   font-family: var(--font-display);
-  font-size: 28px;
-  color: var(--brass);
+  font-size: 30px;
+  color: var(--craps-accent);
   line-height: 1;
 }
 .craps-goal {
   text-align: center;
-  margin: 0 0 14px;
+  margin: 0 0 12px;
   font-size: 14px;
   letter-spacing: 0.04em;
-  color: var(--ink-dim);
+  color: rgba(242, 235, 224, 0.72);
   position: relative;
   z-index: 1;
 }
 .craps-goal strong {
   font-family: var(--font-display);
-  font-size: 22px;
-  color: var(--brass);
+  font-size: 24px;
+  color: var(--craps-accent);
   padding: 0 4px;
 }
 .craps-goal strong.sev {
-  color: var(--lose);
+  color: #f0a0a0;
 }
 .craps-spots {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 8px;
   position: relative;
   z-index: 1;
 }
@@ -3914,34 +3971,56 @@ button:disabled {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
-  min-height: 132px;
-  padding: 14px 14px 12px;
-  border-radius: 14px;
+  gap: 4px;
+  min-height: 96px;
+  padding: 12px 12px 10px;
+  border-radius: 12px;
   border: 1.5px solid var(--craps-line);
-  background: rgba(0, 0, 0, 0.18);
-  color: var(--ink);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 40%),
+    rgba(0, 0, 0, 0.22);
+  color: var(--craps-ivory);
   text-align: left;
-  transition: border-color 0.25s, background 0.25s, transform 0.2s;
+  transition: border-color 0.22s, background 0.22s, transform 0.2s, box-shadow 0.22s;
 }
 .craps-spot:not(:disabled):hover {
-  border-color: rgba(194, 161, 95, 0.55);
-  background: rgba(194, 161, 95, 0.08);
-  transform: translateY(-1px);
+  border-color: rgba(232, 201, 106, 0.65);
+  background:
+    linear-gradient(180deg, rgba(232, 201, 106, 0.1), transparent 50%),
+    rgba(0, 0, 0, 0.28);
+  transform: translateY(-2px);
 }
 .craps-spot.sel {
-  border-color: rgba(194, 161, 95, 0.65);
-  box-shadow: inset 0 0 0 1px rgba(194, 161, 95, 0.2);
+  border-color: var(--craps-accent);
+  box-shadow:
+    inset 0 0 0 1px rgba(232, 201, 106, 0.25),
+    0 0 0 1px rgba(232, 201, 106, 0.12);
+  background:
+    linear-gradient(180deg, rgba(232, 201, 106, 0.14), transparent 55%),
+    rgba(0, 0, 0, 0.28);
+}
+.craps-spot.has-bet {
+  border-color: rgba(232, 201, 106, 0.55);
 }
 .craps-spot.locked {
-  opacity: 0.42;
+  opacity: 0.38;
 }
 .craps-spot.pass {
   grid-column: 1 / -1;
-  border-color: rgba(143, 207, 168, 0.28);
+  min-height: 88px;
+  border-color: rgba(120, 210, 168, 0.4);
+  background:
+    linear-gradient(120deg, rgba(120, 210, 168, 0.12), transparent 45%),
+    rgba(0, 0, 0, 0.2);
+}
+.craps-spot.pass.sel {
+  border-color: #8fdcb4;
 }
 .craps-spot.field {
-  border-color: rgba(207, 154, 108, 0.35);
+  border-color: rgba(232, 170, 110, 0.42);
+}
+.craps-spot.dont {
+  border-color: rgba(200, 160, 200, 0.28);
 }
 .craps-spot .spot-top {
   display: flex;
@@ -3952,80 +4031,81 @@ button:disabled {
 }
 .craps-spot .spot-name {
   font-family: var(--font-display);
-  font-size: 18px;
-  letter-spacing: 0.06em;
+  font-size: clamp(16px, 2.4vw, 20px);
+  letter-spacing: 0.08em;
+  font-weight: 420;
 }
 .craps-spot .spot-badge {
   font-size: 9px;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #0e1a14;
-  background: rgba(143, 207, 168, 0.85);
+  background: linear-gradient(180deg, #b8f0d0, #78c8a0);
   padding: 3px 8px;
   border-radius: 999px;
 }
 .craps-spot .spot-pay {
-  font-size: 12px;
-  color: var(--ink-dim);
-  line-height: 1.35;
-}
-.craps-spot .spot-winlose {
-  display: grid;
-  gap: 3px;
   font-size: 11px;
-  line-height: 1.35;
-}
-.craps-spot .spot-winlose .w {
-  color: rgba(143, 207, 168, 0.9);
-}
-.craps-spot .spot-winlose .l {
-  color: rgba(207, 143, 143, 0.9);
+  letter-spacing: 0.06em;
+  color: rgba(242, 235, 224, 0.62);
+  line-height: 1.3;
 }
 .craps-spot .spot-stake {
   margin-top: auto;
+  align-self: flex-end;
+  min-width: 52px;
+  text-align: center;
   font-variant-numeric: tabular-nums;
-  color: var(--brass);
-  font-size: 16px;
+  color: #1a1408;
+  font-size: 14px;
   font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f3dfa0, #d4af4a);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+}
+.craps-spot .spot-stake.empty {
+  background: transparent;
+  color: rgba(242, 235, 224, 0.35);
+  border: 1px dashed rgba(242, 235, 224, 0.22);
+  box-shadow: none;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 4px 10px;
 }
 .craps-history {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-wrap: nowrap;
   gap: 6px;
-  margin-top: 18px;
-  position: relative;
-  z-index: 1;
+  overflow-x: auto;
+  padding: 2px 2px 4px;
+  scrollbar-width: thin;
 }
-.craps-history-label {
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  margin-right: 4px;
-  border: none !important;
-  background: transparent !important;
-  min-width: 0 !important;
-  height: auto !important;
-}
-.craps-history span {
-  min-width: 28px;
-  height: 28px;
+.craps-pill {
+  flex: 0 0 auto;
+  min-width: 34px;
+  height: 30px;
   display: grid;
   place-items: center;
-  border-radius: 8px;
-  font-size: 12px;
-  border: 1px solid rgba(233, 228, 216, 0.14);
-  background: rgba(0, 0, 0, 0.22);
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid rgba(232, 201, 106, 0.2);
+  background: rgba(0, 0, 0, 0.32);
   color: var(--ink-dim);
 }
-.craps-history span.sev {
+.craps-pill.sev {
   color: var(--lose);
-  border-color: rgba(207, 143, 143, 0.35);
+  border-color: rgba(207, 143, 143, 0.4);
+  background: rgba(207, 143, 143, 0.1);
 }
-.craps-history span.pt {
-  color: var(--brass);
-  border-color: rgba(194, 161, 95, 0.4);
+.craps-pill.pt {
+  color: var(--craps-accent);
+  border-color: rgba(232, 201, 106, 0.5);
+  background: var(--craps-accent-soft);
 }
 
 @media (max-width: 860px) {
@@ -4039,13 +4119,13 @@ button:disabled {
     order: 1;
   }
   .craps-spots {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
   }
   .craps-spot.pass {
-    grid-column: auto;
+    grid-column: 1 / -1;
   }
   .craps-spot {
-    min-height: 0;
+    min-height: 84px;
   }
   .craps-puck-row {
     flex-direction: column;
@@ -4987,10 +5067,19 @@ button:disabled {
     linear-gradient(180deg, #121816 0%, #0c1012 100%);
 }
 .rules-guide-panel.tone-craps {
-  border-color: rgba(194, 161, 95, 0.32);
+  border-color: rgba(232, 201, 106, 0.35);
   background:
-    linear-gradient(165deg, rgba(18, 53, 41, 0.45), transparent 45%),
-    linear-gradient(180deg, #141812 0%, #0c0e0c 100%);
+    linear-gradient(165deg, rgba(232, 201, 106, 0.1), transparent 42%),
+    linear-gradient(180deg, #121816 0%, #0a100e 100%);
+}
+.tone-craps .rules-guide-head .mono,
+.tone-craps .rules-section h3 {
+  color: #e8c96a;
+}
+.tone-craps .rules-steps .n {
+  color: #e8c96a;
+  border-color: rgba(232, 201, 106, 0.4);
+  background: rgba(232, 201, 106, 0.1);
 }
 .rules-guide-head {
   display: flex;

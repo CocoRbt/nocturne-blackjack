@@ -222,7 +222,7 @@ export function Lobby() {
             </div>
             <div className="craps-card-body">
               <h3>Craps</h3>
-              <p>Scraps · Pass Line · Don’t Pass · Field · Odds 3-4-5× · come-out &amp; point.</p>
+              <p>Tapis · dés · Pass Line · Field · Odds 3-4-5× · come-out &amp; point.</p>
               <span className="enter">Entrer dans le salon →</span>
             </div>
           </motion.button>

@@ -60,32 +60,36 @@ const PIP_MAP: Record<DieFace, Array<[number, number]>> = {
 
 const BET_COPY: Record<
   BetKind,
-  { title: string; win: string; lose: string; tip: string; badge?: string }
+  { title: string; win: string; lose: string; tip: string; pay: string; badge?: string }
 > = {
   pass: {
     title: 'Pass Line',
-    badge: 'Le plus simple',
+    badge: 'Reco',
     win: 'Gagne si 7 ou 11 tout de suite, ou si le point sort avant un 7',
     lose: 'Perd sur 2, 3, 12 au come-out, ou sur un 7 avant le point',
     tip: 'Mise classique du shooter — commencez ici.',
+    pay: '1:1 · 7 / 11',
   },
   dont_pass: {
     title: 'Don’t Pass',
     win: 'Gagne sur 2 ou 3 au come-out, ou si un 7 sort avant le point',
     lose: 'Perd sur 7 ou 11 ; sur 12 vous êtes remboursé (bar)',
     tip: 'Vous jouez contre le shooter.',
+    pay: '1:1 · contre',
   },
   field: {
     title: 'Field',
     win: 'Gagne sur 2, 3, 4, 9, 10, 11, 12 (un seul lancer)',
     lose: 'Perd sur 5, 6, 7 ou 8',
     tip: '2 paie double, 12 paie triple.',
+    pay: '2× / 3× · 1 lancer',
   },
   odds: {
     title: 'Odds',
     win: 'Derrière Pass : gagne si le point sort avant un 7',
     lose: 'Perd avec le seven-out',
     tip: 'Cotes vraies (0 % de commission) — dispo seulement après un point.',
+    pay: 'Cotes vraies',
   },
 };
 
@@ -332,7 +336,7 @@ export function CrapsScreen() {
       <GameShell
         accent="craps"
         title="Craps"
-        eyebrow="Salon des jeux · Scraps"
+        eyebrow="Salon des jeux"
         onBack={leaveCraps}
         onRules={() => setRulesOpen(true)}
         rulesLabel="Règles Craps"
@@ -490,7 +494,7 @@ export function CrapsScreen() {
                   <button
                     key={kind}
                     type="button"
-                    className={`craps-spot ${kind === 'dont_pass' ? 'dont' : kind} ${selected === kind ? 'sel' : ''} ${!allowed ? 'locked' : ''}`}
+                    className={`craps-spot ${kind === 'dont_pass' ? 'dont' : kind} ${selected === kind ? 'sel' : ''} ${!allowed ? 'locked' : ''} ${stake > 0 ? 'has-bet' : ''}`}
                     disabled={rolling || !allowed}
                     onClick={() => {
                       setSelected(kind);
@@ -501,32 +505,31 @@ export function CrapsScreen() {
                       <span className="spot-name">{copy.title}</span>
                       {copy.badge && <span className="spot-badge">{copy.badge}</span>}
                     </span>
-                    <span className="spot-pay">{copy.tip}</span>
-                    <span className="spot-winlose">
-                      <span className="w">✓ {copy.win}</span>
-                      <span className="l">✗ {copy.lose}</span>
-                    </span>
-                    {stake > 0 && <span className="spot-stake">{fmt(stake)}</span>}
+                    <span className="spot-pay">{copy.pay}</span>
+                    {stake > 0 ? (
+                      <span className="spot-stake">{fmt(stake)}</span>
+                    ) : (
+                      <span className="spot-stake empty">Poser</span>
+                    )}
                   </button>
                 );
               })}
             </div>
-
-            {round.history.length > 0 && (
-              <div className="craps-history" aria-label="Historique des lancers">
-                <span className="craps-history-label">Lancers</span>
-                {round.history.map((h, i) => (
-                  <span
-                    key={`${h.total}-${i}`}
-                    className={h.total === 7 ? 'sev' : h.total === round.point ? 'pt' : ''}
-                    title={`${h.d1}+${h.d2}`}
-                  >
-                    {h.total}
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
+
+          {round.history.length > 0 && (
+            <div className="craps-history" aria-label="Historique des lancers">
+              {round.history.map((h, i) => (
+                <span
+                  key={`${h.total}-${i}`}
+                  className={`craps-pill ${h.total === 7 ? 'sev' : h.total === round.point ? 'pt' : ''}`}
+                  title={`${h.d1}+${h.d2}`}
+                >
+                  {h.total}
+                </span>
+              ))}
+            </div>
+          )}
         </main>
       </div>
 
