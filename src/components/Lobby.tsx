@@ -14,6 +14,7 @@ import { fmt } from '../lib/format';
 import { STARTING_BALANCE } from '../store/persistence';
 import { useGame } from '../store/gameStore';
 import { formatGamesBeforePeak } from '../store/peakMeta';
+import { vaultableAmount } from '../store/vault';
 import { AppMenu } from './AppMenu';
 import { useCircleKeepalive } from './CirclePanel';
 import { useDefiSync } from './DailyChallenges';
@@ -21,6 +22,7 @@ import { exitCircle } from '../cercle/circleStore';
 
 export function Lobby() {
   const balance = useGame((s) => s.balance);
+  const vault = useGame((s) => s.vault);
   const peakBalance = useGame((s) => s.peakBalance);
   const gamesBeforePeak = useGame((s) => s.gamesBeforePeak);
   const privateLimits = useGame((s) => s.privateLimits);
@@ -32,11 +34,15 @@ export function Lobby() {
   const configurePrivateLimits = useGame((s) => s.configurePrivateLimits);
   const resetAll = useGame((s) => s.resetAll);
   const refill = useGame((s) => s.refill);
+  const vaultDeposit = useGame((s) => s.vaultDeposit);
+  const vaultWithdraw = useGame((s) => s.vaultWithdraw);
   const notice = useGame((s) => s.notice);
   const dismissNotice = useGame((s) => s.dismissNotice);
 
   const [showPrivateSetup, setShowPrivateSetup] = useState(false);
+  const [showVault, setShowVault] = useState(false);
   const [draftLimits, setDraftLimits] = useState<PrivateLimits>(privateLimits);
+  const canVault = vaultableAmount(balance);
 
   useCircleKeepalive();
   useDefiSync();
@@ -104,6 +110,74 @@ export function Lobby() {
           <button className="btn primary" onClick={refill} style={{ marginLeft: 10 }}>
             Reconstituer
           </button>
+        )}
+      </motion.div>
+
+      <motion.div
+        className="lobby-vault"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.35, duration: 0.6 }}
+      >
+        <button
+          type="button"
+          className={`lobby-vault-toggle ${showVault ? 'open' : ''}`}
+          onClick={() => setShowVault((v) => !v)}
+          aria-expanded={showVault}
+        >
+          <span className="lobby-vault-k">Coffre</span>
+          <strong>{fmt(vault)}</strong>
+          <span className="lobby-vault-chev">{showVault ? '−' : '+'}</span>
+        </button>
+        {showVault && (
+          <div className="lobby-vault-panel">
+            <p>
+              Mettez de côté ce que vous ne voulez pas claquer. Impossible de coffrer les{' '}
+              {STARTING_BALANCE / 100} crédits de base — le refill ne se farm pas.
+            </p>
+            <div className="lobby-vault-meta">
+              <span>
+                Jouable <strong>{fmt(balance)}</strong>
+              </span>
+              <span>
+                Coffrable <strong>{fmt(canVault)}</strong>
+              </span>
+            </div>
+            <div className="lobby-vault-actions">
+              <button
+                type="button"
+                className="btn ghost"
+                disabled={canVault <= 0}
+                onClick={() => vaultDeposit(canVault)}
+              >
+                Coffrer le surplus
+              </button>
+              <button
+                type="button"
+                className="btn ghost"
+                disabled={canVault < 2_00}
+                onClick={() => vaultDeposit(Math.floor(canVault / 2))}
+              >
+                Coffrer la moitié
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                disabled={vault <= 0}
+                onClick={() => vaultWithdraw(vault)}
+              >
+                Tout retirer
+              </button>
+              <button
+                type="button"
+                className="btn ghost"
+                disabled={vault < 2_00}
+                onClick={() => vaultWithdraw(Math.floor(vault / 2))}
+              >
+                Retirer la moitié
+              </button>
+            </div>
+          </div>
         )}
       </motion.div>
 

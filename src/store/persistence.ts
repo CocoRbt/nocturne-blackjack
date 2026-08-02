@@ -100,6 +100,8 @@ export interface StoredSeatBet {
 export interface SaveData {
   version: 2;
   balance: number;
+  /** Crédit mis de côté (non jouable) — ne peut pas accueillir le solde de base / refill. */
+  vault: number;
   /** Plus haut solde atteint (progression / unlock). */
   peakBalance: number;
   /** Parties terminées (BJ + salon), tous jeux confondus. */
@@ -169,9 +171,15 @@ function migrate(raw: Record<string, unknown>): SaveData | null {
       ? Math.max(0, Math.floor(raw.gamesBeforePeak))
       : 0;
 
+  const vault =
+    typeof raw.vault === 'number' && Number.isFinite(raw.vault)
+      ? Math.max(0, Math.floor(raw.vault))
+      : 0;
+
   return {
     version: 2,
     balance,
+    vault,
     peakBalance,
     gamesPlayed,
     gamesBeforePeak,

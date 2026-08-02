@@ -32,7 +32,9 @@ import {
   type SaveData,
   type Stats,
 } from './persistence';
+import { fmt } from '../lib/format';
 import { creditWithoutGame, settleGamePeak } from './peakMeta';
+import { depositToVault, vaultableAmount, withdrawFromVault } from './vault';
 import { markScoreDirty } from '../cercle/scoreSync';
 import { TIMING, type GameSpeed } from './timing';
 
@@ -80,6 +82,8 @@ export interface DisplayState {
 
 interface GameState {
   balance: number;
+  /** Crédit mis de côté — non jouable. */
+  vault: number;
   peakBalance: number;
   /** Parties terminées tous jeux confondus. */
   gamesPlayed: number;
@@ -156,6 +160,10 @@ interface GameState {
   setGameSpeed(speed: GameSpeed): void;
   /** Crédite une récompense de défi (ne compte pas comme partie). */
   creditDefiReward(amountCents: number, label: string): void;
+  /** Dépose dans le coffre (max = solde − 100). */
+  vaultDeposit(amountCents: number): void;
+  /** Retire du coffre vers le solde jouable. */
+  vaultWithdraw(amountCents: number): void;
   refill(): void;
   /** Hydrate le portefeuille local depuis le cloud (connexion compte). */
   hydrateFromCloud(payload: {
@@ -301,6 +309,7 @@ export const useGame = create<GameState>((set, get) => {
     const data: SaveData = {
       version: 2,
       balance: s.balance,
+      vault: s.vault,
       peakBalance: s.peakBalance,
       gamesPlayed: s.gamesPlayed,
       gamesBeforePeak: s.gamesBeforePeak,
@@ -567,6 +576,7 @@ export const useGame = create<GameState>((set, get) => {
 
   return {
     balance: initialBalance,
+    vault: saved?.vault ?? 0,
     peakBalance: initialPeak,
     gamesPlayed: initialGamesPlayed,
     gamesBeforePeak: initialGamesBeforePeak,
@@ -1222,19 +1232,66 @@ export const useGame = create<GameState>((set, get) => {
       markScoreDirty();
     },
 
-    refill() {
+    vaultDeposit(amountCents) {
       const s = get();
-      if (s.round) return;
+      if (s.round || s.screen !== 'lobby') {
+        set({ notice: 'Revenez au lobby pour utiliser le coffre.' });
+        return;
+      }
+      const result = depositToVault(s.balance, s.vault, amountCents);
+      if (!result.ok) {
+        set({ notice: result.error });
+        return;
+      }
       sounds.play('chipStack');
-      const settled = creditWithoutGame(s.balance, STARTING_BALANCE, {
+      set({
+        balance: result.balance,
+        vault: result.vault,
+        notice:
+          vaultableAmount(result.balance) <= 0
+            ? `Coffré — ${fmt(result.vault)} à l’abri. Les ${STARTING_BALANCE / 100} de base restent jouables.`
+            : `Coffré. Coffre : ${fmt(result.vault)}.`,
+      });
+      persist();
+    },
+
+    vaultWithdraw(amountCents) {
+      const s = get();
+      if (s.round || s.screen !== 'lobby') {
+        set({ notice: 'Revenez au lobby pour utiliser le coffre.' });
+        return;
+      }
+      const result = withdrawFromVault(s.balance, s.vault, amountCents);
+      if (!result.ok) {
+        set({ notice: result.error });
+        return;
+      }
+      sounds.play('chipStack');
+      const settled = creditWithoutGame(s.balance, result.balance - s.balance, {
         peakBalance: s.peakBalance,
         gamesPlayed: s.gamesPlayed,
         gamesBeforePeak: s.gamesBeforePeak,
       });
       set({
         balance: settled.balance,
+        vault: result.vault,
         peakBalance: settled.peakBalance,
         gamesBeforePeak: settled.gamesBeforePeak,
+        notice: `Retiré du coffre. Crédit : ${fmt(settled.balance)}.`,
+      });
+      persist();
+      markScoreDirty();
+    },
+
+    refill() {
+      const s = get();
+      if (s.round) return;
+      /** Seulement à crédit épuisé (< 1) — on remet à 100, on n’ajoute pas. */
+      if (s.balance >= 1_00) return;
+      sounds.play('chipStack');
+      set({
+        balance: STARTING_BALANCE,
+        peakBalance: Math.max(s.peakBalance, STARTING_BALANCE),
         refills: s.refills + 1,
         notice: 'Crédit reconstitué.',
       });
@@ -1275,6 +1332,7 @@ export const useGame = create<GameState>((set, get) => {
       setEnginePrivateLimits(privateLimits);
       set({
         balance: STARTING_BALANCE,
+        vault: 0,
         peakBalance: STARTING_BALANCE,
         gamesPlayed: 0,
         gamesBeforePeak: 0,
