@@ -4443,6 +4443,7 @@ button:disabled {
 .plinko-screen {
   --plinko-accent: #e848a8;
   --plinko-accent-soft: rgba(232, 72, 168, 0.16);
+  --plinko-dock-h: 0px;
   height: 100%;
   max-height: 100%;
   overflow-x: clip;
@@ -4512,10 +4513,24 @@ button:disabled {
   backdrop-filter: blur(8px);
   order: 2;
 }
+.plinko-panel-top {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.plinko-config-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 .plinko-panel-block {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+/* Dock mobile uniquement — masqué desktop. */
+.plinko-drop-dock {
+  display: none;
 }
 .plinko-label {
   font-size: 10px;
@@ -4765,16 +4780,45 @@ button:disabled {
 }
 
 @media (max-width: 860px) {
+  .plinko-screen {
+    --plinko-dock-h: calc(76px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: var(--plinko-dock-h);
+  }
   .plinko-layout {
     grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  /* Contrôles compacts → planche → Drop fixe en bas (toujours visible). */
+  .plinko-panel {
+    order: 1;
+    padding: 10px 12px;
+    gap: 8px;
   }
   .plinko-stage {
-    order: 1;
-    min-height: 0;
-    padding: 10px 6px 12px;
-  }
-  .plinko-panel {
     order: 2;
+    min-height: 0;
+    padding: 8px 4px 10px;
+  }
+  .plinko-config-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .plinko-bet-input {
+    font-size: 22px;
+    padding: 4px 8px;
+  }
+  .plinko-presets {
+    gap: 4px;
+  }
+  .plinko-chip {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+  .plinko-stats,
+  .plinko-footnote,
+  .plinko-actions--panel {
+    display: none;
   }
   .plinko-board-wrap {
     width: min(100%, 520px);
@@ -4784,10 +4828,31 @@ button:disabled {
     font-size: clamp(7px, 2.6vw, 10px);
     border-radius: 5px;
   }
-  .plinko-cta {
-    position: sticky;
-    bottom: 8px;
-    z-index: 2;
+  .plinko-drop-dock {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+    background:
+      linear-gradient(180deg, rgba(7, 9, 14, 0), rgba(7, 9, 14, 0.92) 28%, #07090e 55%);
+    border-top: 1px solid rgba(232, 72, 168, 0.2);
+    backdrop-filter: blur(10px);
+  }
+  .plinko-drop-dock .plinko-cta {
+    min-height: 52px;
+    margin: 0;
+  }
+  .plinko-dock-meta {
+    text-align: center;
+    font-size: 11px;
+    color: var(--ink-faint);
+    letter-spacing: 0.04em;
   }
 }
 

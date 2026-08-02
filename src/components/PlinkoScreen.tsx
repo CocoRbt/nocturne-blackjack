@@ -449,97 +449,92 @@ export function PlinkoScreen() {
       )}
 
       <div className="plinko-layout">
-        <main className="plinko-stage">
-          <PlinkoBoard rows={rows} risk={risk} balls={balls} hitSlots={hitSlots} now={nowMs} />
-          {liveCount > 1 && (
-            <div className="plinko-live-count" aria-live="polite">
-              {liveCount} billes
-            </div>
-          )}
-        </main>
-
+        {/* Contrôles compacts au-dessus de la planche (visible sans scroll). */}
         <aside className="plinko-panel">
-          <div className="plinko-panel-block">
-            <label className="plinko-label" htmlFor="plinko-bet">
-              Mise
-            </label>
-            <div className="plinko-bet-row">
-              <button type="button" className="btn ghost" onClick={() => commitBet(bet - 1_00)}>
-                −
-              </button>
-              <input
-                id="plinko-bet"
-                className="plinko-bet-input"
-                type="text"
-                inputMode="decimal"
-                value={betDraft}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  if (!/^[0-9\s.,]*$/.test(raw)) return;
-                  setBetDraft(raw);
-                  const n = Number(raw.trim().replace(',', '.'));
-                  if (Number.isFinite(n) && n >= 1) commitBet(Math.round(n * 100));
-                }}
-                onBlur={() => commitBet(bet)}
-              />
-              <button type="button" className="btn ghost" onClick={() => commitBet(bet + 1_00)}>
-                +
-              </button>
-            </div>
-            <div className="plinko-presets">
-              {BET_PRESETS.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  className={`plinko-chip ${bet === p ? 'on' : ''}`}
-                  disabled={p > balance}
-                  onClick={() => commitBet(p)}
-                >
-                  {fmt(p)}
+          <div className="plinko-panel-top">
+            <div className="plinko-panel-block plinko-bet-block">
+              <label className="plinko-label" htmlFor="plinko-bet">
+                Mise
+              </label>
+              <div className="plinko-bet-row">
+                <button type="button" className="btn ghost" onClick={() => commitBet(bet - 1_00)}>
+                  −
                 </button>
-              ))}
-              <button
-                type="button"
-                className="plinko-chip"
-                disabled={balance < 1_00}
-                onClick={() => commitBet(balance)}
-              >
-                Max
-              </button>
+                <input
+                  id="plinko-bet"
+                  className="plinko-bet-input"
+                  type="text"
+                  inputMode="decimal"
+                  value={betDraft}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (!/^[0-9\s.,]*$/.test(raw)) return;
+                    setBetDraft(raw);
+                    const n = Number(raw.trim().replace(',', '.'));
+                    if (Number.isFinite(n) && n >= 1) commitBet(Math.round(n * 100));
+                  }}
+                  onBlur={() => commitBet(bet)}
+                />
+                <button type="button" className="btn ghost" onClick={() => commitBet(bet + 1_00)}>
+                  +
+                </button>
+              </div>
+              <div className="plinko-presets">
+                {BET_PRESETS.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    className={`plinko-chip ${bet === p ? 'on' : ''}`}
+                    disabled={p > balance}
+                    onClick={() => commitBet(p)}
+                  >
+                    {fmt(p)}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="plinko-chip"
+                  disabled={balance < 1_00}
+                  onClick={() => commitBet(balance)}
+                >
+                  Max
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div className="plinko-panel-block">
-            <span className="plinko-label">Lignes</span>
-            <div className="plinko-rows">
-              {PLINKO_ROWS.map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  className={`plinko-chip ${rows === r ? 'on' : ''}`}
-                  disabled={!canConfigure}
-                  onClick={() => setRows(r)}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="plinko-panel-block">
-            <span className="plinko-label">Risque</span>
-            <div className="plinko-risks">
-              {PLINKO_RISKS.map((rk) => (
-                <button
-                  key={rk}
-                  type="button"
-                  className={`plinko-chip risk-${rk} ${risk === rk ? 'on' : ''}`}
-                  disabled={!canConfigure}
-                  onClick={() => setRisk(rk)}
-                >
-                  {riskLabel(rk)}
-                </button>
-              ))}
+            <div className="plinko-config-row">
+              <div className="plinko-panel-block">
+                <span className="plinko-label">Lignes</span>
+                <div className="plinko-rows">
+                  {PLINKO_ROWS.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      className={`plinko-chip ${rows === r ? 'on' : ''}`}
+                      disabled={!canConfigure}
+                      onClick={() => setRows(r)}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="plinko-panel-block">
+                <span className="plinko-label">Risque</span>
+                <div className="plinko-risks">
+                  {PLINKO_RISKS.map((rk) => (
+                    <button
+                      key={rk}
+                      type="button"
+                      className={`plinko-chip risk-${rk} ${risk === rk ? 'on' : ''}`}
+                      disabled={!canConfigure}
+                      onClick={() => setRisk(rk)}
+                    >
+                      {riskLabel(rk)}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -570,7 +565,8 @@ export function PlinkoScreen() {
             )}
           </div>
 
-          <div className="plinko-actions">
+          {/* Drop desktop (dans le panneau). Mobile → dock fixe. */}
+          <div className="plinko-actions plinko-actions--panel">
             <button
               type="button"
               className="btn primary plinko-cta"
@@ -585,6 +581,35 @@ export function PlinkoScreen() {
             Distribution binomiale · RTP ~99&nbsp;% · jetons virtuels
           </p>
         </aside>
+
+        <main className="plinko-stage">
+          <PlinkoBoard rows={rows} risk={risk} balls={balls} hitSlots={hitSlots} now={nowMs} />
+          {liveCount > 1 && (
+            <div className="plinko-live-count" aria-live="polite">
+              {liveCount} billes
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* Dock Drop fixe mobile : spam sans perdre la planche. */}
+      <div className="plinko-drop-dock">
+        <button
+          type="button"
+          className="btn primary plinko-cta"
+          disabled={!canDrop}
+          onClick={onDrop}
+        >
+          Drop · {fmt(stakeReady)}
+        </button>
+        {liveCount > 0 ? (
+          <span className="plinko-dock-meta">
+            {liveCount} en vol
+            {lastSettle ? ` · dernier ${fmtBucket(lastSettle.mult)}×` : ''}
+          </span>
+        ) : (
+          <span className="plinko-dock-meta">Spam pour lancer plusieurs billes</span>
+        )}
       </div>
 
       <AnimatePresence>
