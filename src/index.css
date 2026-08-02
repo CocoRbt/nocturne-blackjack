@@ -3713,8 +3713,9 @@ button:disabled {
   box-shadow: 0 10px 28px rgba(180, 140, 40, 0.22);
 }
 .craps-cta:disabled {
-  opacity: 0.45;
+  opacity: 0.38;
   box-shadow: none;
+  filter: grayscale(0.35);
 }
 .craps-cta.pulse:not(:disabled) {
   animation: craps-cta-pulse 1.8s var(--ease-lux) infinite;
