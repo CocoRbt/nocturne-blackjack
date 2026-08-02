@@ -195,11 +195,20 @@ export function CrapsScreen() {
   const total = faces[0] + faces[1];
   const canPlace = canBet && Math.min(chip, balance) >= 1_00;
   const placeLabel = `Poser ${fmt(Math.min(chip, balance))}`;
-  const rollLabel = rolling
-    ? 'Les dés volent…'
-    : round.bet === 0
-      ? 'Pose une mise…'
-      : `Lancer · ×${mult}`;
+  const rollLabel = rolling ? 'Les dés volent…' : `Lancer · ×${mult}`;
+  /** Banner seulement après un résultat (pas le texte d’accueil). */
+  const showBanner =
+    !rolling &&
+    !!round.message &&
+    round.settlements.some(
+      (s) =>
+        s.kind === 'come_out_win' ||
+        s.kind === 'come_out_lose' ||
+        s.kind === 'point_win' ||
+        s.kind === 'point_lose' ||
+        s.kind === 'point_push' ||
+        s.kind === 'point_set',
+    );
 
   const onAddChip = () => {
     if (!canBet) return;
@@ -286,10 +295,9 @@ export function CrapsScreen() {
       />
 
       <div className="craps-layout">
-        {/* Tapis d’abord : dés toujours visibles sans scroll. */}
         <main className="craps-table-wrap">
           <AnimatePresence mode="wait">
-            {(flash || round.message) && !rolling && (
+            {showBanner && (
               <motion.p
                 key={round.message + (flash ?? '')}
                 className={`craps-banner ${flash ?? ''}`}
@@ -306,12 +314,17 @@ export function CrapsScreen() {
             className={`craps-felt ${round.phase === 'point' ? 'point-on' : ''} ${rolling ? 'is-rolling' : ''}`}
           >
             <div className="craps-puck-row">
-              <div className={`craps-puck ${round.phase === 'point' ? 'on' : 'off'}`}>
-                <span className="puck-label">{round.phase === 'point' ? 'Cible' : 'Libre'}</span>
-                <span className="puck-value">
-                  {round.phase === 'point' ? round.point : '—'}
-                </span>
-              </div>
+              {round.phase === 'point' && round.point != null ? (
+                <div className="craps-puck on">
+                  <span className="puck-label">Cible</span>
+                  <span className="puck-value">{round.point}</span>
+                </div>
+              ) : (
+                <div className="craps-puck off craps-puck--desktop">
+                  <span className="puck-label">Libre</span>
+                  <span className="puck-value">—</span>
+                </div>
+              )}
 
               <div className="craps-throw">
                 <div className="craps-dice">
@@ -335,7 +348,10 @@ export function CrapsScreen() {
                 </AnimatePresence>
               </div>
 
-              <div className="craps-mult-badge" aria-label={`Multiplicateur ×${mult}`}>
+              <div
+                className="craps-mult-badge craps-mult-badge--desktop"
+                aria-label={`Multiplicateur ×${mult}`}
+              >
                 <span className="craps-mult-k">Paie</span>
                 <strong>×{mult}</strong>
               </div>
@@ -423,11 +439,10 @@ export function CrapsScreen() {
             )}
           </div>
 
-          {/* Desktop : actions dans le panneau. Mobile → dock sticky. */}
           <div className="craps-actions craps-actions--panel">
             <button
               type="button"
-              className="btn craps-add-bet"
+              className={`btn craps-add-bet ${!rollReady ? 'is-hero' : ''}`}
               disabled={!canPlace}
               onClick={onAddChip}
             >
@@ -462,11 +477,10 @@ export function CrapsScreen() {
         </aside>
       </div>
 
-      {/* Mobile : Poser + Lancer toujours visibles en bas. */}
       <div className="craps-action-dock">
         <button
           type="button"
-          className="btn craps-add-bet"
+          className={`btn craps-add-bet ${!rollReady ? 'is-hero' : ''}`}
           disabled={!canPlace}
           onClick={onAddChip}
         >
