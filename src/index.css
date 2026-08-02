@@ -4833,10 +4833,22 @@ button:disabled {
     gap: 4px;
   }
   .plinko-bet-block .plinko-label {
-    display: none;
+    display: block;
+    margin-bottom: 2px;
   }
+  /* Saisie libre compacte + presets. */
   .plinko-bet-row {
-    display: none;
+    display: flex;
+    gap: 6px;
+  }
+  .plinko-bet-input {
+    font-size: 20px;
+    padding: 4px 8px;
+    min-height: 36px;
+  }
+  .plinko-bet-step {
+    min-width: 36px;
+    padding: 0 8px;
   }
   .plinko-config-row {
     display: grid;

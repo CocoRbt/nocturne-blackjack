@@ -462,7 +462,12 @@ export function PlinkoScreen() {
                 Mise
               </label>
               <div className="plinko-bet-row">
-                <button type="button" className="btn ghost" onClick={() => commitBet(bet - 1_00)}>
+                <button
+                  type="button"
+                  className="btn ghost plinko-bet-step"
+                  aria-label="Diminuer la mise"
+                  onClick={() => commitBet(bet - 1_00)}
+                >
                   −
                 </button>
                 <input
@@ -470,17 +475,29 @@ export function PlinkoScreen() {
                   className="plinko-bet-input"
                   type="text"
                   inputMode="decimal"
+                  enterKeyHint="done"
                   value={betDraft}
+                  aria-label="Mise personnalisée"
                   onChange={(e) => {
                     const raw = e.target.value;
                     if (!/^[0-9\s.,]*$/.test(raw)) return;
                     setBetDraft(raw);
-                    const n = Number(raw.trim().replace(',', '.'));
-                    if (Number.isFinite(n) && n >= 1) commitBet(Math.round(n * 100));
                   }}
-                  onBlur={() => commitBet(bet)}
+                  onBlur={() => {
+                    const n = Number(betDraft.trim().replace(/\s/g, '').replace(',', '.'));
+                    if (Number.isFinite(n) && n > 0) commitBet(Math.round(n * 100));
+                    else commitBet(bet);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                  }}
                 />
-                <button type="button" className="btn ghost" onClick={() => commitBet(bet + 1_00)}>
+                <button
+                  type="button"
+                  className="btn ghost plinko-bet-step"
+                  aria-label="Augmenter la mise"
+                  onClick={() => commitBet(bet + 1_00)}
+                >
                   +
                 </button>
               </div>
