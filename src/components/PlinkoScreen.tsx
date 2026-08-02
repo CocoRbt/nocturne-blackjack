@@ -187,9 +187,10 @@ function PlinkoBoard({
    */
   const padX = 18;
   const bucketH = 30;
-  const bucketGap = 8; // dernier picot → haut de case (court = naturel)
+  /** Derniers picots juste au-dessus des cases (presque posés sur les séparateurs). */
+  const bucketGap = 5;
   const top = 14;
-  const pegBottom = 292; // dernière rangée pile au-dessus des cases
+  const pegBottom = 294;
   const bucketTop = pegBottom + bucketGap;
   const sinkY = bucketTop + bucketH * 0.52;
   const height = bucketTop + bucketH + 6;
@@ -199,21 +200,36 @@ function PlinkoBoard({
   const left = padX;
   const pegR = Math.max(2.8, Math.min(4.5, spacing * 0.145));
   const ballR = Math.max(5.8, Math.min(8.2, spacing * 0.3));
-  const bucketW = Math.max(spacing - 2.2, 8);
+  /** Largeur case ≈ espacement : les picots du bas tombent sur les joints. */
+  const bucketW = Math.max(spacing - 1.2, 8);
 
   const pegPositions = useMemo(() => {
     const pegs: { x: number; y: number }[] = [];
     const span = Math.max(pegRows - 1, 1);
     for (let r = 0; r < pegRows; r++) {
-      const count = r + 2;
       const y = top + (r / span) * (pegBottom - top);
-      const rowLeft = cx - ((count - 1) * spacing) / 2;
-      for (let c = 0; c < count; c++) {
-        pegs.push({ x: rowLeft + c * spacing, y });
+      const isLast = r === pegRows - 1;
+      /**
+       * Rangées normales : r+2 picots, bille dans les trous.
+       * Dernière rangée : slots+1 picots sur les séparateurs entre cases
+       * (la bille tombe dans l’ouverture, pas pile sur un point).
+       */
+      if (isLast) {
+        const count = slots + 1;
+        const rowLeft = left - spacing / 2;
+        for (let c = 0; c < count; c++) {
+          pegs.push({ x: rowLeft + c * spacing, y });
+        }
+      } else {
+        const count = r + 2;
+        const rowLeft = cx - ((count - 1) * spacing) / 2;
+        for (let c = 0; c < count; c++) {
+          pegs.push({ x: rowLeft + c * spacing, y });
+        }
       }
     }
     return pegs;
-  }, [pegRows, top, pegBottom, cx, spacing]);
+  }, [pegRows, top, pegBottom, cx, spacing, slots, left]);
 
   const layout: BallLayout = { cx, top, pegBottom, sinkY, spacing, pegRows, left };
 
