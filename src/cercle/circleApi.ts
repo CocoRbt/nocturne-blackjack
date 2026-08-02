@@ -5,6 +5,8 @@ export interface LeaderboardRow {
   nickname: string;
   balance: number;
   peak_balance: number;
+  /** Crédit mis de côté (coffre). */
+  vault?: number;
   /** Parties jouées avant d’atteindre ce record (onglet Record). */
   games_before_peak?: number;
   updated_at: string;
@@ -73,11 +75,34 @@ export async function syncScoreCloud(input: {
   highestTable: string;
   gamesBeforePeak: number;
   gamesPlayed: number;
-}): Promise<{ balance: number; peak_balance: number; games_before_peak?: number }> {
+  vault: number;
+}): Promise<{ balance: number; peak_balance: number; vault?: number; games_before_peak?: number }> {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase non configuré');
   await ensureAnonSession();
 
+  const withVault = await sb.rpc('sync_my_score', {
+    p_balance: input.balance,
+    p_peak_balance: input.peakBalance,
+    p_hands_played: input.handsPlayed,
+    p_blackjacks: input.blackjacks,
+    p_best_streak: input.bestStreak,
+    p_highest_table: input.highestTable,
+    p_games_before_peak: input.gamesBeforePeak,
+    p_games_played: input.gamesPlayed,
+    p_vault: input.vault,
+  });
+
+  if (!withVault.error) {
+    return withVault.data as {
+      balance: number;
+      peak_balance: number;
+      vault?: number;
+      games_before_peak?: number;
+    };
+  }
+
+  // Migration vault pas encore appliquée → signature sans p_vault.
   const full = await sb.rpc('sync_my_score', {
     p_balance: input.balance,
     p_peak_balance: input.peakBalance,
@@ -93,7 +118,7 @@ export async function syncScoreCloud(input: {
     return full.data as { balance: number; peak_balance: number; games_before_peak?: number };
   }
 
-  // Migration games_before_peak pas encore appliquée → retombe sur l’ancienne signature.
+  // Ancienne signature (avant games_before_peak).
   const legacy = await sb.rpc('sync_my_score', {
     p_balance: input.balance,
     p_peak_balance: input.peakBalance,
@@ -102,7 +127,7 @@ export async function syncScoreCloud(input: {
     p_best_streak: input.bestStreak,
     p_highest_table: input.highestTable,
   });
-  if (legacy.error) throw new Error(rpcMessage(full.error));
+  if (legacy.error) throw new Error(rpcMessage(withVault.error));
   return legacy.data as { balance: number; peak_balance: number; games_before_peak?: number };
 }
 
@@ -127,6 +152,7 @@ export type MyScore = {
   in_circle?: boolean;
   balance?: number;
   peak_balance?: number;
+  vault?: number;
   hands_played?: number;
   blackjacks?: number;
   best_streak?: number;

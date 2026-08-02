@@ -18,6 +18,7 @@ export interface CircleMemberScore {
   nickname: string;
   balance: number;
   peakBalance: number;
+  vault: number;
   handsPlayed: number;
   blackjacks: number;
   bestStreak: number;
@@ -45,6 +46,7 @@ export function loadCircle(): LocalCircleState | null {
       ...parsed,
       members: (parsed.members ?? []).map((m) => ({
         ...m,
+        vault: m.vault ?? 0,
         gamesBeforePeak: m.gamesBeforePeak ?? 0,
         gamesPlayed: m.gamesPlayed ?? 0,
       })),
@@ -88,6 +90,7 @@ export function upsertSelfScore(
     nickname,
     balance: score.balance,
     peakBalance: score.peakBalance,
+    vault: score.vault ?? 0,
     handsPlayed: score.handsPlayed,
     blackjacks: score.blackjacks,
     bestStreak: score.bestStreak,
@@ -112,6 +115,7 @@ export function leaderboardsFromLocal(state: LocalCircleState): Leaderboards {
       nickname: m.nickname,
       balance: m.balance,
       peak_balance: m.peakBalance,
+      vault: m.vault,
       games_before_peak: m.gamesBeforePeak,
       updated_at: new Date(m.updatedAt).toISOString(),
       is_me: m.nickname === state.nickname,
@@ -123,6 +127,7 @@ export function leaderboardsFromLocal(state: LocalCircleState): Leaderboards {
       nickname: m.nickname,
       balance: m.balance,
       peak_balance: m.peakBalance,
+      vault: m.vault,
       games_before_peak: m.gamesBeforePeak,
       updated_at: new Date(m.updatedAt).toISOString(),
       is_me: m.nickname === state.nickname,
@@ -143,6 +148,7 @@ export async function enterCircle(nickname: string, code: string | undefined, se
       highestTable: seed.highestTable,
       gamesBeforePeak: seed.gamesBeforePeak,
       gamesPlayed: seed.gamesPlayed,
+      vault: seed.vault,
     });
     const boards = await fetchLeaderboards();
     const members = mergeBoardMembers(boards, name, []);
@@ -199,6 +205,7 @@ export async function restoreCircleFromCloud(
     in_circle?: boolean;
     balance?: number;
     peak_balance?: number;
+    vault?: number;
     hands_played?: number;
     blackjacks?: number;
     best_streak?: number;
@@ -211,6 +218,7 @@ export async function restoreCircleFromCloud(
   const seed = {
     balance: score.balance ?? 0,
     peakBalance: score.peak_balance ?? 0,
+    vault: score.vault ?? 0,
     handsPlayed: score.hands_played ?? 0,
     blackjacks: score.blackjacks ?? 0,
     bestStreak: score.best_streak ?? 0,
@@ -247,6 +255,7 @@ export async function pushScore(state: LocalCircleState, seed: Omit<CircleMember
         highestTable: seed.highestTable,
         gamesBeforePeak: seed.gamesBeforePeak,
         gamesPlayed: seed.gamesPlayed,
+        vault: seed.vault,
       });
       const boards = await fetchLeaderboards();
       const next = {
@@ -292,6 +301,7 @@ function mergeBoardMembers(
       nickname: row.nickname,
       balance: row.balance,
       peakBalance,
+      vault: row.vault ?? prev?.vault ?? 0,
       handsPlayed: prev?.handsPlayed ?? 0,
       blackjacks: prev?.blackjacks ?? 0,
       bestStreak: prev?.bestStreak ?? 0,
@@ -318,7 +328,7 @@ function mergeBoardMembers(
 export function overlaySelfOnBoards(
   boards: Leaderboards,
   me: string,
-  self: { balance: number; peakBalance: number; gamesBeforePeak: number },
+  self: { balance: number; peakBalance: number; gamesBeforePeak: number; vault: number },
 ): Leaderboards {
   const patchLive = (rows: LeaderboardRow[]): LeaderboardRow[] => {
     let seen = false;
@@ -329,6 +339,7 @@ export function overlaySelfOnBoards(
         ...r,
         balance: self.balance,
         peak_balance: Math.max(r.peak_balance, self.peakBalance),
+        vault: self.vault,
         games_before_peak: r.games_before_peak ?? self.gamesBeforePeak,
         is_me: true,
       };
@@ -339,6 +350,7 @@ export function overlaySelfOnBoards(
         nickname: me,
         balance: self.balance,
         peak_balance: self.peakBalance,
+        vault: self.vault,
         games_before_peak: self.gamesBeforePeak,
         updated_at: new Date().toISOString(),
         is_me: true,
@@ -363,6 +375,7 @@ export function overlaySelfOnBoards(
         ...r,
         balance: self.balance,
         peak_balance: peak,
+        vault: self.vault,
         games_before_peak: gamesBefore,
         is_me: true,
       };
@@ -373,6 +386,7 @@ export function overlaySelfOnBoards(
         nickname: me,
         balance: self.balance,
         peak_balance: self.peakBalance,
+        vault: self.vault,
         games_before_peak: self.gamesBeforePeak,
         updated_at: new Date().toISOString(),
         is_me: true,

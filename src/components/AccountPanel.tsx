@@ -58,6 +58,7 @@ export function AccountPanel() {
           hydrateFromCloud({
             balance: score.balance,
             peakBalance: score.peak_balance,
+            vault: score.vault,
             gamesPlayed: score.games_played,
             gamesBeforePeak: score.games_before_peak,
             handsPlayed: score.hands_played,

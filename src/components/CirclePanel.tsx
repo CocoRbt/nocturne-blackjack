@@ -16,8 +16,10 @@ import {
   type LocalCircleState,
 } from '../cercle/circleStore';
 import { consumeScoreDirty, onScoreDirty } from '../cercle/scoreSync';
+import { STARTING_BALANCE } from '../store/persistence';
 import { useGame } from '../store/gameStore';
 import { formatGamesBeforePeak } from '../store/peakMeta';
+import { vaultableAmount } from '../store/vault';
 import { AccountPanel } from './AccountPanel';
 import { CreditCurve } from './CreditCurve';
 import { DailyChallenges } from './DailyChallenges';
@@ -25,11 +27,19 @@ import { DailyChallenges } from './DailyChallenges';
 type BoardTab = 'live' | 'peak' | 'curve';
 type PanelSection = 'cercle' | 'compte';
 
+/** Parse un montant saisi (crédits) → centimes. */
+function parseCreditsInput(raw: string): number | null {
+  const n = Number(raw.trim().replace(',', '.'));
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(n * 100);
+}
+
 function currentScoreSeed() {
   const s = useGame.getState();
   return {
     balance: s.balance,
     peakBalance: s.peakBalance,
+    vault: s.vault,
     handsPlayed: s.stats.handsPlayed,
     blackjacks: s.stats.blackjacks,
     bestStreak: s.stats.longestWinStreak,
@@ -63,11 +73,14 @@ export function useCircleKeepalive() {
 
 export function CirclePanel() {
   const balance = useGame((s) => s.balance);
+  const vault = useGame((s) => s.vault);
   const peakBalance = useGame((s) => s.peakBalance);
   const gamesPlayed = useGame((s) => s.gamesPlayed);
   const gamesBeforePeak = useGame((s) => s.gamesBeforePeak);
   const stats = useGame((s) => s.stats);
   const tableId = useGame((s) => s.tableId);
+  const vaultDeposit = useGame((s) => s.vaultDeposit);
+  const vaultWithdraw = useGame((s) => s.vaultWithdraw);
 
   const [circle, setCircle] = useState<LocalCircleState | null>(() => loadCircle());
   const [nickname, setNickname] = useState(circle?.nickname ?? '');
@@ -85,16 +98,30 @@ export function CirclePanel() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const [vaultInput, setVaultInput] = useState('');
 
+  const canVault = vaultableAmount(balance);
   const seed = {
     balance,
     peakBalance,
+    vault,
     handsPlayed: stats.handsPlayed,
     blackjacks: stats.blackjacks,
     bestStreak: stats.longestWinStreak,
     highestTable: tableId,
     gamesBeforePeak,
     gamesPlayed,
+  };
+
+  const applyVaultAmount = (mode: 'deposit' | 'withdraw') => {
+    const cents = parseCreditsInput(vaultInput);
+    if (cents == null) {
+      setError('Indiquez un montant valide.');
+      return;
+    }
+    setError(null);
+    if (mode === 'deposit') vaultDeposit(cents);
+    else vaultWithdraw(cents);
   };
 
   useEffect(() => {
@@ -126,6 +153,7 @@ export function CirclePanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     balance,
+    vault,
     peakBalance,
     gamesPlayed,
     gamesBeforePeak,
@@ -222,6 +250,7 @@ export function CirclePanel() {
         balance,
         peakBalance,
         gamesBeforePeak,
+        vault,
       })
     : null;
   const rows: LeaderboardRow[] =
@@ -402,6 +431,67 @@ export function CirclePanel() {
 
           <DailyChallenges />
 
+          <div className="circle-vault">
+            <div className="circle-vault-head">
+              <span className="circle-vault-k">Coffre</span>
+              <strong>{fmt(vault)}</strong>
+            </div>
+            <p className="circle-vault-hint">
+              Mettez de côté ce que vous ne voulez pas claquer. Max coffrable :{' '}
+              {fmt(canVault)} (les {STARTING_BALANCE / 100} de base restent jouables).
+            </p>
+            <div className="circle-vault-form">
+              <label className="circle-vault-amount">
+                <span>Montant</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={1}
+                  step={1}
+                  placeholder="ex. 250"
+                  value={vaultInput}
+                  onChange={(e) => setVaultInput(e.target.value)}
+                />
+              </label>
+              <div className="circle-vault-quick">
+                <button
+                  type="button"
+                  className="btn ghost"
+                  disabled={canVault <= 0}
+                  onClick={() => setVaultInput(String(canVault / 100))}
+                >
+                  Max surplus
+                </button>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  disabled={vault <= 0}
+                  onClick={() => setVaultInput(String(vault / 100))}
+                >
+                  Max coffre
+                </button>
+              </div>
+              <div className="circle-vault-actions">
+                <button
+                  type="button"
+                  className="btn primary"
+                  disabled={canVault <= 0}
+                  onClick={() => applyVaultAmount('deposit')}
+                >
+                  Coffrer
+                </button>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  disabled={vault <= 0}
+                  onClick={() => applyVaultAmount('withdraw')}
+                >
+                  Retirer
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className="circle-tabs" role="tablist">
             <button
               type="button"
@@ -447,6 +537,9 @@ export function CirclePanel() {
                   <span className="score-cell">
                     <span className="peak">
                       {fmt(tab === 'live' ? m.balance : m.peak_balance)}
+                    </span>
+                    <span className="vault-line">
+                      Coffre {fmt(m.vault ?? 0)}
                     </span>
                     {tab === 'peak' && (
                       <span className="before-peak">

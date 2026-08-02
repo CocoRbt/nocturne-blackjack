@@ -169,6 +169,7 @@ interface GameState {
   hydrateFromCloud(payload: {
     balance: number;
     peakBalance: number;
+    vault?: number;
     gamesPlayed?: number;
     gamesBeforePeak?: number;
     handsPlayed?: number;
@@ -1234,8 +1235,8 @@ export const useGame = create<GameState>((set, get) => {
 
     vaultDeposit(amountCents) {
       const s = get();
-      if (s.round || s.screen !== 'lobby') {
-        set({ notice: 'Revenez au lobby pour utiliser le coffre.' });
+      if (s.round) {
+        set({ notice: 'Terminez la manche avant d’utiliser le coffre.' });
         return;
       }
       const result = depositToVault(s.balance, s.vault, amountCents);
@@ -1253,12 +1254,13 @@ export const useGame = create<GameState>((set, get) => {
             : `Coffré. Coffre : ${fmt(result.vault)}.`,
       });
       persist();
+      markScoreDirty();
     },
 
     vaultWithdraw(amountCents) {
       const s = get();
-      if (s.round || s.screen !== 'lobby') {
-        set({ notice: 'Revenez au lobby pour utiliser le coffre.' });
+      if (s.round) {
+        set({ notice: 'Terminez la manche avant d’utiliser le coffre.' });
         return;
       }
       const result = withdrawFromVault(s.balance, s.vault, amountCents);
@@ -1307,8 +1309,13 @@ export const useGame = create<GameState>((set, get) => {
       }
       const balance = Math.max(0, Math.floor(payload.balance));
       const peakBalance = Math.max(balance, Math.floor(payload.peakBalance));
+      const vault =
+        typeof payload.vault === 'number'
+          ? Math.max(0, Math.floor(payload.vault))
+          : s.vault;
       set({
         balance,
+        vault,
         peakBalance,
         gamesPlayed: payload.gamesPlayed ?? s.gamesPlayed,
         gamesBeforePeak: payload.gamesBeforePeak ?? s.gamesBeforePeak,

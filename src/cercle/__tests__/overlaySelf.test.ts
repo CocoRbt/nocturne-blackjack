@@ -50,9 +50,11 @@ describe('overlaySelfOnBoards', () => {
       balance: 172_700,
       peakBalance: 172_700,
       gamesBeforePeak: 184,
+      vault: 5_000,
     });
     const me = boards.live.find((r) => r.nickname === 'ZaaariX')!;
     expect(me.balance).toBe(172_700);
+    expect(me.vault).toBe(5_000);
     expect(me.rank).toBe(1);
     expect(boards.live.find((r) => r.nickname === 'I2S')!.balance).toBe(10_000);
   });
@@ -62,10 +64,12 @@ describe('overlaySelfOnBoards', () => {
       balance: 172_700,
       peakBalance: 172_700,
       gamesBeforePeak: 184,
+      vault: 5_000,
     });
     const me = boards.peak.find((r) => r.nickname === 'ZaaariX')!;
     expect(me.peak_balance).toBe(172_700);
     expect(me.games_before_peak).toBe(184);
+    expect(me.vault).toBe(5_000);
     expect(me.rank).toBe(2); // sous Selmex 1_434_975
   });
 });
