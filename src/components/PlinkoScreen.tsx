@@ -20,9 +20,14 @@ import { RulesGuide } from './RulesGuide';
 const BET_PRESETS = [1_00, 5_00, 25_00, 100_00, 500_00] as const;
 const HISTORY_MAX = 18;
 const MAX_LIVE_BALLS = 24;
-/** Chute rapide pour pouvoir spammer Drop. */
-const MS_PER_ROW = 80;
-const SETTLE_HOLD_MS = 200;
+/**
+ * Tempo IRL : ~300 ms par rangée (12L ≈ 3,6 s, 16L ≈ 4,8 s).
+ * Un peu plus lent en haut (gravité), accélère légèrement.
+ */
+const MS_PER_ROW = 300;
+const SETTLE_HOLD_MS = 320;
+/** Légère accélération gravitationnelle (1 = linéaire). */
+const GRAVITY_EASE = 1.18;
 
 type Hist = { id: number; mult: number; rows: PlinkoRows; risk: PlinkoRisk };
 
@@ -35,11 +40,19 @@ type LiveBall = {
   slot: number;
   multiplier: number;
   payout: number;
-  step: number;
+  /** Horodatage de lâcher (performance.now). */
+  bornAt: number;
   landed: boolean;
-  /** Empêche un double crédit si la boucle re-traite. */
   paid: boolean;
 };
+
+/** Progression continue 0 → path.length, avec ease gravité. */
+function ballProgress(ball: LiveBall, now: number): number {
+  if (ball.landed) return ball.path.length;
+  const duration = Math.max(1, ball.path.length * MS_PER_ROW);
+  const raw = Math.min(1, Math.max(0, (now - ball.bornAt) / duration));
+  return Math.pow(raw, GRAVITY_EASE) * ball.path.length;
+}
 
 /** Label bucket compact façon Stake : `110` / `1.5` / `0.3`. */
 function fmtBucket(m: number): string {
@@ -62,8 +75,9 @@ function bucketTone(m: number, slots: number, index: number): string {
   return 'tone-green';
 }
 
-function ballXY(
+function posAtStep(
   ball: LiveBall,
+  step: number,
   layout: {
     cx: number;
     top: number;
@@ -74,20 +88,47 @@ function ballXY(
   },
 ): { x: number; y: number } {
   const { cx, top, bottom, spacing, pegRows, left } = layout;
-  const steps = Math.min(Math.max(ball.step, 0), ball.path.length);
-  let rights = 0;
-  for (let i = 0; i < steps; i++) if (ball.path[i]) rights += 1;
-
-  if (steps >= ball.path.length || ball.landed) {
-    return {
-      x: left + ball.slot * spacing,
-      y: bottom + 8,
-    };
+  const s = Math.min(Math.max(step, 0), ball.path.length);
+  if (s >= ball.path.length) {
+    return { x: left + ball.slot * spacing, y: bottom + 8 };
   }
-
-  const x = cx + (2 * rights - steps) * (spacing / 2);
-  const y = steps === 0 ? top - 2 : top + ((steps - 0.15) / pegRows) * (bottom - top);
+  let rights = 0;
+  for (let i = 0; i < s; i++) if (ball.path[i]) rights += 1;
+  const x = cx + (2 * rights - s) * (spacing / 2);
+  const y = s === 0 ? top - 2 : top + ((s - 0.12) / pegRows) * (bottom - top);
   return { x, y };
+}
+
+/** Interpolation fluide + petit rebond à chaque picot (feel IRL). */
+function ballXY(
+  ball: LiveBall,
+  layout: {
+    cx: number;
+    top: number;
+    bottom: number;
+    spacing: number;
+    pegRows: number;
+    left: number;
+  },
+  now: number,
+): { x: number; y: number } {
+  if (ball.landed) return posAtStep(ball, ball.path.length, layout);
+
+  const progress = ballProgress(ball, now);
+  if (progress >= ball.path.length) return posAtStep(ball, ball.path.length, layout);
+
+  const i0 = Math.floor(progress);
+  const frac = progress - i0;
+  // ease entre deux picots (ralentit au contact)
+  const t = frac * frac * (3 - 2 * frac);
+  const a = posAtStep(ball, i0, layout);
+  const b = posAtStep(ball, Math.min(i0 + 1, ball.path.length), layout);
+  // Arc de rebond : soulève un peu au milieu du trajet entre deux rangées
+  const bounce = Math.sin(frac * Math.PI) * 3.2;
+  return {
+    x: a.x + (b.x - a.x) * t,
+    y: a.y + (b.y - a.y) * t - bounce,
+  };
 }
 
 function PlinkoBoard({
@@ -95,11 +136,13 @@ function PlinkoBoard({
   risk,
   balls,
   hitSlots,
+  now,
 }: {
   rows: PlinkoRows;
   risk: PlinkoRisk;
   balls: LiveBall[];
   hitSlots: ReadonlySet<number>;
+  now: number;
 }) {
   const table = paytable(rows, risk);
   const slots = table.length;
@@ -156,7 +199,7 @@ function PlinkoBoard({
         ))}
         {balls.map((b) => {
           if (b.rows !== rows) return null;
-          const { x, y } = ballXY(b, layout);
+          const { x, y } = ballXY(b, layout, now);
           return (
             <circle
               key={b.id}
@@ -201,14 +244,16 @@ export function PlinkoScreen() {
   const [hitSlots, setHitSlots] = useState<Set<number>>(() => new Set());
   const [lastSettle, setLastSettle] = useState<{ mult: number; payout: number } | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
+  /** Horloge de rendu pour l’interpolation fluide. */
+  const [nowMs, setNowMs] = useState(() => performance.now());
 
   const histId = useRef(0);
   const ballId = useRef(0);
   const ballsRef = useRef(balls);
   const rafRef = useRef(0);
-  const lastTs = useRef(0);
-  const accMs = useRef(0);
   const removeTimers = useRef<Map<number, number>>(new Map());
+  const plinkoCreditRef = useRef(plinkoCredit);
+  plinkoCreditRef.current = plinkoCredit;
 
   const liveCount = balls.filter((b) => !b.landed).length;
   const busy = balls.length > 0;
@@ -256,86 +301,68 @@ export function PlinkoScreen() {
 
   const ensureLoop = () => {
     if (rafRef.current) return;
-    lastTs.current = performance.now();
-    accMs.current = 0;
 
     const loop = (now: number) => {
-      const dt = Math.min(48, now - lastTs.current);
-      lastTs.current = now;
-      accMs.current += dt;
+      setNowMs(now);
 
-      let steps = Math.floor(accMs.current / MS_PER_ROW);
-      if (steps > 0) {
-        accMs.current -= steps * MS_PER_ROW;
-        steps = Math.min(steps, 4);
+      const list = ballsRef.current;
+      const newlyPaid: LiveBall[] = [];
+      const hits = new Set<number>();
+      let changed = false;
+      const next: LiveBall[] = [];
 
-        let list = ballsRef.current;
-        const newlyPaid: LiveBall[] = [];
-        const hits = new Set<number>();
-
-        for (let s = 0; s < steps; s++) {
-          if (list.length === 0) break;
-          const next: LiveBall[] = [];
-          for (const b of list) {
-            if (b.landed) {
-              next.push(b);
-              continue;
-            }
-            const step = b.step + 1;
-            if (step >= b.path.length) {
-              const landed: LiveBall = {
-                ...b,
-                step: b.path.length,
-                landed: true,
-                paid: true,
-              };
-              if (!b.paid) newlyPaid.push(landed);
-              next.push(landed);
-              hits.add(b.slot);
-            } else {
-              next.push({ ...b, step });
-            }
-          }
-          list = next;
+      for (const b of list) {
+        if (b.landed) {
+          next.push(b);
+          continue;
         }
-
-        if (list !== ballsRef.current || newlyPaid.length > 0) {
-          ballsRef.current = list;
-          setBalls(list);
+        if (ballProgress(b, now) >= b.path.length - 1e-6) {
+          const landed: LiveBall = { ...b, landed: true, paid: true };
+          if (!b.paid) newlyPaid.push(landed);
+          next.push(landed);
+          hits.add(b.slot);
+          changed = true;
+        } else {
+          next.push(b);
         }
+      }
 
-        if (newlyPaid.length > 0) {
-          for (const b of newlyPaid) {
-            plinkoCredit(b.payout);
-            notifyDefi({ type: 'plinko_drop', mult: b.multiplier });
-            histId.current += 1;
-            setHistory((h) =>
-              [
-                {
-                  id: histId.current,
-                  mult: b.multiplier,
-                  rows: b.rows,
-                  risk: b.risk,
-                },
-                ...h,
-              ].slice(0, HISTORY_MAX),
-            );
-            setLastSettle({ mult: b.multiplier, payout: b.payout });
-            scheduleRemove(b.id);
-          }
+      if (changed) {
+        ballsRef.current = next;
+        setBalls(next);
+      }
+
+      if (newlyPaid.length > 0) {
+        for (const b of newlyPaid) {
+          plinkoCreditRef.current(b.payout);
+          notifyDefi({ type: 'plinko_drop', mult: b.multiplier });
+          histId.current += 1;
+          setHistory((h) =>
+            [
+              {
+                id: histId.current,
+                mult: b.multiplier,
+                rows: b.rows,
+                risk: b.risk,
+              },
+              ...h,
+            ].slice(0, HISTORY_MAX),
+          );
+          setLastSettle({ mult: b.multiplier, payout: b.payout });
+          scheduleRemove(b.id);
+        }
+        setHitSlots((prev) => {
+          const n = new Set(prev);
+          for (const slot of hits) n.add(slot);
+          return n;
+        });
+        window.setTimeout(() => {
           setHitSlots((prev) => {
             const n = new Set(prev);
-            for (const slot of hits) n.add(slot);
+            for (const slot of hits) n.delete(slot);
             return n;
           });
-          window.setTimeout(() => {
-            setHitSlots((prev) => {
-              const n = new Set(prev);
-              for (const slot of hits) n.delete(slot);
-              return n;
-            });
-          }, SETTLE_HOLD_MS);
-        }
+        }, SETTLE_HOLD_MS);
       }
 
       if (ballsRef.current.length > 0) {
@@ -375,7 +402,7 @@ export function PlinkoScreen() {
       slot,
       multiplier,
       payout,
-      step: 0,
+      bornAt: performance.now(),
       landed: false,
       paid: false,
     };
@@ -423,7 +450,7 @@ export function PlinkoScreen() {
 
       <div className="plinko-layout">
         <main className="plinko-stage">
-          <PlinkoBoard rows={rows} risk={risk} balls={balls} hitSlots={hitSlots} />
+          <PlinkoBoard rows={rows} risk={risk} balls={balls} hitSlots={hitSlots} now={nowMs} />
           {liveCount > 1 && (
             <div className="plinko-live-count" aria-live="polite">
               {liveCount} billes
