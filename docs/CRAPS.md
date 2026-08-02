@@ -1,42 +1,35 @@
-# NOCTURNE — Craps (salon des jeux)
+# NOCTURNE — Craps (Street / GWYF-like)
 
-## Langage joueur (UI)
+## Inspiration
 
-Pas de jargon casino à l’écran. Mapping :
+Règles inspirées du **Street Craps** de *Gamble With Your Friends* (pas le craps casino Pass/Don’t Pass) :
 
-| UI | Terme classique |
+| Source | Détail retenu |
 | --- | --- |
-| **Gagner** | Pass Line |
-| **Contre** | Don’t Pass (12 = remboursé) |
-| **Ce coup** | Field |
-| **Miser plus** | Odds derrière Pass |
-| **Cible** | Point |
-| **Libre** | Come-out (puck OFF) |
+| Steam (analyse joueur) | **×2** avant la cible, **×4** une fois la cible fixée |
+| Gameplay / guides | 7 / 11 win, 2 / 3 / 12 lose au 1er jet ; sinon point |
+| Feeling GWYF (« souvent remboursé ») | Après **3 jets** en phase cible sans hit ni 7 → **push** (mise rendue) |
+| UI | Les chiffres gagnants / perdants **changent** après le 1er total |
 
-## Scope (v1)
+## Flow
 
-Expérience single-shooter (tu lances toujours), paris à faible house edge :
+1. **Mise unique** — poser un jeton, puis lancer.
+2. **Premier jet (×2)**  
+   - 7 ou 11 → win (crédit = mise × 2)  
+   - 2, 3 ou 12 → lose  
+   - 4 / 5 / 6 / 8 / 9 / 10 → **cible** fixée, multi passe à ×4
+3. **Phase cible (×4)** — jusqu’à 3 jets :  
+   - total = cible → win (crédit = mise × 4)  
+   - total = 7 → lose  
+   - autre → continue ; au 3ᵉ neutre → **remboursement**
 
-| Case UI | Quand | Résolution | Paiement |
-| --- | --- | --- | --- |
-| **Gagner** | Premier lancer | 7/11 win · 2/3/12 lose · sinon cible | ×2 |
-| **Contre** | Premier lancer | 2/3 win · 7/11 lose · **12 remboursé** · sinon cible | ×2 |
-| **Miser plus** | Cible fixée | Cible avant 7 | cotes vraies |
-| **Ce coup** | Chaque lancer | 2,3,4,9,10,11,12 | ×2 ; **2 → ×3** ; **12 → ×4** (mise+gain) |
+## Affichage
 
-### « Miser plus » max (table 3-4-5×)
-
-| Cible | Max | Paiement du renfort |
+| Phase | Gagne | Perd |
 | --- | --- | --- |
-| 4 ou 10 | 3 × mise Gagner | ×2 |
-| 5 ou 9 | 4 × mise Gagner | ×1,5 |
-| 6 ou 8 | 5 × mise Gagner | ×1,2 |
-
-## Phases
-
-1. **Libre** — pose Gagner / Contre / Ce coup, puis Lance.
-2. **Cible** — puck « Cible N ». Miser plus dispo. Ce coup chaque coup. Jusqu’à cible (Gagner gagne) ou 7 trop tôt (Gagner perd).
+| Libre | 7, 11 | 2, 3, 12 |
+| Cible N | N | 7 |
 
 ## Fairness
 
-Deux dés 1–6 via `crypto.getRandomValues` (uniforme). Jetons virtuels, même crédit que blackjack / Mines.
+Deux dés 1–6 via `crypto.getRandomValues`. Jetons virtuels, crédit partagé.

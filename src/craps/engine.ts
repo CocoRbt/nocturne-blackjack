@@ -1,24 +1,24 @@
+/**
+ * Street Craps façon « Gamble With Your Friends » :
+ * une mise, ×2 au 1er lancer, ×4 une fois la cible fixée,
+ * chiffres gagnants/perdants qui changent, remboursement après 3 jets neutres.
+ */
 import {
-  fieldWinCents,
-  fieldWins,
+  COME_OUT_LOSES,
+  COME_OUT_WINS,
+  MULT_COME_OUT,
+  MULT_POINT,
+  POINT_ROLLS_BEFORE_PUSH,
+  comeOutLoses,
+  comeOutWins,
   isPointNumber,
-  maxOddsCents,
-  oddsWinCents,
+  winCreditCents,
   type PointNumber,
 } from './math'
 
 export type DieFace = 1 | 2 | 3 | 4 | 5 | 6
 
 export type CrapsPhase = 'come_out' | 'point'
-
-export type BetKind = 'pass' | 'dont_pass' | 'field' | 'odds'
-
-export interface WorkingBets {
-  pass: number
-  dontPass: number
-  field: number
-  odds: number
-}
 
 export interface DiceRoll {
   d1: DieFace
@@ -27,18 +27,13 @@ export interface DiceRoll {
 }
 
 export type SettleKind =
-  | 'pass_win'
-  | 'pass_lose'
-  | 'dont_pass_win'
-  | 'dont_pass_lose'
-  | 'dont_pass_push'
-  | 'field_win'
-  | 'field_lose'
-  | 'odds_win'
-  | 'odds_lose'
+  | 'come_out_win'
+  | 'come_out_lose'
   | 'point_set'
-  | 'seven_out'
-  | 'point_made'
+  | 'point_win'
+  | 'point_lose'
+  | 'point_push'
+  | 'point_continue'
 
 export interface SettlementLine {
   kind: SettleKind
@@ -49,34 +44,28 @@ export interface SettlementLine {
 export interface CrapsRound {
   phase: CrapsPhase
   point: PointNumber | null
-  bets: WorkingBets
+  /** Jets déjà joués en phase cible (0 → POINT_ROLLS_BEFORE_PUSH). */
+  pointRolls: number
+  /** Mise unique en cours (0 = table libre). */
+  bet: number
   lastRoll: DiceRoll | null
   history: DiceRoll[]
   settlements: SettlementLine[]
-  /** Net chip flow this resolution (credits − debits already applied for stakes). */
   lastNetCents: number
   message: string
-}
-
-export function emptyBets(): WorkingBets {
-  return { pass: 0, dontPass: 0, field: 0, odds: 0 }
-}
-
-function fmtChip(cents: number): string {
-  const n = cents / 100
-  return Number.isInteger(n) ? String(n) : n.toFixed(2)
 }
 
 export function createCrapsRound(): CrapsRound {
   return {
     phase: 'come_out',
     point: null,
-    bets: emptyBets(),
+    pointRolls: 0,
+    bet: 0,
     lastRoll: null,
     history: [],
     settlements: [],
     lastNetCents: 0,
-    message: 'Pose un jeton sur « Gagner », puis lance les dés.',
+    message: 'Choisis ta mise, puis lance. 7 ou 11 = gagné ×2.',
   }
 }
 
@@ -97,92 +86,63 @@ export function cryptoUnit(): number {
   return buf[0]! / 2 ** 32
 }
 
-export function canPlacePass(round: CrapsRound): boolean {
-  return round.phase === 'come_out'
+export function currentMult(round: CrapsRound): number {
+  return round.phase === 'point' ? MULT_POINT : MULT_COME_OUT
 }
 
-export function canPlaceDontPass(round: CrapsRound): boolean {
-  return round.phase === 'come_out'
-}
-
-export function canPlaceField(_round: CrapsRound): boolean {
-  return true
-}
-
-export function canPlaceOdds(round: CrapsRound): boolean {
-  return round.phase === 'point' && round.bets.pass > 0 && round.point != null
-}
-
-export function oddsCap(round: CrapsRound): number {
-  if (!round.point || round.bets.pass <= 0) return 0
-  return maxOddsCents(round.bets.pass, round.point)
+/** Chiffres affichés selon la phase (ils changent après le 1er total). */
+export function boardNumbers(round: CrapsRound): {
+  wins: readonly number[]
+  loses: readonly number[]
+  hint: string
+} {
+  if (round.phase === 'point' && round.point != null) {
+    const left = POINT_ROLLS_BEFORE_PUSH - round.pointRolls
+    return {
+      wins: [round.point],
+      loses: [7],
+      hint:
+        left <= 1
+          ? `Dernier jet : ${round.point} = ×4, 7 = perdu, autre = remboursé`
+          : `Encore ${left} jet${left > 1 ? 's' : ''} : ${round.point} = ×4 · 7 = perdu · autre = on continue`,
+    }
+  }
+  return {
+    wins: COME_OUT_WINS,
+    loses: COME_OUT_LOSES,
+    hint: 'Autre chiffre (4–6, 8–10) → on fixe une cible, puis ×4',
+  }
 }
 
 export type PlaceBetResult =
   | { ok: true; round: CrapsRound; debitCents: number }
   | { ok: false; error: string }
 
-export function placeBet(
-  round: CrapsRound,
-  kind: BetKind,
-  amountCents: number,
-): PlaceBetResult {
+/** Pose / ajoute à la mise unique (seulement avant le 1er lancer d’une manche). */
+export function placeBet(round: CrapsRound, amountCents: number): PlaceBetResult {
   if (!Number.isFinite(amountCents) || amountCents <= 0 || !Number.isInteger(amountCents)) {
     return { ok: false, error: 'Mise invalide.' }
   }
-
-  const bets = { ...round.bets }
-
-  if (kind === 'pass') {
-    if (!canPlacePass(round)) {
-      return { ok: false, error: '« Gagner » seulement au premier lancer.' }
-    }
-    if (bets.dontPass > 0) {
-      return { ok: false, error: 'Choisis soit Gagner, soit Contre — pas les deux.' }
-    }
-    bets.pass += amountCents
-  } else if (kind === 'dont_pass') {
-    if (!canPlaceDontPass(round)) {
-      return { ok: false, error: '« Contre » seulement au premier lancer.' }
-    }
-    if (bets.pass > 0) {
-      return { ok: false, error: 'Choisis soit Gagner, soit Contre — pas les deux.' }
-    }
-    bets.dontPass += amountCents
-  } else if (kind === 'field') {
-    bets.field += amountCents
-  } else {
-    if (!canPlaceOdds(round) || !round.point) {
-      return { ok: false, error: '« Miser plus » s’ouvre quand tu as une cible.' }
-    }
-    const cap = oddsCap(round)
-    if (bets.odds + amountCents > cap) {
-      return { ok: false, error: `Tu peux encore miser jusqu’à ${fmtChip(cap)} ici.` }
-    }
-    bets.odds += amountCents
+  if (round.phase === 'point') {
+    return { ok: false, error: 'Attends la fin de la cible pour remiser.' }
   }
-
+  const bet = round.bet + amountCents
   return {
     ok: true,
     debitCents: amountCents,
     round: {
       ...round,
-      bets,
+      bet,
       settlements: [],
       lastNetCents: 0,
-      message: messageForBets(round.phase, round.point, bets),
+      message: `Mise ${fmtChip(bet)} · lance pour ×2 (ou fixer une cible → ×4).`,
     },
   }
 }
 
-function messageForBets(phase: CrapsPhase, point: PointNumber | null, bets: WorkingBets): string {
-  if (phase === 'come_out') {
-    if (bets.pass + bets.dontPass + bets.field === 0) {
-      return 'Pose un jeton sur « Gagner », puis lance les dés.'
-    }
-    return 'C’est bon — lance les dés !'
-  }
-  return `Cible ${point} : refais un ${point} avant un 7.`
+function fmtChip(cents: number): string {
+  const n = cents / 100
+  return Number.isInteger(n) ? String(n) : n.toFixed(2)
 }
 
 export type RollResult =
@@ -190,194 +150,101 @@ export type RollResult =
   | { ok: false; error: string }
 
 /**
- * Resolve one roll. Stakes were already debited on placeBet.
- * creditCents = returned stakes + winnings paid this resolution.
+ * Résout un lancer. La mise a déjà été débitée via placeBet.
+ * creditCents = ce qu’on rend (mise+gain, ou mise seule en push).
  */
 export function resolveRoll(round: CrapsRound, roll: DiceRoll): RollResult {
-  const lineWorking = round.bets.pass + round.bets.dontPass + round.bets.odds
-  if (lineWorking === 0 && round.bets.field === 0) {
-    return { ok: false, error: 'Placez au moins une mise.' }
-  }
-  if (round.phase === 'come_out' && round.bets.pass === 0 && round.bets.dontPass === 0 && round.bets.field === 0) {
-    return { ok: false, error: 'Placez au moins une mise.' }
+  if (round.bet <= 0) {
+    return { ok: false, error: 'Pose d’abord une mise.' }
   }
 
   const settlements: SettlementLine[] = []
   let credit = 0
-  let bets = { ...round.bets }
+  let bet = round.bet
   let phase = round.phase
   let point = round.point
+  let pointRolls = round.pointRolls
   let message = ''
-
   const total = roll.total
-
-  // « Ce coup » = un seul lancer
-  if (bets.field > 0) {
-    const stake = bets.field
-    if (fieldWins(total)) {
-      const profit = fieldWinCents(stake, total)
-      credit += stake + profit
-      settlements.push({
-        kind: 'field_win',
-        amountCents: stake + profit,
-        label: `Ce coup : +${fmtChip(profit)}`,
-      })
-    } else {
-      settlements.push({
-        kind: 'field_lose',
-        amountCents: 0,
-        label: 'Ce coup perdu (5, 6, 7 ou 8)',
-      })
-    }
-    bets.field = 0
-  }
+  const stake = bet
 
   if (phase === 'come_out') {
-    if (total === 7 || total === 11) {
-      if (bets.pass > 0) {
-        const stake = bets.pass
-        credit += stake * 2
-        settlements.push({
-          kind: 'pass_win',
-          amountCents: stake * 2,
-          label: `Gagner : ${total} direct — mise doublée`,
-        })
-        bets.pass = 0
-      }
-      if (bets.dontPass > 0) {
-        settlements.push({
-          kind: 'dont_pass_lose',
-          amountCents: 0,
-          label: `Contre perdu (${total})`,
-        })
-        bets.dontPass = 0
-      }
-      message =
-        total === 7
-          ? '7 ! Tu gagnes tout de suite.'
-          : '11 ! Tu gagnes tout de suite.'
-    } else if (total === 2 || total === 3) {
-      if (bets.pass > 0) {
-        settlements.push({
-          kind: 'pass_lose',
-          amountCents: 0,
-          label: `Gagner perdu (${total})`,
-        })
-        bets.pass = 0
-      }
-      if (bets.dontPass > 0) {
-        const stake = bets.dontPass
-        credit += stake * 2
-        settlements.push({
-          kind: 'dont_pass_win',
-          amountCents: stake * 2,
-          label: `Contre : ${total} — mise doublée`,
-        })
-        bets.dontPass = 0
-      }
-      message = `${total} — Contre gagne, Gagner perd.`
-    } else if (total === 12) {
-      if (bets.pass > 0) {
-        settlements.push({
-          kind: 'pass_lose',
-          amountCents: 0,
-          label: 'Gagner perdu (12)',
-        })
-        bets.pass = 0
-      }
-      if (bets.dontPass > 0) {
-        const stake = bets.dontPass
-        credit += stake
-        settlements.push({
-          kind: 'dont_pass_push',
-          amountCents: stake,
-          label: 'Contre : 12 — on te rend ta mise',
-        })
-        bets.dontPass = 0
-      }
-      message = '12 — Gagner perd, Contre est remboursé.'
-    } else if (isPointNumber(total) && (bets.pass > 0 || bets.dontPass > 0)) {
+    if (comeOutWins(total)) {
+      credit = winCreditCents(stake, MULT_COME_OUT)
+      settlements.push({
+        kind: 'come_out_win',
+        amountCents: credit,
+        label: `${total} direct — ×${MULT_COME_OUT}`,
+      })
+      bet = 0
+      message = `${total} ! Tu gagnes ×${MULT_COME_OUT}.`
+    } else if (comeOutLoses(total)) {
+      settlements.push({
+        kind: 'come_out_lose',
+        amountCents: 0,
+        label: `${total} — perdu`,
+      })
+      bet = 0
+      message = `${total}… perdu. Remise pour réessayer.`
+    } else if (isPointNumber(total)) {
       phase = 'point'
       point = total
+      pointRolls = 0
       settlements.push({
         kind: 'point_set',
         amountCents: 0,
-        label: `Cible ${total} — la partie continue`,
+        label: `Cible ${total} — maintenant ça paie ×${MULT_POINT}`,
       })
-      message = `Cible ${total} ! Refais un ${total} avant un 7.`
-    } else if (isPointNumber(total)) {
-      message = `${total} — sans mise Gagner/Contre, rien ne change.`
+      message = `Cible ${total} ! Refais un ${total} avant un 7 (×${MULT_POINT}). ${POINT_ROLLS_BEFORE_PUSH} jets max.`
+    } else {
+      message = `${total} — bizarre, on continue.`
     }
   } else {
-    // Phase cible
     const p = point!
-    if (total === 7) {
-      if (bets.pass > 0) {
-        settlements.push({
-          kind: 'pass_lose',
-          amountCents: 0,
-          label: '7 trop tôt — Gagner perdu',
-        })
-        bets.pass = 0
-      }
-      if (bets.odds > 0) {
-        settlements.push({
-          kind: 'odds_lose',
-          amountCents: 0,
-          label: 'Miser plus perdu avec le 7',
-        })
-        bets.odds = 0
-      }
-      if (bets.dontPass > 0) {
-        const stake = bets.dontPass
-        credit += stake * 2
-        settlements.push({
-          kind: 'dont_pass_win',
-          amountCents: stake * 2,
-          label: 'Contre gagne (le 7 est sorti)',
-        })
-        bets.dontPass = 0
-      }
-      settlements.push({ kind: 'seven_out', amountCents: 0, label: '7 avant la cible' })
+    pointRolls += 1
+    if (total === p) {
+      credit = winCreditCents(stake, MULT_POINT)
+      settlements.push({
+        kind: 'point_win',
+        amountCents: credit,
+        label: `Cible ${p} — ×${MULT_POINT}`,
+      })
+      bet = 0
       phase = 'come_out'
       point = null
-      message = '7 trop tôt — tu as perdu.'
-    } else if (total === p) {
-      if (bets.pass > 0) {
-        const stake = bets.pass
-        credit += stake * 2
-        settlements.push({
-          kind: 'pass_win',
-          amountCents: stake * 2,
-          label: `Gagner : cible ${p} atteinte`,
-        })
-        bets.pass = 0
-      }
-      if (bets.odds > 0) {
-        const stake = bets.odds
-        const profit = oddsWinCents(stake, p)
-        credit += stake + profit
-        settlements.push({
-          kind: 'odds_win',
-          amountCents: stake + profit,
-          label: `Miser plus : +${fmtChip(profit)}`,
-        })
-        bets.odds = 0
-      }
-      if (bets.dontPass > 0) {
-        settlements.push({
-          kind: 'dont_pass_lose',
-          amountCents: 0,
-          label: `Contre perdu (cible ${p})`,
-        })
-        bets.dontPass = 0
-      }
-      settlements.push({ kind: 'point_made', amountCents: 0, label: `Cible ${p} atteinte` })
+      pointRolls = 0
+      message = `Cible ${p} ! ×${MULT_POINT}.`
+    } else if (total === 7) {
+      settlements.push({
+        kind: 'point_lose',
+        amountCents: 0,
+        label: '7 trop tôt — perdu',
+      })
+      bet = 0
       phase = 'come_out'
       point = null
-      message = `Cible ${p} ! Tu gagnes.`
+      pointRolls = 0
+      message = '7 trop tôt — perdu.'
+    } else if (pointRolls >= POINT_ROLLS_BEFORE_PUSH) {
+      credit = stake
+      settlements.push({
+        kind: 'point_push',
+        amountCents: credit,
+        label: `${POINT_ROLLS_BEFORE_PUSH} jets sans ${p} ni 7 — mise rendue`,
+      })
+      bet = 0
+      phase = 'come_out'
+      point = null
+      pointRolls = 0
+      message = `Rien en ${POINT_ROLLS_BEFORE_PUSH} jets — on te rend ta mise.`
     } else {
-      message = `${total}… pas encore. Il faut ${p} (attention au 7).`
+      const left = POINT_ROLLS_BEFORE_PUSH - pointRolls
+      settlements.push({
+        kind: 'point_continue',
+        amountCents: 0,
+        label: `${total}… encore ${left} jet${left > 1 ? 's' : ''}`,
+      })
+      message = `${total}… pas encore. Il faut ${p} (attention au 7). Encore ${left}.`
     }
   }
 
@@ -389,7 +256,8 @@ export function resolveRoll(round: CrapsRound, roll: DiceRoll): RollResult {
     round: {
       phase,
       point,
-      bets,
+      pointRolls,
+      bet,
       lastRoll: roll,
       history,
       settlements,
@@ -406,7 +274,6 @@ export function rollAndResolve(
   return resolveRoll(round, rollDice(rng))
 }
 
-/** Clear leftover line bets is not allowed mid-point for pass — only used after settle. */
-export function clearFieldOnly(round: CrapsRound): CrapsRound {
-  return { ...round, bets: { ...round.bets, field: 0 } }
+export function canRoll(round: CrapsRound): boolean {
+  return round.bet > 0
 }

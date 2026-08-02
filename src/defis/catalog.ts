@@ -90,8 +90,8 @@ export const DEFI_CATALOG: DefiDef[] = [
   },
   {
     id: 'craps_pass_2',
-    title: 'Sur Gagner',
-    description: 'Gagne 2 fois avec la case Gagner',
+    title: 'Bonne main',
+    description: 'Gagne 2 manches au Craps',
     game: 'craps',
     metric: 'craps_pass_wins',
     target: 2,

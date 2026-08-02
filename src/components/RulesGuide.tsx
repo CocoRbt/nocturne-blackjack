@@ -407,8 +407,8 @@ function CrapsRules() {
     <>
       <IlluCraps />
       <p className="rules-lead">
-        Deux dés, tu lances, tu gagnes ou tu perds. Commence par « Gagner » : 7 ou 11 = gagné tout de suite.
-        Sinon on fixe une cible — refais-la avant un 7.
+        Street Craps façon casual : une mise, deux dés. Au premier jet ça paie ×2. Si on fixe une cible,
+        ça passe à ×4 — et les chiffres gagnants / perdants changent sous tes yeux.
       </p>
       <section className="rules-section">
         <h3>En 3 étapes</h3>
@@ -416,38 +416,30 @@ function CrapsRules() {
           <li>
             <span className="n">1</span>
             <span>
-              <strong>Mise</strong> — pose un jeton sur « Gagner » (le plus simple). « Contre » = l’inverse. « Ce coup » = un seul lancer.
+              <strong>Mise</strong> — pose un jeton, puis lance.
             </span>
           </li>
           <li>
             <span className="n">2</span>
             <span>
-              <strong>Premier lancer</strong> — 7 ou 11 = tu gagnes · 2, 3 ou 12 = tu perds · autre total = on fixe une cible.
+              <strong>Premier jet (×2)</strong> — 7 ou 11 = gagné · 2, 3 ou 12 = perdu · autre = on fixe une cible.
             </span>
           </li>
           <li>
             <span className="n">3</span>
             <span>
-              <strong>Cible</strong> — refais ce chiffre avant un 7. Tu peux « Miser plus » pour augmenter les gains.
+              <strong>Cible (×4)</strong> — refais ce chiffre avant un 7. Après 3 jets sans résultat, on te rend ta mise.
             </span>
           </li>
         </ol>
       </section>
       <section className="rules-section">
-        <h3>Les cases</h3>
+        <h3>Les chiffres changent</h3>
         <div className="rules-grid">
-          <RuleRow label="Gagner" value="7 / 11 gagnent · 2 / 3 / 12 perdent · ×2" />
-          <RuleRow label="Contre" value="2 / 3 gagnent · 7 / 11 perdent · 12 remboursé" />
-          <RuleRow label="Ce coup" value="Un lancer · 2×2 · 12×3" />
-          <RuleRow label="Miser plus" value="Sur ta cible · meilleur rapport" />
-        </div>
-      </section>
-      <section className="rules-section">
-        <h3>Combien tu peux « Miser plus »</h3>
-        <div className="rules-grid">
-          <RuleRow label="Cible 4 ou 10" value="jusqu’à 3× · paie ×2" />
-          <RuleRow label="Cible 5 ou 9" value="jusqu’à 4× · paie ×1,5" />
-          <RuleRow label="Cible 6 ou 8" value="jusqu’à 5× · paie ×1,2" />
+          <RuleRow label="Avant la cible" value="Gagne 7 / 11 · Perd 2 / 3 / 12 · ×2" />
+          <RuleRow label="Avec une cible" value="Gagne la cible · Perd 7 · ×4" />
+          <RuleRow label="3 jets neutres" value="Mise remboursée" />
+          <RuleRow label="Cibles possibles" value="4, 5, 6, 8, 9 ou 10" />
         </div>
       </section>
       <p className="rules-foot">Deux dés · jetons virtuels · crédit partagé NOCTURNE</p>

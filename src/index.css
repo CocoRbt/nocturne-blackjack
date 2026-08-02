@@ -3818,14 +3818,115 @@ button:disabled {
   0%, 100% { box-shadow: inset 0 0 30px rgba(232, 201, 106, 0.05), 0 28px 70px rgba(0, 0, 0, 0.45); }
   50% { box-shadow: inset 0 0 55px rgba(232, 201, 106, 0.12), 0 28px 70px rgba(0, 0, 0, 0.45); }
 }
+.craps-add-bet {
+  width: 100%;
+  margin-top: 4px;
+  min-height: 40px;
+}
 .craps-puck-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   margin-bottom: 14px;
   position: relative;
   z-index: 1;
+}
+.craps-mult-badge {
+  min-width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 1.5px solid rgba(232, 201, 106, 0.45);
+  background:
+    linear-gradient(160deg, rgba(232, 201, 106, 0.2), transparent 60%),
+    rgba(0, 0, 0, 0.35);
+  flex-shrink: 0;
+}
+.craps-mult-badge .craps-mult-k {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(242, 235, 224, 0.55);
+}
+.craps-mult-badge strong {
+  font-family: var(--font-display);
+  font-size: 26px;
+  color: var(--craps-accent);
+  line-height: 1;
+}
+.craps-board-hint {
+  text-align: center;
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(242, 235, 224, 0.72);
+  position: relative;
+  z-index: 1;
+}
+.craps-board-nums {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 8px;
+}
+.craps-num-col {
+  padding: 12px 12px 10px;
+  border-radius: 12px;
+  border: 1.5px solid var(--craps-line);
+  background: rgba(0, 0, 0, 0.22);
+}
+.craps-num-col.win {
+  border-color: rgba(120, 210, 168, 0.42);
+  background:
+    linear-gradient(160deg, rgba(120, 210, 168, 0.12), transparent 55%),
+    rgba(0, 0, 0, 0.2);
+}
+.craps-num-col.lose {
+  border-color: rgba(207, 143, 143, 0.4);
+  background:
+    linear-gradient(160deg, rgba(207, 143, 143, 0.1), transparent 55%),
+    rgba(0, 0, 0, 0.2);
+}
+.craps-num-label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(242, 235, 224, 0.55);
+  margin-bottom: 8px;
+}
+.craps-num-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.craps-num {
+  min-width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(242, 235, 224, 0.12);
+  color: var(--craps-ivory);
+}
+.craps-num-col.win .craps-num {
+  color: #8fdcb4;
+  border-color: rgba(120, 210, 168, 0.35);
+}
+.craps-num-col.lose .craps-num {
+  color: #f0a0a0;
+  border-color: rgba(207, 143, 143, 0.35);
 }
 .craps-puck {
   min-width: 78px;
@@ -4128,11 +4229,16 @@ button:disabled {
     min-height: 84px;
   }
   .craps-puck-row {
-    flex-direction: column;
-    align-items: stretch;
+    flex-wrap: wrap;
+    justify-content: center;
   }
-  .craps-puck {
+  .craps-puck,
+  .craps-mult-badge {
     align-self: center;
+  }
+  .craps-throw {
+    order: -1;
+    flex: 1 1 100%;
   }
 }
 

@@ -157,7 +157,7 @@ export function AppMenu({
               {screen !== 'craps' && (
                 <button type="button" disabled={navLocked} onClick={() => goTo('craps')}>
                   Craps
-                  <span className="dim">Dés · cibles</span>
+                  <span className="dim">Street · ×2 / ×4</span>
                 </button>
               )}
               {screen !== 'crash' && (

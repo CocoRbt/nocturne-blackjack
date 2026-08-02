@@ -17,8 +17,8 @@ Les micro-différences de règles blackjack (S17/H17, etc.) sont **secondaires**
 
 ## Craps
 
-- UI plain language : **Gagner** / **Contre** / **Ce coup** / **Miser plus** (Pass, Don’t Pass, Field, Odds).
-- Phases Libre / Cible ; dés via `crypto.getRandomValues`.
+- Street craps type GWYF : **une mise**, **×2** puis **×4**, cible, push après 3 jets neutres.
+- Chiffres gagnants / perdants dynamiques ; dés via `crypto.getRandomValues`.
 - Accès : menu lobby + carte « Salon des jeux ».
 - Détail : `docs/CRAPS.md`.
 
