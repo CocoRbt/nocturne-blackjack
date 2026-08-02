@@ -6,7 +6,7 @@ Dernière mise à jour : 2026-07-30.
 ## Vision
 
 Casino fictif (jetons virtuels). Enjeu principal = **mises, jetons, progression de crédit**.  
-Jeux : **blackjack** (tables) + **Mines** + **Craps / Scraps** + **Crash** + **Plinko** (salon des jeux). Même crédit / pic / cercle.  
+Jeux : **blackjack** (tables) + **Mines** + **Craps** + **Crash** + **Plinko** (salon des jeux). Même crédit / pic / cercle.  
 Les micro-différences de règles blackjack (S17/H17, etc.) sont **secondaires** ; ambiance / enjeux priment.
 
 ## Mines
@@ -15,10 +15,10 @@ Les micro-différences de règles blackjack (S17/H17, etc.) sont **secondaires**
 - Accès : menu lobby + carte « Salon des jeux ».
 - Détail : `docs/MINES.md`.
 
-## Craps (Scraps)
+## Craps
 
-- Pass Line, Don’t Pass (bar 12), Field, Odds derrière Pass (table 3-4-5×).
-- Phases come-out / point ; dés via `crypto.getRandomValues`.
+- UI plain language : **Gagner** / **Contre** / **Ce coup** / **Miser plus** (Pass, Don’t Pass, Field, Odds).
+- Phases Libre / Cible ; dés via `crypto.getRandomValues`.
 - Accès : menu lobby + carte « Salon des jeux ».
 - Détail : `docs/CRAPS.md`.
 
