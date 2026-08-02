@@ -1,7 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import {
-  boardNumbers,
   canRoll,
   createCrapsRound,
   cryptoUnit,
@@ -192,9 +191,15 @@ export function CrapsScreen() {
   const canBet = !rolling && round.phase === 'come_out';
   const rollReady = canRoll(round) && !rolling;
   const coach = coachCopy(round);
-  const board = boardNumbers(round);
   const mult = currentMult(round);
   const total = faces[0] + faces[1];
+  const canPlace = canBet && Math.min(chip, balance) >= 1_00;
+  const placeLabel = `Poser ${fmt(Math.min(chip, balance))}`;
+  const rollLabel = rolling
+    ? 'Les dés volent…'
+    : round.bet === 0
+      ? 'Pose une mise…'
+      : `Lancer · ×${mult}`;
 
   const onAddChip = () => {
     if (!canBet) return;
@@ -281,103 +286,7 @@ export function CrapsScreen() {
       />
 
       <div className="craps-layout">
-        <aside className="craps-panel">
-          <div className="craps-coach" data-phase={round.phase}>
-            <span className="craps-coach-step">{coach.step}</span>
-            <strong>{coach.title}</strong>
-            <p>{coach.body}</p>
-          </div>
-
-          <div className="craps-panel-block">
-            <label className="craps-label">Combien tu mises</label>
-            <div className="craps-presets">
-              {BET_PRESETS.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  className={`craps-chip ${chip === p ? 'on' : ''}`}
-                  disabled={!canBet || p > balance}
-                  onClick={() => setChip(p)}
-                >
-                  {fmt(p)}
-                </button>
-              ))}
-              <button
-                type="button"
-                className="craps-chip"
-                disabled={!canBet || balance < 1_00}
-                onClick={() => setChip(Math.max(1_00, balance))}
-              >
-                Max
-              </button>
-            </div>
-            <button
-              type="button"
-              className="btn ghost craps-add-bet"
-              disabled={!canBet || Math.min(chip, balance) < 1_00}
-              onClick={onAddChip}
-            >
-              Poser {fmt(Math.min(chip, balance))}
-            </button>
-          </div>
-
-          <div className="craps-stats">
-            <div>
-              <span className="k">En jeu</span>
-              <span className="v">{fmt(round.bet)}</span>
-            </div>
-            <div>
-              <span className="k">Multi</span>
-              <span className="v brass">×{mult}</span>
-            </div>
-            {round.phase === 'point' && (
-              <div>
-                <span className="k">Jets restants</span>
-                <span className="v">
-                  {POINT_ROLLS_BEFORE_PUSH - round.pointRolls}/{POINT_ROLLS_BEFORE_PUSH}
-                </span>
-              </div>
-            )}
-            {round.lastRoll && !rolling && (
-              <div>
-                <span className="k">Dernier jet</span>
-                <span className="v brass">
-                  {round.lastRoll.d1}+{round.lastRoll.d2} = {round.lastRoll.total}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <button
-            type="button"
-            className={`btn primary craps-cta ${rollReady ? 'pulse' : ''}`}
-            disabled={!rollReady}
-            onClick={onRoll}
-          >
-            {rolling ? 'Les dés volent…' : round.bet === 0 ? 'Pose une mise…' : `Lancer · ×${mult}`}
-          </button>
-
-          <ul className="craps-settle">
-            {round.settlements
-              .filter((s) => s.kind !== 'point_continue')
-              .map((s, i) => (
-                <li
-                  key={`${s.kind}-${i}`}
-                  className={
-                    s.kind.includes('win') ? 'ok' : s.kind.includes('lose') ? 'bad' : ''
-                  }
-                >
-                  {s.label}
-                </li>
-              ))}
-          </ul>
-
-          <p className="craps-footnote">
-            Une seule mise · ×{MULT_COME_OUT} puis ×{MULT_POINT} · remboursé après{' '}
-            {POINT_ROLLS_BEFORE_PUSH} jets sans résultat
-          </p>
-        </aside>
-
+        {/* Tapis d’abord : dés toujours visibles sans scroll. */}
         <main className="craps-table-wrap">
           <AnimatePresence mode="wait">
             {(flash || round.message) && !rolling && (
@@ -432,31 +341,6 @@ export function CrapsScreen() {
               </div>
             </div>
 
-            <p className="craps-board-hint">{board.hint}</p>
-
-            <div className="craps-board-nums" aria-live="polite">
-              <div className="craps-num-col win">
-                <span className="craps-num-label">Gagne</span>
-                <div className="craps-num-row">
-                  {board.wins.map((n) => (
-                    <span key={n} className="craps-num">
-                      {n}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="craps-num-col lose">
-                <span className="craps-num-label">Perd</span>
-                <div className="craps-num-row">
-                  {board.loses.map((n) => (
-                    <span key={n} className="craps-num">
-                      {n}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
             {round.phase === 'point' && round.point != null && (
               <div className="craps-goal" aria-live="polite">
                 Jet {round.pointRolls}/{POINT_ROLLS_BEFORE_PUSH} ·{' '}
@@ -479,6 +363,123 @@ export function CrapsScreen() {
             </div>
           )}
         </main>
+
+        <aside className="craps-panel">
+          <div className="craps-coach" data-phase={round.phase}>
+            <span className="craps-coach-step">{coach.step}</span>
+            <strong>{coach.title}</strong>
+            <p>{coach.body}</p>
+          </div>
+
+          <div className="craps-panel-block">
+            <label className="craps-label">Combien tu mises</label>
+            <div className="craps-presets">
+              {BET_PRESETS.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  className={`craps-chip ${chip === p ? 'on' : ''}`}
+                  disabled={!canBet || p > balance}
+                  onClick={() => setChip(p)}
+                >
+                  {fmt(p)}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="craps-chip"
+                disabled={!canBet || balance < 1_00}
+                onClick={() => setChip(Math.max(1_00, balance))}
+              >
+                Max
+              </button>
+            </div>
+          </div>
+
+          <div className="craps-stats">
+            <div>
+              <span className="k">En jeu</span>
+              <span className="v">{fmt(round.bet)}</span>
+            </div>
+            <div>
+              <span className="k">Multi</span>
+              <span className="v brass">×{mult}</span>
+            </div>
+            {round.phase === 'point' && (
+              <div>
+                <span className="k">Jets restants</span>
+                <span className="v">
+                  {POINT_ROLLS_BEFORE_PUSH - round.pointRolls}/{POINT_ROLLS_BEFORE_PUSH}
+                </span>
+              </div>
+            )}
+            {round.lastRoll && !rolling && (
+              <div>
+                <span className="k">Dernier jet</span>
+                <span className="v brass">
+                  {round.lastRoll.d1}+{round.lastRoll.d2} = {round.lastRoll.total}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop : actions dans le panneau. Mobile → dock sticky. */}
+          <div className="craps-actions craps-actions--panel">
+            <button
+              type="button"
+              className="btn craps-add-bet"
+              disabled={!canPlace}
+              onClick={onAddChip}
+            >
+              {placeLabel}
+            </button>
+            <button
+              type="button"
+              className={`btn primary craps-cta ${rollReady ? 'pulse' : ''}`}
+              disabled={!rollReady}
+              onClick={onRoll}
+            >
+              {rollLabel}
+            </button>
+          </div>
+
+          <ul className="craps-settle">
+            {round.settlements
+              .filter((s) => s.kind !== 'point_continue')
+              .map((s, i) => (
+                <li
+                  key={`${s.kind}-${i}`}
+                  className={
+                    s.kind.includes('win') ? 'ok' : s.kind.includes('lose') ? 'bad' : ''
+                  }
+                >
+                  {s.label}
+                </li>
+              ))}
+          </ul>
+
+          <p className="craps-footnote">Règles complètes dans ⓘ</p>
+        </aside>
+      </div>
+
+      {/* Mobile : Poser + Lancer toujours visibles en bas. */}
+      <div className="craps-action-dock">
+        <button
+          type="button"
+          className="btn craps-add-bet"
+          disabled={!canPlace}
+          onClick={onAddChip}
+        >
+          {placeLabel}
+        </button>
+        <button
+          type="button"
+          className={`btn primary craps-cta ${rollReady ? 'pulse' : ''}`}
+          disabled={!rollReady}
+          onClick={onRoll}
+        >
+          {rollLabel}
+        </button>
       </div>
 
       <AnimatePresence>
