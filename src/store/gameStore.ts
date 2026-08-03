@@ -624,7 +624,7 @@ export const useGame = create<GameState>((set, get) => {
       const table = getTable(tableId);
       shoe = new DealingShoe(table.rules.decks, table.rules.penetration);
       sounds.setMuted(s.soundMuted);
-      sounds.setAmbienceProfile(table.identity.ambienceHz);
+      sounds.setAmbience(table.identity.ambienceId);
       sounds.startAmbience();
       sounds.play('shuffle');
       const chip = defaultChipForLimits(table.rules.minBet, table.rules.maxBet);
@@ -662,6 +662,7 @@ export const useGame = create<GameState>((set, get) => {
     leaveTable() {
       presentToken++;
       shoe = null;
+      sounds.setAmbience('lobby');
       set({
         screen: 'lobby',
         round: null,
@@ -676,6 +677,8 @@ export const useGame = create<GameState>((set, get) => {
     enterMines() {
       presentToken++;
       shoe = null;
+      sounds.setAmbience('salon');
+      sounds.startAmbience();
       set({
         screen: 'mines',
         round: null,
@@ -688,6 +691,7 @@ export const useGame = create<GameState>((set, get) => {
     },
 
     leaveMines() {
+      sounds.setAmbience('lobby');
       set({ screen: 'lobby', notice: null });
     },
 
@@ -727,6 +731,8 @@ export const useGame = create<GameState>((set, get) => {
     enterCraps() {
       presentToken++;
       shoe = null;
+      sounds.setAmbience('salon');
+      sounds.startAmbience();
       set({
         screen: 'craps',
         round: null,
@@ -739,6 +745,7 @@ export const useGame = create<GameState>((set, get) => {
     },
 
     leaveCraps() {
+      sounds.setAmbience('lobby');
       set({ screen: 'lobby', notice: null });
     },
 
@@ -778,6 +785,8 @@ export const useGame = create<GameState>((set, get) => {
     enterCrash() {
       presentToken++;
       shoe = null;
+      sounds.setAmbience('salon');
+      sounds.startAmbience();
       set({
         screen: 'crash',
         round: null,
@@ -790,12 +799,15 @@ export const useGame = create<GameState>((set, get) => {
     },
 
     leaveCrash() {
+      sounds.setAmbience('lobby');
       set({ screen: 'lobby', notice: null });
     },
 
     enterPlinko() {
       presentToken++;
       shoe = null;
+      sounds.setAmbience('salon');
+      sounds.startAmbience();
       set({
         screen: 'plinko',
         round: null,
@@ -808,6 +820,7 @@ export const useGame = create<GameState>((set, get) => {
     },
 
     leavePlinko() {
+      sounds.setAmbience('lobby');
       set({ screen: 'lobby', notice: null });
     },
 

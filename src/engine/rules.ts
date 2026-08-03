@@ -1,5 +1,8 @@
 import type { SideBetId } from './types';
 
+/** Lit sonore de table (branché sur `sounds.setAmbience`). */
+export type TableAmbienceId = 'emeraude' | 'onyx' | 'imperiale' | 'privee';
+
 /**
  * Configuration complète des règles d'une table.
  * Tout est centralisé ici : règles de jeu, limites, paiements.
@@ -47,7 +50,9 @@ export interface TableIdentity {
   accent: string;
   /** Couleur du halo de lampe au-dessus de la table. */
   lamp: string;
-  /** Fréquence de coupure (Hz) du filtre de l'ambiance sonore. */
+  /** Profil d’ambiance sonore (pads + bruit de salle). */
+  ambienceId: TableAmbienceId;
+  /** @deprecated conservé pour compat — préférer ambienceId. */
   ambienceHz: number;
   /** Devise affichée sur le feutre. */
   motto: string;
@@ -102,6 +107,7 @@ export const TABLES: TableConfig[] = [
     identity: {
       accent: '#c2a15f',
       lamp: 'rgba(216, 201, 160, 0.10)',
+      ambienceId: 'emeraude',
       ambienceHz: 220,
       motto: '« La nuit ne compte pas ses cartes. »',
     },
@@ -127,6 +133,7 @@ export const TABLES: TableConfig[] = [
     identity: {
       accent: '#a8b0c0',
       lamp: 'rgba(168, 176, 192, 0.08)',
+      ambienceId: 'onyx',
       ambienceHz: 180,
       motto: '« Le silence tient la banque. »',
     },
@@ -151,6 +158,7 @@ export const TABLES: TableConfig[] = [
     identity: {
       accent: '#cf9a6c',
       lamp: 'rgba(224, 176, 144, 0.09)',
+      ambienceId: 'imperiale',
       ambienceHz: 260,
       motto: '« On ne compte qu\u2019après minuit. »',
     },
@@ -203,6 +211,7 @@ export function buildPrivateTable(limits: PrivateLimits): TableConfig {
     identity: {
       accent: '#d4af77',
       lamp: 'rgba(212, 175, 119, 0.11)',
+      ambienceId: 'privee',
       ambienceHz: 240,
       motto: '« Le cercle se referme sur ceux qui restent. »',
     },
