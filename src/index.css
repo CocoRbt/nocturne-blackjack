@@ -242,6 +242,7 @@ button:disabled {
   justify-content: center;
   width: 100%;
   max-width: 1060px;
+  margin: 0 auto;
 }
 
 .table-card {
@@ -667,7 +668,7 @@ button:disabled {
 
 .lobby-games {
   width: min(1060px, 100%);
-  margin: clamp(28px, 5vh, 48px) auto 0;
+  margin: clamp(12px, 3vh, 28px) auto 0;
   padding: 0 4px;
 }
 .lobby-games-title {
@@ -680,6 +681,31 @@ button:disabled {
   margin-bottom: 14px;
   text-align: center;
 }
+.lobby-games-title--inline {
+  margin-bottom: 4px;
+  text-align: left;
+}
+.lobby-tables-section {
+  width: min(1060px, 100%);
+  margin: clamp(8px, 2vh, 20px) auto 0;
+  padding: 0 4px;
+}
+.lobby-tables-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.lobby-tables-back {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.lobby-tables-sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-dim);
+  line-height: 1.4;
+}
 .lobby-games-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -687,6 +713,7 @@ button:disabled {
   width: min(1060px, 100%);
   margin: 0 auto;
 }
+.blackjack-card,
 .mines-card,
 .craps-card,
 .crash-card,
@@ -706,6 +733,12 @@ button:disabled {
     rgba(12, 16, 18, 0.85);
   transition: border-color 0.3s var(--ease-lux), transform 0.3s var(--ease-lux);
 }
+.blackjack-card {
+  border-color: rgba(194, 161, 95, 0.38);
+  background:
+    linear-gradient(145deg, rgba(194, 161, 95, 0.14), transparent 52%),
+    rgba(14, 12, 10, 0.92);
+}
 .craps-card {
   border-color: rgba(232, 201, 106, 0.32);
   background:
@@ -724,6 +757,10 @@ button:disabled {
     linear-gradient(145deg, rgba(212, 160, 90, 0.12), transparent 52%),
     rgba(14, 12, 10, 0.9);
 }
+.blackjack-card:hover {
+  border-color: rgba(194, 161, 95, 0.62);
+  transform: translateY(-2px);
+}
 .mines-card:hover {
   border-color: rgba(62, 207, 173, 0.45);
   transform: translateY(-2px);
@@ -739,6 +776,37 @@ button:disabled {
 .plinko-card:hover {
   border-color: rgba(212, 160, 90, 0.55);
   transform: translateY(-2px);
+}
+.blackjack-card-visual {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 12px;
+  background:
+    radial-gradient(circle at 40% 30%, rgba(194, 161, 95, 0.2), transparent 60%),
+    #12100c;
+}
+.bj-card-tile {
+  width: 42px;
+  height: 58px;
+  border-radius: 6px;
+  border: 1px solid rgba(242, 235, 224, 0.35);
+  background: linear-gradient(160deg, #f4efe4, #e4d8c4);
+  color: #1a120c;
+  font-family: var(--font-display);
+  font-size: 18px;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+}
+.bj-card-tile[data-suit='heart'] {
+  color: #8a3030;
+  transform: rotate(8deg);
+}
+.bj-card-tile[data-suit='spade'] {
+  transform: rotate(-6deg);
 }
 .mines-card-visual {
   display: grid;
@@ -763,12 +831,14 @@ button:disabled {
   background: radial-gradient(circle at 40% 35%, #e8a0a0, #5a2424);
   grid-column: 1 / -1;
 }
+.blackjack-card-body,
 .mines-card-body,
 .craps-card-body,
 .crash-card-body,
 .plinko-card-body {
   padding: 18px 18px 16px 8px;
 }
+.blackjack-card-body h3,
 .mines-card-body h3,
 .craps-card-body h3,
 .crash-card-body h3,
@@ -779,6 +849,7 @@ button:disabled {
   letter-spacing: 0.08em;
   margin-bottom: 6px;
 }
+.blackjack-card-body p,
 .mines-card-body p,
 .craps-card-body p,
 .crash-card-body p,
@@ -787,6 +858,12 @@ button:disabled {
   color: var(--ink-dim);
   line-height: 1.45;
   margin-bottom: 12px;
+}
+.blackjack-card-body .enter {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brass);
 }
 .mines-card-body .enter {
   font-size: 11px;
@@ -3599,6 +3676,7 @@ button:disabled {
   .mines-grid {
     width: min(100%, 420px);
   }
+  .blackjack-card,
   .mines-card,
   .craps-card,
   .crash-card,
