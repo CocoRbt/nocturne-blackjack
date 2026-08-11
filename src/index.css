@@ -39,6 +39,8 @@
 
   --font-display: 'Fraunces', 'Georgia', serif;
   --font-ui: 'Inter', system-ui, sans-serif;
+  /* Chiffres : Inter — le 8 de Fraunces Soft paraît souvent à l’envers. */
+  --font-num: 'Inter', system-ui, sans-serif;
 
   --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.45);
   --ease-lux: cubic-bezier(0.22, 1, 0.36, 1);
@@ -114,6 +116,34 @@ body {
   overflow-x: clip;
   /* Évite le reflow / zoom parasite sur mobile. */
   overscroll-behavior: none;
+}
+
+/* Titres Fraunces : Soft/Wonk neutres (glyphes plus stables, dont le 8). */
+:where(h1, h2, h3, .lobby-brand h1, .lobby-games-title, .table-card h2) {
+  font-variation-settings: 'SOFT' 25, 'WONK' 0, 'opsz' 72;
+}
+
+/* Tous les montants / rangs / scores : Inter lining (8 correct). */
+.lobby-balance .value,
+.lobby-balance .peak,
+.game-balance .value,
+.game-balance .peak,
+.card-face .corner,
+.chip,
+.craps-num,
+.craps-total strong,
+.craps-pill,
+.craps-mult-badge strong,
+.circle-board .peak,
+.circle-board .vault-line,
+.circle-vault-head strong,
+.bj-card-tile,
+.mines-cashout-mult,
+.crash-mult,
+.plinko-bucket {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'lnum' 1, 'tnum' 1;
 }
 
 #root {
@@ -230,9 +260,11 @@ button:disabled {
   color: var(--ink-dim);
 }
 .lobby-balance .value {
-  font-family: var(--font-display);
+  font-family: var(--font-num);
   font-size: 24px;
+  font-weight: 560;
   color: var(--ink);
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .lobby-tables {
@@ -1856,11 +1888,12 @@ button:disabled {
   color: var(--card-red);
 }
 .card-face .corner {
-  font-family: var(--font-display);
-  font-weight: 550;
-  font-size: 19px;
+  font-family: var(--font-num);
+  font-weight: 600;
+  font-size: 18px;
   line-height: 1;
   letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 .card-face .corner small {
   display: block;
@@ -3419,8 +3452,9 @@ button:disabled {
   color: var(--ink-faint);
 }
 .game-balance .value {
-  font-family: var(--font-display);
+  font-family: var(--font-num);
   font-size: 20px;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 .game-balance .peak {
   font-size: 10px;
@@ -4106,9 +4140,10 @@ button:disabled {
   display: grid;
   place-items: center;
   border-radius: 10px;
-  font-family: var(--font-display);
+  font-family: var(--font-num);
   font-size: 18px;
   letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums lining-nums;
   background: rgba(0, 0, 0, 0.28);
   border: 1px solid rgba(242, 235, 224, 0.12);
   color: var(--craps-ivory);
@@ -4231,10 +4266,11 @@ button:disabled {
   color: var(--ink-faint);
 }
 .craps-total strong {
-  font-family: var(--font-display);
+  font-family: var(--font-num);
   font-size: 30px;
   color: var(--craps-accent);
   line-height: 1;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 .craps-goal {
   text-align: center;
@@ -5679,6 +5715,19 @@ button:disabled {
   line-height: 1.4;
   text-align: center;
   padding-bottom: 4px;
+}
+
+/* Garde-fou chiffres : Inter lining (Fraunces Soft = 8 ambigu / « à l’envers »). */
+.lobby-balance .value,
+.game-balance .value,
+.card-face .corner,
+.craps-num,
+.craps-total strong,
+.circle-board .peak,
+.circle-vault-head strong,
+.chip {
+  font-family: var(--font-num) !important;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 /* réduit les animations si demandé */
