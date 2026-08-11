@@ -114,73 +114,110 @@ function scatterCells(grid: readonly (readonly SlotSymbol[])[]): Set<string> {
   return out;
 }
 
+/** Tête de bison de face : cornes crochues, laine, museau large. */
 function BisonGlyph() {
   return (
     <svg className="slots-glyph" viewBox="0 0 40 40" aria-hidden>
-      <path className="stroke-part" d="M12 16c-4-3-8-2-8 2s3 6 6 6" />
-      <path className="stroke-part" d="M28 16c4-3 8-2 8 2s-3 6-6 6" />
       <path
         className="fill-part"
-        d="M20 8c5.4 0 9 3.2 9 8 0 3-.8 5.2-1.9 7.3C25 27.8 23 32 20 32s-5-4.2-7.1-8.7C11.8 21.2 11 19 11 16c0-4.8 3.6-8 9-8z"
+        d="M11.4 13.4C6.6 13 2.8 10.2 1.8 5.6c-.2-1.2 1-2 2-1.2 1.9 1.5 2.4 3.7 3.8 5 1.1 1 2.6 1.6 4.4 1.9z"
       />
-      <circle className="ink" cx="16.2" cy="18.4" r="1.3" />
-      <circle className="ink" cx="23.8" cy="18.4" r="1.3" />
-      <path className="ink-stroke" d="M17.4 26.4h5.2" />
+      <path
+        className="fill-part"
+        d="M28.6 13.4c4.8-.4 8.6-3.2 9.6-7.8.2-1.2-1-2-2-1.2-1.9 1.5-2.4 3.7-3.8 5-1.1 1-2.6 1.6-4.4 1.9z"
+      />
+      <path className="fill-part" d="M11.2 15.8 5.4 14.2l4.6 5.6zM28.8 15.8l5.8-1.6-4.6 5.6z" />
+      <path
+        className="fill-part"
+        d="M20 8.2c-7 0-11.6 3.4-12.2 9-.3 2.8.5 5.4 2.2 7.6.5.7.9 1.6 1 2.5l.5 3.2c.2 1.5 1.5 2.6 3 2.6h11c1.5 0 2.8-1.1 3-2.6l.5-3.2c.1-.9.5-1.8 1-2.5 1.7-2.2 2.5-4.8 2.2-7.6-.6-5.6-5.2-9-12.2-9z"
+      />
+      <path
+        className="ink"
+        d="M15.4 25h9.2c1.6 0 2.8 1.3 2.8 2.8v.9c0 2-1.6 3.6-3.6 3.6h-7.6c-2 0-3.6-1.6-3.6-3.6v-.9c0-1.5 1.2-2.8 2.8-2.8z"
+      />
+      <circle className="fill-part" cx="17.2" cy="28.4" r="1.3" />
+      <circle className="fill-part" cx="22.8" cy="28.4" r="1.3" />
+      <circle className="ink" cx="13.6" cy="19.2" r="1.7" />
+      <circle className="ink" cx="26.4" cy="19.2" r="1.7" />
     </svg>
   );
 }
 
+/** Tête d’aigle de profil : bec crochu, arcade sourcilière marquée. */
 function EagleGlyph() {
   return (
     <svg className="slots-glyph" viewBox="0 0 40 40" aria-hidden>
       <path
         className="fill-part"
-        d="M20 12c1.7 0 3 1.3 3 3v1.6l12-5.2-6.4 8.8 8.4 2.4-9.6 2.4 3 8.4-10.4-6.4L9.6 33l3-8.4L3 22.2l8.4-2.4L5 11l12 5.2V15c0-1.7 1.3-3 3-3z"
+        d="M16.4 8.4c5.8 0 10.4 4.3 10.4 9.6 0 3.2-1.7 6.1-4.3 7.9l1.8 10.5h-4.9l-1.6-9c-6-.2-10.8-4.4-10.8-9.4 0-5.3 4.6-9.6 9.4-9.6z"
       />
-      <circle className="ink" cx="20" cy="16.6" r="1.1" />
+      <path
+        className="fill-part"
+        d="M25.4 14.2 36 17.6c1.4.5 1.5 2.4.2 3l-5 2.4c-1.2.6-2.6.3-3.4-.8l-3.6-4.6z"
+      />
+      <path className="fill-part" d="m31.6 22.2-1 4.4 4-3.4z" />
+      <path className="ink" d="M16.8 13 25.2 15.6l-.9 2.4-3.6-1.1z" />
+      <circle className="ink" cx="19.6" cy="18" r="1.9" />
+      <path className="ink" d="M28.8 18.2h2.4v1.2h-2.4z" />
     </svg>
   );
 }
 
+/** Puma de face : crâne rond, museau court, moustaches. */
 function CougarGlyph() {
   return (
     <svg className="slots-glyph" viewBox="0 0 40 40" aria-hidden>
       <path
         className="fill-part"
-        d="M11.4 14.6 12.4 7l5.4 4.2h4.4L27.6 7l1 7.6C30.6 17 32 19.8 32 23c0 6-5.4 10-12 10S8 29 8 23c0-3.2 1.4-6 3.4-8.4z"
+        d="M12.6 15 10 5.4l7.4 5.2h5.2L30 5.4 27.4 15c1.4 2 2.2 4.4 2.2 7 0 6.1-4.3 10.6-9.6 10.6S10.4 28.1 10.4 22c0-2.6.8-5 2.2-7z"
       />
-      <circle className="ink" cx="16" cy="21" r="1.5" />
-      <circle className="ink" cx="24" cy="21" r="1.5" />
-      <path className="ink-stroke" d="M17 27c1.8 1.8 4.2 1.8 6 0" />
+      <path className="ink" d="M15.8 20.2 19 21.8l-3.2 1.6zM24.2 20.2 21 21.8l3.2 1.6z" />
+      <path className="ink" d="M20 25.4a2 2 0 0 1-1.8-1.1h3.6A2 2 0 0 1 20 25.4z" />
+      <path
+        className="ink-stroke"
+        d="M20 25.4v1.8M20 27.2c-1.1 1.3-2.8 1.3-3.9.2M20 27.2c1.1 1.3 2.8 1.3 3.9.2"
+      />
+      <path
+        className="ink-stroke whisker"
+        d="M14 24.6 7.6 23.2M14 26.6 8.2 27.8M26 24.6l6.4-1.4M26 26.6l5.8 1.2"
+      />
     </svg>
   );
 }
 
+/** Loup de face : crâne anguleux, grandes oreilles, museau pointu. */
 function WolfGlyph() {
   return (
     <svg className="slots-glyph" viewBox="0 0 40 40" aria-hidden>
       <path
         className="fill-part"
-        d="M10 13 11 6l5.6 5.4h6.8L29 6l1 7 2.4 7.4L20 34 7.6 20.4z"
+        d="M11.8 16.4 7.4 3.8l8.6 6.6h8l8.6-6.6-4.4 12.6c1 1.7 1.6 3.6 1.6 5.6 0 3.7-1.9 6.9-4.8 8.8L20 36l-5-5.2c-2.9-1.9-4.8-5.1-4.8-8.8 0-2 .6-3.9 1.6-5.6z"
       />
-      <circle className="ink" cx="15.6" cy="19.4" r="1.4" />
-      <circle className="ink" cx="24.4" cy="19.4" r="1.4" />
-      <path className="ink-stroke" d="M20 25.4v3" />
+      <path className="ink" d="M14.8 19.6 18.2 21l-3.4 1.6zM25.2 19.6 21.8 21l3.4 1.6z" />
+      <path className="ink" d="M20 28.6 17.6 25h4.8z" />
     </svg>
   );
 }
 
+/** Élan : bois ramifiés, tête allongée. */
 function ElkGlyph() {
   return (
     <svg className="slots-glyph" viewBox="0 0 40 40" aria-hidden>
-      <path className="stroke-part" d="M14 15 8.6 8.4M8.6 8.4 3.6 9.6M8.6 8.4 7.4 3" />
-      <path className="stroke-part" d="M26 15l5.4-6.6M31.4 8.4l5 1.2M31.4 8.4 32.6 3" />
+      <path className="stroke-part" d="M14.4 13.6 9.6 6.8M9.6 6.8 4 6M9.6 6.8 8.8 2M12.4 10.4 6.8 10" />
+      <path
+        className="stroke-part"
+        d="M25.6 13.6 30.4 6.8M30.4 6.8 36 6M30.4 6.8 31.2 2M27.6 10.4 33.2 10"
+      />
       <path
         className="fill-part"
-        d="M20 12c4 0 6.4 2.2 6.4 6.2 0 6-2.4 14-6.4 14s-6.4-8-6.4-14c0-4 2.4-6.2 6.4-6.2z"
+        d="M20 10.6c4.3 0 6.8 2.4 6.8 6.6 0 6.4-2.6 15-6.8 15s-6.8-8.6-6.8-15c0-4.2 2.5-6.6 6.8-6.6z"
       />
-      <circle className="ink" cx="17.4" cy="19" r="1.2" />
-      <circle className="ink" cx="22.6" cy="19" r="1.2" />
+      <circle className="ink" cx="17" cy="17.6" r="1.4" />
+      <circle className="ink" cx="23" cy="17.6" r="1.4" />
+      <path
+        className="ink"
+        d="M18 27.4h4c.8 0 1.4.7 1.4 1.5s-.6 1.5-1.4 1.5h-4c-.8 0-1.4-.7-1.4-1.5s.6-1.5 1.4-1.5z"
+      />
     </svg>
   );
 }
@@ -309,6 +346,8 @@ export function SlotScreen() {
   const [bet, setBet] = useState(5_00);
   const [betDraft, setBetDraft] = useState('5');
   const [round, setRound] = useState<SlotsRound>(() => createIdleRound());
+  /** Dernier tour réglé — reste affiché jusqu’au lancement suivant. */
+  const [shown, setShown] = useState<SlotsRound | null>(null);
   const [spinning, setSpinning] = useState(false);
   const [stoppedReels, setStoppedReels] = useState<number>(SLOT_REELS);
   const [blur, setBlur] = useState<SlotSymbol[][]>(() => blurGrid());
@@ -399,6 +438,7 @@ export function SlotScreen() {
 
     spinningRef.current = true;
     setSpinning(true);
+    setShown(null);
     setStoppedReels(0);
     setBlur(blurGrid());
     setSpinId((n) => n + 1);
@@ -410,6 +450,7 @@ export function SlotScreen() {
     later((stops[SLOT_REELS - 1] ?? FIRST_STOP_MS) + 160, () => {
       const settled = settleSpin(roundRef.current);
       setRoundBoth(settled);
+      setShown(settled);
       spinningRef.current = false;
       setSpinning(false);
 
@@ -452,16 +493,16 @@ export function SlotScreen() {
     });
   }, [bet, clearTimers, later, setBonusBoth, setRoundBoth, slotsDebit]);
 
-  const settledEval = round.phase === 'settled' ? round.eval : null;
-  const wins = round.phase === 'settled' ? round.wayWins : NO_WINS;
+  const settledEval = shown?.eval ?? null;
+  const wins = shown?.wayWins ?? NO_WINS;
   const highlight = useMemo(() => {
-    if (round.phase !== 'settled') return new Set<string>();
-    const cells = winningCells(round.grid, wins, round.herdHeads, round.mode === 'free');
-    if ((settledEval?.scatterCount ?? 0) >= 3) {
-      for (const c of scatterCells(round.grid)) cells.add(c);
+    if (!shown) return new Set<string>();
+    const cells = winningCells(shown.grid, wins, shown.herdHeads, shown.mode === 'free');
+    if ((shown.eval?.scatterCount ?? 0) >= 3) {
+      for (const c of scatterCells(shown.grid)) cells.add(c);
     }
     return cells;
-  }, [round.phase, round.grid, round.herdHeads, round.mode, wins, settledEval]);
+  }, [shown, wins]);
 
   const topWins = useMemo(
     () => [...wins].sort((a, b) => b.multiplier - a.multiplier).slice(0, 4),
@@ -469,7 +510,9 @@ export function SlotScreen() {
   );
 
   const totalMult = settledEval?.totalMult ?? 0;
-  const bigWin = round.payout > 0 && totalMult >= BIG_WIN_MULT;
+  const shownPayout = shown?.payout ?? 0;
+  const shownBet = shown?.bet ?? round.bet;
+  const bigWin = shownPayout > 0 && totalMult >= BIG_WIN_MULT;
   const stakeReady = Math.min(bet, balance);
   const canSpin = !busy && stakeReady >= MIN_BET;
   const lockReason = spinning
@@ -489,7 +532,7 @@ export function SlotScreen() {
       <GameShell
         accent="slots"
         title="Stampede"
-        eyebrow="Salon des jeux · Ruée dorée"
+        eyebrow="Salon des jeux"
         onBack={() => {
           if (!busy) leaveSlots();
         }}
@@ -539,14 +582,15 @@ export function SlotScreen() {
         <main className="slots-stage">
           <div className={`slots-machine${inBonus ? ' is-bonus' : ''}`}>
             <div className="slots-marquee" aria-hidden>
-              <span>Stampede</span>
+              <span>Ruée dorée</span>
               <em>1024 ways · 5 × 4</em>
             </div>
 
             <div className="slots-reels" role="grid" aria-label="Rouleaux Stampede">
               {Array.from({ length: SLOT_REELS }, (_, r) => {
                 const isSpinning = r >= stoppedReels;
-                const cells = isSpinning ? (blur[r] ?? []) : (round.grid[r] ?? []);
+                const stoppedGrid = shown?.grid ?? round.grid;
+                const cells = isSpinning ? (blur[r] ?? []) : (stoppedGrid[r] ?? []);
                 return (
                   <ReelColumn
                     key={r}
@@ -563,7 +607,7 @@ export function SlotScreen() {
 
             <div className="slots-win-strip">
               <AnimatePresence mode="wait">
-                {round.phase === 'settled' && round.payout > 0 ? (
+                {shown && shownPayout > 0 ? (
                   <motion.div
                     key={`win-${spinId}`}
                     className={`slots-win${bigWin ? ' is-big' : ''}`}
@@ -572,10 +616,10 @@ export function SlotScreen() {
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ type: 'spring', stiffness: 320, damping: 18 }}
                   >
-                    <strong>{fmt(round.payout)}</strong>
+                    <strong>{fmt(shownPayout)}</strong>
                     <span>{fmtMult(totalMult)}</span>
                   </motion.div>
-                ) : round.phase === 'settled' ? (
+                ) : shown ? (
                   <motion.div
                     key={`nowin-${spinId}`}
                     className="slots-win is-empty"
@@ -611,7 +655,7 @@ export function SlotScreen() {
                   <span className="slots-ways-count">
                     {w.ways} way{w.ways > 1 ? 's' : ''}
                   </span>
-                  <span className="slots-ways-pay">{fmt(Math.floor(round.bet * w.multiplier))}</span>
+                  <span className="slots-ways-pay">{fmt(Math.floor(shownBet * w.multiplier))}</span>
                 </li>
               ))}
               {settledEval && settledEval.scatterMult > 0 && (
@@ -620,7 +664,7 @@ export function SlotScreen() {
                   <span className="slots-ways-len">×{settledEval.scatterCount}</span>
                   <span className="slots-ways-count">partout</span>
                   <span className="slots-ways-pay">
-                    {fmt(Math.floor(round.bet * settledEval.scatterMult))}
+                    {fmt(Math.floor(shownBet * settledEval.scatterMult))}
                   </span>
                 </li>
               )}
@@ -717,13 +761,13 @@ export function SlotScreen() {
             </div>
             <div>
               <span className="k">Dernier gain</span>
-              <span className={`v ${round.payout > 0 ? 'win' : ''}`}>
-                {round.phase === 'settled' ? fmt(round.payout) : '—'}
+              <span className={`v ${shownPayout > 0 ? 'win' : ''}`}>
+                {shown ? fmt(shownPayout) : '—'}
               </span>
             </div>
             <div>
               <span className="k">Multiplicateur</span>
-              <span className="v">{round.phase === 'settled' ? fmtMult(totalMult) : '—'}</span>
+              <span className="v">{shown ? fmtMult(totalMult) : '—'}</span>
             </div>
             {inBonus && (
               <div>
