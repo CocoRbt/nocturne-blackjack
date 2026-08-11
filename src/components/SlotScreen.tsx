@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { sounds } from '../audio/sounds';
 import { notifyDefi } from '../defis/track';
 import { fmt, fmtMult } from '../lib/format';
 import {
@@ -443,9 +444,15 @@ export function SlotScreen() {
     setBlur(blurGrid());
     setSpinId((n) => n + 1);
     setRoundBoth(next);
+    sounds.play('click');
 
     const stops = reelStopTimes(next.grid);
-    stops.forEach((t, i) => later(t, () => setStoppedReels(i + 1)));
+    stops.forEach((t, i) =>
+      later(t, () => {
+        setStoppedReels(i + 1);
+        sounds.play('chip');
+      }),
+    );
 
     later((stops[SLOT_REELS - 1] ?? FIRST_STOP_MS) + 160, () => {
       const settled = settleSpin(roundRef.current);
@@ -463,6 +470,10 @@ export function SlotScreen() {
       }
       if (settled.payout > 0 && settled.eval) {
         notifyDefi({ type: 'slots_win', mult: settled.eval.totalMult });
+        if (settled.eval.totalMult >= BIG_WIN_MULT) sounds.play('bigwin');
+        else sounds.play('win');
+      } else if (!isFree && settled.freeSpinsGranted > 0) {
+        sounds.play('blackjack');
       }
 
       if (!isFree && settled.freeSpinsGranted > 0) {

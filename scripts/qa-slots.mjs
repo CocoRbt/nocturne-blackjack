@@ -5,7 +5,7 @@
 import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 
-const BASE = 'http://localhost:5173';
+const BASE = process.env.SLOTS_BASE ?? 'http://127.0.0.1:5174';
 const SHOTS = 'verify';
 mkdirSync(SHOTS, { recursive: true });
 
