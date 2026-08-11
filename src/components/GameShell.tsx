@@ -3,7 +3,7 @@ import { STARTING_BALANCE } from '../store/persistence';
 import { useGame } from '../store/gameStore';
 import { AppMenu } from './AppMenu';
 
-export type GameShellAccent = 'mines' | 'craps' | 'crash' | 'plinko';
+export type GameShellAccent = 'mines' | 'craps' | 'crash' | 'plinko' | 'slots';
 
 type GameShellProps = {
   title: string;
@@ -26,7 +26,7 @@ type GameShellProps = {
 };
 
 /**
- * Topbar partagée des salons (Mines / Craps / Crash / Plinko) :
+ * Topbar partagée des salons (Mines / Craps / Crash / Plinko / Stampede) :
  * retour Lobby, marque, règles, crédit + pic, recharge si fauché.
  */
 export function GameShell({

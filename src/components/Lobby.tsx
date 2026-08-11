@@ -31,6 +31,7 @@ export function Lobby() {
   const enterCraps = useGame((s) => s.enterCraps);
   const enterCrash = useGame((s) => s.enterCrash);
   const enterPlinko = useGame((s) => s.enterPlinko);
+  const enterSlots = useGame((s) => s.enterSlots);
   const configurePrivateLimits = useGame((s) => s.configurePrivateLimits);
   const resetAll = useGame((s) => s.resetAll);
   const refill = useGame((s) => s.refill);
@@ -83,7 +84,7 @@ export function Lobby() {
           NOC<span>T</span>URNE
         </h1>
         <p>
-          Casino fictif entre potes — blackjack, mines, craps, crash &amp; plinko.
+          Casino fictif entre potes — blackjack, mines, craps, crash, plinko &amp; machine à sous.
           Même crédit, même cercle. Choisissez votre jeu.
         </p>
       </motion.div>
@@ -242,6 +243,32 @@ export function Lobby() {
               <div className="plinko-card-body">
                 <h3>Plinko</h3>
                 <p>Bille · pyramide · lignes &amp; risque · multiplicateurs · RTP 99&nbsp;%.</p>
+                <span className="enter">Jouer →</span>
+              </div>
+            </motion.button>
+
+            <motion.button
+              type="button"
+              className="slots-card"
+              onClick={enterSlots}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <div className="slots-card-visual" aria-hidden>
+                <span className="slots-card-sun" />
+                <span className="slots-card-reels">
+                  <i />
+                  <i />
+                  <i />
+                </span>
+              </div>
+              <div className="slots-card-body">
+                <h3>Stampede</h3>
+                <p>
+                  Ruée dorée · 5×4 · 1024 ways · troupeau de bisons, tours gratuits &amp; wilds
+                  multiplicateurs.
+                </p>
                 <span className="enter">Jouer →</span>
               </div>
             </motion.button>

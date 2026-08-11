@@ -5,7 +5,7 @@ import { SIDE_BET_DEFS } from '../engine/sidebets';
 import { fmt, fmtPays } from '../lib/format';
 import { useGame } from '../store/gameStore';
 
-export type RulesGame = 'blackjack' | 'mines' | 'craps' | 'crash' | 'plinko';
+export type RulesGame = 'blackjack' | 'mines' | 'craps' | 'crash' | 'plinko' | 'slots';
 
 function IlluBlackjack() {
   return (
@@ -402,6 +402,121 @@ function PlinkoRules() {
   );
 }
 
+function IlluSlots() {
+  return (
+    <svg className="rules-illu" viewBox="0 0 280 120" aria-hidden>
+      <defs>
+        <linearGradient id="rg-slots-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#5a2a12" />
+          <stop offset="60%" stopColor="#22120b" />
+          <stop offset="100%" stopColor="#0d0705" />
+        </linearGradient>
+        <linearGradient id="rg-slots-sun" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#f6c86a" />
+          <stop offset="100%" stopColor="#c8511c" />
+        </linearGradient>
+      </defs>
+      <rect width="280" height="120" rx="14" fill="url(#rg-slots-sky)" />
+      <circle cx="140" cy="52" r="30" fill="url(#rg-slots-sun)" opacity="0.5" />
+      {[0, 1, 2, 3, 4].map((i) => (
+        <rect
+          key={i}
+          x={30 + i * 45}
+          y={18}
+          width="38"
+          height="76"
+          rx="6"
+          fill="rgba(12,7,4,0.7)"
+          stroke="rgba(233,163,61,0.4)"
+        />
+      ))}
+      {/* bison stylisé sur le rouleau central */}
+      <path
+        d="M126 52 q14 -11 28 0 l3 13 q-6 15 -17 16 q-11 -1 -17 -16 z"
+        fill="#e9a33d"
+      />
+      <path d="M126 52 q-11 -5 -11 5 q0 6 8 6" fill="none" stroke="#f6c86a" strokeWidth="3" />
+      <path d="M154 52 q11 -5 11 5 q0 6 -8 6" fill="none" stroke="#f6c86a" strokeWidth="3" />
+      <text
+        x="140"
+        y="113"
+        textAnchor="middle"
+        fill="rgba(246,200,106,0.8)"
+        fontSize="9"
+        letterSpacing="3"
+        fontFamily="sans-serif"
+      >
+        STAMPEDE
+      </text>
+    </svg>
+  );
+}
+
+function SlotsRules() {
+  return (
+    <>
+      <IlluSlots />
+      <p className="rules-lead">
+        Cinq rouleaux, quatre rangs, <strong>1024 façons</strong> de gagner. Pas de lignes : trois
+        symboles identiques sur des rouleaux voisins à partir de la gauche, où qu’ils soient.
+      </p>
+      <section className="rules-section">
+        <h3>Déroulement</h3>
+        <ol className="rules-steps">
+          <li>
+            <span className="n">1</span>
+            <span>Réglez la mise, puis lancez la ruée. Une mise = un spin.</span>
+          </li>
+          <li>
+            <span className="n">2</span>
+            <span>
+              Le <strong>Crépuscule</strong> (wild) remplace tout sauf la Médaille. Le bison paie le
+              plus fort.
+            </span>
+          </li>
+          <li>
+            <span className="n">3</span>
+            <span>
+              3 Médailles ou plus n’importe où déclenchent les tours gratuits — aucune mise n’est
+              prélevée pendant le bonus.
+            </span>
+          </li>
+        </ol>
+      </section>
+      <section className="rules-section">
+        <h3>Tours gratuits</h3>
+        <div className="rules-grid">
+          <RuleRow label="3 Médailles" value="8 tours" />
+          <RuleRow label="4 Médailles" value="15 tours" />
+          <RuleRow label="5 Médailles" value="20 tours" />
+          <RuleRow label="Relance (2+)" value="+5 tours" />
+          <RuleRow label="Wilds bonus" value="×2 / ×3 (produit)" />
+          <RuleRow label="Compteur Troupeau" value="Jusqu’à ×3 sur les gains" />
+        </div>
+      </section>
+      <section className="rules-section">
+        <h3>Paiements</h3>
+        <div className="rules-grid">
+          <RuleRow label="Grille" value="5 × 4 · 1024 ways" />
+          <RuleRow label="Symbole fort" value="Bison" />
+          <RuleRow label="Médaille (3 / 4 / 5)" value="×1,2 / ×5 / ×20" />
+          <RuleRow label="RTP cible" value="~96–97 %" />
+        </div>
+      </section>
+      <div className="rules-callout">
+        <strong>Compteur Troupeau</strong>
+        <span>
+          Chaque bison tombé pendant le bonus remplit la harde : à 4, 7, 13 puis 15 têtes, les gains
+          sont multipliés et les autres animaux prennent les traits du bison.
+        </span>
+      </div>
+      <p className="rules-foot">
+        Bandes de rouleaux fixes · crypto.getRandomValues · jetons virtuels · crédit partagé
+      </p>
+    </>
+  );
+}
+
 function CrapsRules() {
   return (
     <>
@@ -453,6 +568,7 @@ const META: Record<RulesGame, { eyebrow: string; title: string }> = {
   craps: { eyebrow: 'Salon des jeux · guide', title: 'Craps' },
   crash: { eyebrow: 'Salon des jeux · Crash', title: 'Crash' },
   plinko: { eyebrow: 'Salon des jeux · Plinko', title: 'Plinko' },
+  slots: { eyebrow: 'Salon des jeux · Ruée dorée', title: 'Stampede' },
 };
 
 export function RulesGuide({
@@ -512,6 +628,7 @@ export function RulesGuide({
               {game === 'craps' && <CrapsRules />}
               {game === 'crash' && <CrashRules />}
               {game === 'plinko' && <PlinkoRules />}
+              {game === 'slots' && <SlotsRules />}
             </div>
             <footer className="rules-guide-foot">
               <button type="button" className="btn primary" onClick={onClose}>
