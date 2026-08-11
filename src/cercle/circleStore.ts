@@ -9,6 +9,7 @@ import {
   isSupabaseConfigured,
   joinCircleCloud,
   leaveCircleCloud,
+  pullIncomingVault,
   syncScoreCloud,
   type LeaderboardRow,
   type Leaderboards,
@@ -243,19 +244,24 @@ export async function restoreCircleFromCloud(
 }
 
 export async function pushScore(state: LocalCircleState, seed: Omit<CircleMemberScore, 'nickname' | 'updatedAt'>): Promise<LocalCircleState> {
-  const local = upsertSelfScore(state, { ...seed, nickname: state.nickname });
+  let vault = seed.vault;
+  if (state.cloud && isSupabaseConfigured()) {
+    vault = await pullIncomingVault(seed.vault);
+  }
+  const mergedSeed = { ...seed, vault };
+  const local = upsertSelfScore(state, { ...mergedSeed, nickname: state.nickname });
   if (state.cloud && isSupabaseConfigured()) {
     try {
       await syncScoreCloud({
-        balance: seed.balance,
-        peakBalance: seed.peakBalance,
-        handsPlayed: seed.handsPlayed,
-        blackjacks: seed.blackjacks,
-        bestStreak: seed.bestStreak,
-        highestTable: seed.highestTable,
-        gamesBeforePeak: seed.gamesBeforePeak,
-        gamesPlayed: seed.gamesPlayed,
-        vault: seed.vault,
+        balance: mergedSeed.balance,
+        peakBalance: mergedSeed.peakBalance,
+        handsPlayed: mergedSeed.handsPlayed,
+        blackjacks: mergedSeed.blackjacks,
+        bestStreak: mergedSeed.bestStreak,
+        highestTable: mergedSeed.highestTable,
+        gamesBeforePeak: mergedSeed.gamesBeforePeak,
+        gamesPlayed: mergedSeed.gamesPlayed,
+        vault: mergedSeed.vault,
       });
       const boards = await fetchLeaderboards();
       const next = {
@@ -272,6 +278,12 @@ export async function pushScore(state: LocalCircleState, seed: Omit<CircleMember
   }
   saveCircle(local);
   return local;
+}
+
+/** Expose le coffre fusionné après pull (cadeaux reçus). */
+export async function peekIncomingVault(localVault: number): Promise<number> {
+  if (!isSupabaseConfigured()) return localVault;
+  return pullIncomingVault(localVault);
 }
 
 export async function exitCircle(): Promise<void> {

@@ -164,6 +164,10 @@ interface GameState {
   vaultDeposit(amountCents: number): void;
   /** Retire du coffre vers le solde jouable. */
   vaultWithdraw(amountCents: number): void;
+  /** Applique un coffre cloud plus haut (cadeau reçu) sans toucher au solde. */
+  applyVaultAtLeast(vaultCents: number): void;
+  /** Fixe le coffre après un envoi serveur (source de vérité). */
+  setVaultFromServer(vaultCents: number, notice?: string): void;
   refill(): void;
   /** Hydrate le portefeuille local depuis le cloud (connexion compte). */
   hydrateFromCloud(payload: {
@@ -1296,6 +1300,23 @@ export const useGame = create<GameState>((set, get) => {
       });
       persist();
       markScoreDirty();
+    },
+
+    applyVaultAtLeast(vaultCents) {
+      const next = Math.max(0, Math.floor(vaultCents));
+      const s = get();
+      if (next <= s.vault) return;
+      set({ vault: next });
+      persist();
+    },
+
+    setVaultFromServer(vaultCents, notice) {
+      const next = Math.max(0, Math.floor(vaultCents));
+      set({
+        vault: next,
+        ...(notice ? { notice } : {}),
+      });
+      persist();
     },
 
     refill() {

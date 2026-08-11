@@ -40,6 +40,18 @@ function rpcMessage(error: { message?: string; details?: string; hint?: string }
   if (/Non authentifié/i.test(raw)) {
     return 'Session expirée — réessaie dans un instant.';
   }
+  if (/Pas assez dans le coffre/i.test(raw)) {
+    return 'Pas assez dans le coffre.';
+  }
+  if (/Pote introuvable/i.test(raw)) {
+    return 'Pote introuvable dans ton cercle.';
+  }
+  if (/ne peux pas t/i.test(raw)) {
+    return 'Tu ne peux pas t’envoyer des crédits.';
+  }
+  if (/Montant invalide/i.test(raw)) {
+    return 'Montant invalide.';
+  }
   return raw || 'Impossible de rejoindre le cercle';
 }
 
@@ -169,6 +181,41 @@ export async function fetchMyScore(): Promise<MyScore> {
   const { data, error } = await sb.rpc('get_my_score');
   if (error) throw new Error(rpcMessage(error));
   return data as MyScore;
+}
+
+export type SendVaultResult = {
+  ok: true;
+  amount: number;
+  to_nickname: string;
+  vault: number;
+  to_vault: number;
+};
+
+/** Envoie des crédits coffre → coffre (même cercle). Atomicité serveur. */
+export async function sendVaultCloud(
+  toNickname: string,
+  amountCents: number,
+): Promise<SendVaultResult> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase non configuré');
+  await ensureAnonSession();
+  const { data, error } = await sb.rpc('send_circle_vault', {
+    p_to_nickname: toNickname.trim(),
+    p_amount: Math.floor(amountCents),
+  });
+  if (error) throw new Error(rpcMessage(error));
+  return data as SendVaultResult;
+}
+
+/** Si le cloud a un coffre plus haut (cadeau), on le prend. */
+export async function pullIncomingVault(localVault: number): Promise<number> {
+  try {
+    const mine = await fetchMyScore();
+    if (typeof mine.vault === 'number' && mine.vault > localVault) return mine.vault;
+  } catch {
+    /* ignore */
+  }
+  return localVault;
 }
 
 export type CreditSeriesPoint = {

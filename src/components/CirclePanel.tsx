@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchCreditSeries, type CreditSeriesPoint } from '../cercle/circleApi';
+import { fetchCreditSeries, sendVaultCloud, type CreditSeriesPoint } from '../cercle/circleApi';
 import { consumeCircleSection } from '../cercle/circleNav';
 import { fmt } from '../lib/format';
 import {
@@ -9,6 +9,7 @@ import {
   leaderboardsFromLocal,
   loadCircle,
   overlaySelfOnBoards,
+  peekIncomingVault,
   pushScore,
   refreshLeaderboards,
   type LeaderboardRow,
@@ -59,7 +60,14 @@ export function useCircleKeepalive() {
         if (!consumeScoreDirty()) return;
         const state = loadCircle();
         if (!state?.circleCode) return;
-        void pushScore(state, currentScoreSeed()).catch(() => undefined);
+        void (async () => {
+          const seed = currentScoreSeed();
+          const incoming = await peekIncomingVault(seed.vault);
+          if (incoming > seed.vault) {
+            useGame.getState().applyVaultAtLeast(incoming);
+          }
+          await pushScore(state, { ...seed, vault: Math.max(seed.vault, incoming) });
+        })().catch(() => undefined);
       }, 450);
     };
     const unsub = onScoreDirty(schedule);
@@ -81,6 +89,8 @@ export function CirclePanel() {
   const tableId = useGame((s) => s.tableId);
   const vaultDeposit = useGame((s) => s.vaultDeposit);
   const vaultWithdraw = useGame((s) => s.vaultWithdraw);
+  const applyVaultAtLeast = useGame((s) => s.applyVaultAtLeast);
+  const setVaultFromServer = useGame((s) => s.setVaultFromServer);
 
   const [circle, setCircle] = useState<LocalCircleState | null>(() => loadCircle());
   const [nickname, setNickname] = useState(circle?.nickname ?? '');
@@ -99,6 +109,8 @@ export function CirclePanel() {
   const [copied, setCopied] = useState(false);
   const [switching, setSwitching] = useState(false);
   const [vaultInput, setVaultInput] = useState('');
+  const [sendTo, setSendTo] = useState('');
+  const [sendBusy, setSendBusy] = useState(false);
 
   const canVault = vaultableAmount(balance);
   const seed = {
@@ -124,6 +136,67 @@ export function CirclePanel() {
     else vaultWithdraw(cents);
   };
 
+  const mates = (circle?.members ?? [])
+    .map((m) => m.nickname)
+    .filter((n) => n !== circle?.nickname)
+    .sort((a, b) => a.localeCompare(b, 'fr'));
+
+  const sendToMate = async () => {
+    if (!circle?.cloud || !isSupabaseConfigured()) {
+      setError('Envoi réservé au cercle cloud.');
+      return;
+    }
+    if (!sendTo.trim()) {
+      setError('Choisissez un pote.');
+      return;
+    }
+    const cents = parseCreditsInput(vaultInput);
+    if (cents == null) {
+      setError('Indiquez un montant valide.');
+      return;
+    }
+    if (cents > vault) {
+      setError('Pas assez dans le coffre.');
+      return;
+    }
+    setSendBusy(true);
+    setError(null);
+    try {
+      // 1) Pousse l’état local (dépôts) puis 2) transfert atomique serveur.
+      const incoming = await peekIncomingVault(useGame.getState().vault);
+      if (incoming > useGame.getState().vault) applyVaultAtLeast(incoming);
+      const g = useGame.getState();
+      await pushScore(circle, {
+        balance: g.balance,
+        peakBalance: g.peakBalance,
+        vault: g.vault,
+        handsPlayed: g.stats.handsPlayed,
+        blackjacks: g.stats.blackjacks,
+        bestStreak: g.stats.longestWinStreak,
+        highestTable: g.tableId,
+        gamesBeforePeak: g.gamesBeforePeak,
+        gamesPlayed: g.gamesPlayed,
+      });
+      if (cents > useGame.getState().vault) {
+        setError('Pas assez dans le coffre.');
+        return;
+      }
+      const res = await sendVaultCloud(sendTo, cents);
+      setVaultFromServer(
+        res.vault,
+        `Envoyé ${fmt(res.amount)} à ${res.to_nickname} (coffre → coffre).`,
+      );
+      const refreshed = await refreshLeaderboards(circle);
+      setCircle(refreshed.state);
+      setBoards(refreshed.boards);
+      setVaultInput('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Envoi impossible');
+    } finally {
+      setSendBusy(false);
+    }
+  };
+
   useEffect(() => {
     if (!circle?.circleCode) return;
     let cancelled = false;
@@ -133,7 +206,9 @@ export function CirclePanel() {
           const dirty = consumeScoreDirty();
           let next = circle;
           if (dirty) {
-            next = await pushScore(circle, seed);
+            const incoming = await peekIncomingVault(seed.vault);
+            if (incoming > seed.vault) applyVaultAtLeast(incoming);
+            next = await pushScore(circle, { ...seed, vault: Math.max(seed.vault, incoming) });
             if (cancelled) return;
             setCircle(next);
           }
@@ -141,6 +216,10 @@ export function CirclePanel() {
           if (cancelled) return;
           setCircle(refreshed.state);
           setBoards(refreshed.boards);
+          const me = refreshed.boards.live.find((r) => r.is_me) ?? refreshed.boards.peak.find((r) => r.is_me);
+          if (me?.vault != null && me.vault > useGame.getState().vault) {
+            applyVaultAtLeast(me.vault);
+          }
         } catch {
           if (circle) setBoards(leaderboardsFromLocal(circle));
         }
@@ -490,6 +569,39 @@ export function CirclePanel() {
                 </button>
               </div>
             </div>
+
+            {circle!.cloud && isSupabaseConfigured() && (
+              <div className="circle-vault-send">
+                <p className="circle-vault-hint">
+                  Envoyer à un pote — depuis ton coffre uniquement (pas le refill).
+                </p>
+                <label className="circle-vault-amount">
+                  <span>Destinataire</span>
+                  <select
+                    value={sendTo}
+                    onChange={(e) => setSendTo(e.target.value)}
+                    disabled={mates.length === 0 || sendBusy}
+                  >
+                    <option value="">
+                      {mates.length === 0 ? 'Aucun pote pour l’instant' : 'Choisir…'}
+                    </option>
+                    {mates.map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="btn primary circle-vault-send-btn"
+                  disabled={sendBusy || vault <= 0 || !sendTo || mates.length === 0}
+                  onClick={() => void sendToMate()}
+                >
+                  {sendBusy ? 'Envoi…' : 'Envoyer le montant'}
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="circle-tabs" role="tablist">
