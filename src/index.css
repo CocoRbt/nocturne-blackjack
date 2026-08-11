@@ -749,7 +749,8 @@ button:disabled {
 .mines-card,
 .craps-card,
 .crash-card,
-.plinko-card {
+.plinko-card,
+.slots-card {
   width: 100%;
   max-width: none;
   margin: 0;
@@ -867,14 +868,16 @@ button:disabled {
 .mines-card-body,
 .craps-card-body,
 .crash-card-body,
-.plinko-card-body {
+.plinko-card-body,
+.slots-card-body {
   padding: 18px 18px 16px 8px;
 }
 .blackjack-card-body h3,
 .mines-card-body h3,
 .craps-card-body h3,
 .crash-card-body h3,
-.plinko-card-body h3 {
+.plinko-card-body h3,
+.slots-card-body h3 {
   font-family: var(--font-display);
   font-weight: 420;
   font-size: 26px;
@@ -885,7 +888,8 @@ button:disabled {
 .mines-card-body p,
 .craps-card-body p,
 .crash-card-body p,
-.plinko-card-body p {
+.plinko-card-body p,
+.slots-card-body p {
   font-size: 13px;
   color: var(--ink-dim);
   line-height: 1.45;
@@ -5737,6 +5741,841 @@ button:disabled {
   line-height: 1.4;
   text-align: center;
   padding-bottom: 4px;
+}
+
+/* ============================================================
+   STAMPEDE — machine à sous, prairie au crépuscule
+   Palette : ambre / rouille / ocre sur brun profond. Pas de néon.
+   ============================================================ */
+.slots-screen {
+  --slots-amber: #e9a33d;
+  --slots-gold: #f6c86a;
+  --slots-rust: #b4441f;
+  --slots-ochre: #c8892c;
+  --slots-bark: #2a1a11;
+  --slots-dusk: #5a2a12;
+  --slots-sage: #93a86d;
+  --slots-slate: #8fa6b8;
+  --slots-cell: clamp(46px, 13.2vw, 92px);
+  height: 100%;
+  max-height: 100%;
+  overflow-x: clip;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  padding: 0 12px 24px;
+  background:
+    radial-gradient(120% 70% at 50% -12%, rgba(233, 163, 61, 0.2), transparent 58%),
+    radial-gradient(80% 55% at 12% 108%, rgba(180, 68, 31, 0.18), transparent 62%),
+    linear-gradient(180deg, #35190e 0%, #1d0f08 46%, #0d0705 100%);
+}
+.slots-screen .game-topbar {
+  background: linear-gradient(180deg, rgba(21, 11, 6, 0.94) 55%, transparent);
+  padding-bottom: 8px;
+}
+.game-topbar[data-accent='slots'] .game-brand .mono {
+  color: var(--slots-gold, #f6c86a);
+}
+.slots-screen .game-brand h1 {
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, #f8d99a, #d07a24);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.slots-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 300px);
+  gap: clamp(14px, 2.5vw, 24px);
+  align-items: start;
+  align-content: center;
+  width: min(1100px, 100%);
+  margin: 0 auto;
+  flex: 1;
+}
+.slots-stage {
+  order: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.slots-panel {
+  order: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(233, 163, 61, 0.18);
+  background: rgba(26, 15, 9, 0.86);
+  backdrop-filter: blur(8px);
+}
+
+/* ---------- cabinet ---------- */
+.slots-machine {
+  position: relative;
+  padding: 12px 12px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(233, 163, 61, 0.28);
+  background:
+    radial-gradient(90% 60% at 50% -10%, rgba(246, 200, 106, 0.14), transparent 60%),
+    linear-gradient(180deg, #3a1e10, #180c06 62%, #0f0705);
+  box-shadow:
+    0 26px 60px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(246, 200, 106, 0.18);
+  transition: border-color 0.4s var(--ease-lux), box-shadow 0.4s var(--ease-lux);
+}
+.slots-machine.is-bonus {
+  border-color: rgba(246, 200, 106, 0.6);
+  box-shadow:
+    0 26px 60px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(246, 200, 106, 0.25),
+    inset 0 1px 0 rgba(246, 200, 106, 0.3);
+}
+.slots-marquee {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(233, 163, 61, 0.16);
+}
+.slots-marquee span {
+  font-family: var(--font-display);
+  font-size: clamp(16px, 3.6vw, 22px);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--slots-gold);
+}
+.slots-marquee em {
+  font-style: normal;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(233, 163, 61, 0.55);
+}
+
+/* ---------- rouleaux ---------- */
+.slots-reels {
+  display: flex;
+  gap: clamp(4px, 1.2vw, 8px);
+  justify-content: center;
+  padding: 8px;
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.3)),
+    repeating-linear-gradient(
+      90deg,
+      rgba(233, 163, 61, 0.05) 0 2px,
+      transparent 2px 8px
+    );
+  box-shadow: inset 0 6px 18px rgba(0, 0, 0, 0.6);
+}
+/* Cases panoramiques : les rouleaux remplissent toujours le cadre. */
+.slots-reel {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: calc(var(--slots-cell) * 1.8);
+  height: calc(var(--slots-cell) * 4);
+  overflow: hidden;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(58, 30, 16, 0.85), rgba(18, 10, 6, 0.95));
+  box-shadow: inset 0 0 0 1px rgba(233, 163, 61, 0.12);
+  position: relative;
+}
+/* Ombres haut / bas : donne la profondeur du tambour. */
+.slots-reel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.45),
+    transparent 22%,
+    transparent 78%,
+    rgba(0, 0, 0, 0.45)
+  );
+}
+.slots-reel-strip {
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+}
+.slots-reel.is-spinning .slots-reel-strip {
+  animation: slots-roll 0.36s linear infinite;
+  filter: blur(1.1px);
+}
+.slots-reel.is-stopped .slots-reel-strip {
+  animation: slots-land 0.34s var(--ease-lux) both;
+}
+@keyframes slots-roll {
+  from {
+    transform: translateY(-50%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes slots-land {
+  0% {
+    transform: translateY(-9%);
+  }
+  58% {
+    transform: translateY(3%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+.slots-cell {
+  position: relative;
+  height: var(--slots-cell);
+  display: grid;
+  place-items: center;
+  padding: 5px;
+  border-radius: 8px;
+  color: var(--slots-ochre);
+  transition: opacity 0.28s ease, filter 0.28s ease;
+}
+.slots-cell.is-dim {
+  opacity: 0.5;
+  filter: grayscale(0.25);
+}
+/* Cadre lumineux en pseudo-élément : le zoom ne déborde pas du tambour. */
+.slots-cell.is-win::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 9px;
+  box-shadow: inset 0 0 0 1.5px rgba(246, 200, 106, 0.75);
+  animation: slots-win-ring 0.85s ease-in-out 2;
+  pointer-events: none;
+}
+.slots-cell.is-win .slots-glyph,
+.slots-cell.is-win .slots-letter,
+.slots-cell.is-win .slots-special {
+  animation: slots-win-pop 0.85s ease-in-out 2;
+}
+@keyframes slots-win-ring {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 1.5px rgba(246, 200, 106, 0.75);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 2.5px rgba(246, 200, 106, 1),
+      0 0 20px rgba(233, 163, 61, 0.5);
+  }
+}
+@keyframes slots-win-pop {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* ---------- symboles ---------- */
+.slots-glyph {
+  width: auto;
+  height: 100%;
+  max-height: calc(var(--slots-cell) - 12px);
+  aspect-ratio: 1;
+  display: block;
+}
+.slots-glyph .fill-part {
+  fill: currentColor;
+}
+.slots-glyph .stroke-part {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.slots-glyph .ink {
+  fill: rgba(18, 8, 4, 0.7);
+}
+.slots-glyph .ink-stroke {
+  fill: none;
+  stroke: rgba(18, 8, 4, 0.55);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.slots-glyph .whisker {
+  stroke: currentColor;
+  stroke-width: 1.1;
+  opacity: 0.7;
+}
+.slots-cell.sym-bison {
+  color: var(--slots-amber);
+}
+.slots-cell.sym-eagle {
+  color: var(--slots-gold);
+}
+.slots-cell.sym-cougar {
+  color: #d97a35;
+}
+.slots-cell.sym-wolf {
+  color: var(--slots-slate);
+}
+.slots-cell.sym-elk {
+  color: #c98a4b;
+}
+.slots-cell.sym-A {
+  color: #e2653a;
+}
+.slots-cell.sym-K {
+  color: var(--slots-ochre);
+}
+.slots-cell.sym-Q {
+  color: var(--slots-sage);
+}
+.slots-cell.sym-J {
+  color: #a8917a;
+}
+.slots-letter {
+  display: block;
+  font-family: var(--font-display);
+  font-size: calc(var(--slots-cell) * 0.5);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: currentColor;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
+}
+.slots-special {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 100%;
+  height: 100%;
+}
+.slots-special .slots-glyph {
+  max-height: calc(var(--slots-cell) - 22px);
+}
+.slots-tag {
+  font-size: clamp(6px, 1.6vw, 8px);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(246, 200, 106, 0.85);
+}
+.slots-cell.sym-wild {
+  background: linear-gradient(180deg, rgba(180, 68, 31, 0.45), rgba(42, 18, 9, 0.7));
+  box-shadow: inset 0 0 0 1px rgba(246, 200, 106, 0.35);
+}
+.slots-cell.sym-wild .sun {
+  fill: #f6c86a;
+}
+.slots-cell.sym-wild .ridge {
+  fill: #2a1109;
+}
+.slots-cell.sym-wild .ray {
+  stroke: rgba(246, 200, 106, 0.75);
+  stroke-width: 2.2;
+}
+.slots-cell.sym-scatter {
+  background: linear-gradient(180deg, rgba(20, 11, 6, 0.9), rgba(58, 30, 16, 0.85));
+  box-shadow: inset 0 0 0 1px rgba(246, 200, 106, 0.55);
+}
+.slots-cell.sym-scatter .disc {
+  fill: #c8892c;
+}
+.slots-cell.sym-scatter .disc-inner {
+  fill: #7a4413;
+}
+.slots-cell.sym-scatter .star {
+  fill: #f8dfa4;
+}
+.slots-cell.sym-scatter .ribbon {
+  fill: none;
+  stroke: #b4441f;
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+/* ---------- bandeau de gain ---------- */
+.slots-win-strip {
+  min-height: 46px;
+  display: grid;
+  place-items: center;
+  margin-top: 10px;
+}
+.slots-win {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.slots-win strong {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 600;
+  font-size: clamp(24px, 6.5vw, 36px);
+  letter-spacing: 0.04em;
+  color: var(--slots-gold);
+  text-shadow: 0 0 22px rgba(233, 163, 61, 0.35);
+}
+.slots-win span {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(233, 163, 61, 0.75);
+  font-variant-numeric: tabular-nums;
+}
+.slots-win.is-big strong {
+  color: #fff0cd;
+  animation: slots-bigwin 0.9s var(--ease-lux) infinite alternate;
+}
+@keyframes slots-bigwin {
+  from {
+    transform: scale(1);
+    text-shadow: 0 0 18px rgba(233, 163, 61, 0.35);
+  }
+  to {
+    transform: scale(1.06);
+    text-shadow: 0 0 34px rgba(246, 200, 106, 0.75);
+  }
+}
+.slots-win.is-empty span,
+.slots-win.is-idle span {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--ink-faint);
+  text-transform: none;
+}
+
+/* ---------- détail des ways ---------- */
+.slots-ways {
+  list-style: none;
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(233, 163, 61, 0.14);
+  background: rgba(0, 0, 0, 0.32);
+}
+.slots-ways li {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+.slots-ways-sym {
+  color: var(--slots-amber);
+  letter-spacing: 0.06em;
+}
+.slots-ways-sym.sym-scatter {
+  color: var(--slots-gold);
+}
+.slots-ways-len,
+.slots-ways-count {
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.slots-ways-pay {
+  color: var(--slots-gold);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- troupeau ---------- */
+.slots-herd {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(233, 163, 61, 0.22);
+  background: linear-gradient(180deg, rgba(90, 42, 18, 0.4), rgba(0, 0, 0, 0.3));
+}
+.slots-herd-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.slots-herd-label {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(246, 200, 106, 0.75);
+}
+.slots-herd-mult {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 600;
+  font-size: 18px;
+  color: var(--slots-gold);
+}
+.slots-herd-pips {
+  display: flex;
+  gap: 3px;
+  margin: 8px 0 6px;
+}
+.slots-pip {
+  flex: 1;
+  height: 8px;
+  border-radius: 3px;
+  background: rgba(233, 163, 61, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(233, 163, 61, 0.14);
+  transition: background 0.45s var(--ease-lux), box-shadow 0.45s var(--ease-lux);
+}
+.slots-pip.step {
+  box-shadow: inset 0 0 0 1px rgba(246, 200, 106, 0.5);
+}
+.slots-pip.on {
+  background: linear-gradient(180deg, var(--slots-gold), var(--slots-rust));
+  box-shadow: 0 0 10px rgba(233, 163, 61, 0.4);
+}
+.slots-herd-hint {
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+/* ---------- bandeau tours gratuits ---------- */
+.slots-fs-banner {
+  position: relative;
+  display: flex;
+  /* Item flex du conteneur écran : ne doit jamais s’écraser sous le cadre. */
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 14px;
+  width: min(1100px, 100%);
+  margin: 0 auto 10px;
+  padding: 9px 16px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(246, 200, 106, 0.45);
+  background: linear-gradient(100deg, rgba(180, 68, 31, 0.6), rgba(90, 42, 18, 0.5));
+}
+.slots-fs-banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 236, 195, 0.22) 46%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  animation: slots-sweep 2.6s var(--ease-lux) infinite;
+  pointer-events: none;
+}
+@keyframes slots-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+.slots-fs-banner.is-summary {
+  border-color: rgba(233, 163, 61, 0.3);
+  background: rgba(42, 22, 12, 0.85);
+}
+.slots-fs-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #ffeccb;
+}
+.slots-fs-count,
+.slots-fs-total {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: rgba(255, 236, 195, 0.85);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- commandes ---------- */
+.slots-label {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.slots-panel-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.slots-bet-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.slots-bet-step {
+  min-width: 40px;
+}
+.slots-bet-input {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 26px;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(233, 163, 61, 0.18);
+  border-radius: 12px;
+  padding: 6px 10px;
+  outline: none;
+}
+.slots-bet-input:focus {
+  border-color: var(--slots-amber);
+  background: rgba(233, 163, 61, 0.12);
+}
+.slots-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.slots-chip {
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(233, 163, 61, 0.16);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--ink-dim);
+  background: rgba(0, 0, 0, 0.24);
+}
+.slots-chip.on,
+.slots-chip:not(:disabled):hover {
+  border-color: rgba(233, 163, 61, 0.6);
+  color: #ffe0ac;
+  background: rgba(233, 163, 61, 0.14);
+}
+.slots-chip:disabled {
+  opacity: 0.4;
+}
+.slots-stats {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(233, 163, 61, 0.1);
+}
+.slots-stats > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+.slots-stats .k {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.slots-stats .v {
+  font-variant-numeric: tabular-nums;
+}
+.slots-stats .v.brass {
+  color: var(--slots-gold);
+  font-family: var(--font-display);
+}
+.slots-stats .v.win {
+  color: #ffd79a;
+}
+.slots-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.slots-cta {
+  width: 100%;
+  min-height: 54px;
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: linear-gradient(160deg, #f0a63f, #b4441f) !important;
+  border-color: transparent !important;
+  color: #1b0d05 !important;
+  font-weight: 600;
+  box-shadow: 0 10px 30px rgba(180, 68, 31, 0.35);
+}
+.slots-cta:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+}
+.slots-cta-hint,
+.slots-footnote {
+  margin: 0;
+  font-size: 11px;
+  color: var(--ink-faint);
+  line-height: 1.45;
+}
+.slots-cta-hint {
+  text-align: center;
+}
+.slots-dock {
+  display: none;
+}
+.slots-dock-meta {
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+}
+
+/* ---------- carte lobby ---------- */
+.slots-card {
+  border-color: rgba(233, 163, 61, 0.34);
+  background:
+    linear-gradient(145deg, rgba(233, 163, 61, 0.14), transparent 52%),
+    rgba(22, 13, 8, 0.92);
+}
+.slots-card:hover {
+  border-color: rgba(233, 163, 61, 0.6);
+  transform: translateY(-2px);
+}
+.slots-card-visual {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 16px 12px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 62%, rgba(233, 163, 61, 0.26), transparent 62%),
+    linear-gradient(180deg, #4a2210, #170c06);
+}
+.slots-card-sun {
+  position: absolute;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  top: 26%;
+  background: linear-gradient(180deg, #f8d99a, #c8511c);
+  box-shadow: 0 0 26px rgba(233, 163, 61, 0.5);
+}
+.slots-card-reels {
+  position: relative;
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+}
+.slots-card-reels i {
+  display: block;
+  width: 16px;
+  height: 40px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(12, 6, 3, 0.85), rgba(58, 30, 16, 0.9));
+  box-shadow: inset 0 0 0 1px rgba(246, 200, 106, 0.35);
+}
+.slots-card-reels i:nth-child(2) {
+  height: 52px;
+}
+.slots-card-body .enter {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--slots-gold, #f6c86a);
+}
+
+/* ---------- guide de règles ---------- */
+.rules-guide-panel.tone-slots {
+  border-color: rgba(233, 163, 61, 0.35);
+  background:
+    linear-gradient(165deg, rgba(233, 163, 61, 0.14), transparent 42%),
+    linear-gradient(180deg, #1e120a 0%, #0d0805 100%);
+}
+.tone-slots .rules-guide-head .mono,
+.tone-slots .rules-section h3 {
+  color: #f6c86a;
+}
+.tone-slots .rules-steps .n {
+  color: #f6c86a;
+  border-color: rgba(233, 163, 61, 0.4);
+  background: rgba(233, 163, 61, 0.1);
+}
+
+@media (max-width: 860px) {
+  .slots-screen {
+    padding: 0 10px calc(14px + env(safe-area-inset-bottom, 0px));
+  }
+  .slots-screen .game-topbar {
+    padding-top: 8px;
+    padding-bottom: 4px;
+  }
+  .slots-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .slots-stage {
+    order: 1;
+    gap: 8px;
+  }
+  .slots-panel {
+    order: 2;
+    padding: 10px;
+    gap: 8px;
+  }
+  /* Titre long : on resserre pour qu’il tienne à côté du crédit. */
+  .slots-screen .game-brand h1 {
+    font-size: clamp(18px, 5.2vw, 24px);
+    letter-spacing: 0.02em;
+    text-transform: none;
+  }
+  .slots-screen .game-brand .mono {
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .slots-machine {
+    padding: 8px 8px 6px;
+  }
+  .slots-marquee {
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+  }
+  .slots-reels {
+    padding: 5px;
+  }
+  .slots-win-strip {
+    min-height: 38px;
+    margin-top: 6px;
+  }
+  /* Le lancer reste sous les rouleaux, le panneau garde la mise. */
+  .slots-dock {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .slots-dock .slots-cta {
+    min-height: 48px;
+  }
+  .slots-actions {
+    display: none;
+  }
+  .slots-footnote {
+    display: none;
+  }
+  .slots-ways li {
+    font-size: 11px;
+    gap: 6px;
+  }
+  .slots-bet-input {
+    font-size: 20px;
+    min-height: 38px;
+  }
+  .slots-chip {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
 }
 
 /* Garde-fou chiffres : Inter lining (Fraunces Soft = 8 ambigu / « à l’envers »). */

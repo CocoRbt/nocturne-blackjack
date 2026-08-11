@@ -91,7 +91,7 @@ interface GameState {
   /** Parties jouées avant le record actuel. */
   gamesBeforePeak: number;
   refills: number;
-  screen: 'lobby' | 'table' | 'mines' | 'craps' | 'crash' | 'plinko';
+  screen: 'lobby' | 'table' | 'mines' | 'craps' | 'crash' | 'plinko' | 'slots';
   tableId: string;
   soundMuted: boolean;
   gameSpeed: GameSpeed;
@@ -142,6 +142,12 @@ interface GameState {
   plinkoDebit(bet: number): boolean;
   /** Crédite un payout Plinko. Compte 1 partie par défaut. */
   plinkoCredit(payout: number, countGame?: boolean): void;
+  enterSlots(): void;
+  leaveSlots(): void;
+  /** Débite une mise Stampede (spin de base uniquement). false si solde insuffisant. */
+  slotsDebit(bet: number): boolean;
+  /** Crédite un payout Stampede. Compte 1 partie par défaut (free spins : false). */
+  slotsCredit(payout: number, countGame?: boolean): void;
   configurePrivateLimits(limits: PrivateLimits): void;
   selectChip(denom: number): void;
   selectSeat(seatIndex: number): void;
@@ -850,6 +856,60 @@ export const useGame = create<GameState>((set, get) => {
     },
 
     plinkoCredit(payout, countGame = true) {
+      const s = get();
+      const meta = {
+        peakBalance: s.peakBalance,
+        gamesPlayed: s.gamesPlayed,
+        gamesBeforePeak: s.gamesBeforePeak,
+      };
+      const settled = countGame
+        ? settleGamePeak(s.balance, payout, meta)
+        : creditWithoutGame(s.balance, payout, meta);
+      set({
+        balance: settled.balance,
+        peakBalance: settled.peakBalance,
+        gamesPlayed: settled.gamesPlayed,
+        gamesBeforePeak: settled.gamesBeforePeak,
+      });
+      persist();
+      markScoreDirty();
+    },
+
+    enterSlots() {
+      presentToken++;
+      shoe = null;
+      sounds.setAmbience('salon');
+      sounds.startAmbience();
+      set({
+        screen: 'slots',
+        round: null,
+        stacks: emptyTableStacks(get().seatCapacity),
+        placementOrder: [],
+        display: idleDisplay(),
+        session: null,
+        notice: null,
+      });
+    },
+
+    leaveSlots() {
+      sounds.setAmbience('lobby');
+      set({ screen: 'lobby', notice: null });
+    },
+
+    slotsDebit(bet) {
+      const s = get();
+      const amount = Math.floor(bet);
+      if (amount <= 0 || amount > s.balance) return false;
+      set({
+        balance: s.balance - amount,
+        notice: null,
+      });
+      persist();
+      markScoreDirty();
+      return true;
+    },
+
+    slotsCredit(payout, countGame = true) {
       const s = get();
       const meta = {
         peakBalance: s.peakBalance,

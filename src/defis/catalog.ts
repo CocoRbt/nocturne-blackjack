@@ -1,6 +1,6 @@
 /** Catalogue des défis du jour — sélection déterministe par date. */
 
-export type DefiGame = 'blackjack' | 'mines' | 'craps' | 'crash' | 'plinko' | 'global'
+export type DefiGame = 'blackjack' | 'mines' | 'craps' | 'crash' | 'plinko' | 'slots' | 'global'
 
 export type DefiMetric =
   | 'bj_hands'
@@ -14,6 +14,8 @@ export type DefiMetric =
   | 'crash_mult'
   | 'plinko_rounds'
   | 'plinko_mult'
+  | 'slots_rounds'
+  | 'slots_mult'
   | 'gain_cents'
 
 export interface DefiDef {
@@ -23,7 +25,7 @@ export interface DefiDef {
   game: DefiGame
   metric: DefiMetric
   target: number
-  /** Pour mines_mult / crash_mult / plinko_mult : seuil multiplicateur. */
+  /** Pour mines_mult / crash_mult / plinko_mult / slots_mult : seuil multiplicateur. */
   threshold?: number
   /** Récompense en centimes à la complétion (défaut 5 crédits). */
   rewardCents?: number
@@ -129,6 +131,23 @@ export const DEFI_CATALOG: DefiDef[] = [
     metric: 'plinko_mult',
     target: 1,
     threshold: 5,
+  },
+  {
+    id: 'slots_rounds_10',
+    title: 'La harde s’ébranle',
+    description: 'Lance 10 spins à Stampede',
+    game: 'slots',
+    metric: 'slots_rounds',
+    target: 10,
+  },
+  {
+    id: 'slots_mult_10',
+    title: 'Ruée dorée',
+    description: 'Décroche un spin à 10× ou plus à Stampede',
+    game: 'slots',
+    metric: 'slots_mult',
+    target: 1,
+    threshold: 10,
   },
   {
     id: 'gain_25',

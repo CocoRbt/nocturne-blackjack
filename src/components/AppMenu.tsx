@@ -16,7 +16,7 @@ type AppMenuProps = {
   navLockedReason?: string;
 };
 
-type SalonTarget = 'lobby' | 'mines' | 'craps' | 'crash' | 'plinko';
+type SalonTarget = 'lobby' | 'mines' | 'craps' | 'crash' | 'plinko' | 'slots';
 
 /**
  * Menu hamburger fixe (haut droite) — toutes les pages.
@@ -32,11 +32,13 @@ export function AppMenu({
   const enterCraps = useGame((s) => s.enterCraps);
   const enterCrash = useGame((s) => s.enterCrash);
   const enterPlinko = useGame((s) => s.enterPlinko);
+  const enterSlots = useGame((s) => s.enterSlots);
   const leaveTable = useGame((s) => s.leaveTable);
   const leaveMines = useGame((s) => s.leaveMines);
   const leaveCraps = useGame((s) => s.leaveCraps);
   const leaveCrash = useGame((s) => s.leaveCrash);
   const leavePlinko = useGame((s) => s.leavePlinko);
+  const leaveSlots = useGame((s) => s.leaveSlots);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [circleOpen, setCircleOpen] = useState(false);
@@ -61,6 +63,7 @@ export function AppMenu({
       else if (screen === 'craps') leaveCraps();
       else if (screen === 'crash') leaveCrash();
       else if (screen === 'plinko') leavePlinko();
+      else if (screen === 'slots') leaveSlots();
       else leaveTable();
       return;
     }
@@ -82,6 +85,11 @@ export function AppMenu({
     if (target === 'plinko') {
       if (screen === 'plinko') return;
       enterPlinko();
+      return;
+    }
+    if (target === 'slots') {
+      if (screen === 'slots') return;
+      enterSlots();
     }
   };
 
@@ -170,6 +178,12 @@ export function AppMenu({
                 <button type="button" disabled={navLocked} onClick={() => goTo('plinko')}>
                   Plinko
                   <span className="dim">bille · pyramide</span>
+                </button>
+              )}
+              {screen !== 'slots' && (
+                <button type="button" disabled={navLocked} onClick={() => goTo('slots')}>
+                  Stampede
+                  <span className="dim">machine à sous · 1024 ways</span>
                 </button>
               )}
             </motion.div>

@@ -59,6 +59,8 @@ function emptyCounters(): Partial<Record<DefiMetric, number>> {
     crash_mult: 0,
     plinko_rounds: 0,
     plinko_mult: 0,
+    slots_rounds: 0,
+    slots_mult: 0,
     gain_cents: 0,
   }
 }
@@ -218,6 +220,8 @@ export type DefiEvent =
   | { type: 'crash_cashout'; mult: number }
   | { type: 'plinko_start' }
   | { type: 'plinko_drop'; mult: number }
+  | { type: 'slots_spin' }
+  | { type: 'slots_win'; mult: number }
 
 export function trackDefiEvent(event: DefiEvent, live: DefiBaseline): DefiDayState {
   const state = ensureDefiDay(live)
@@ -237,6 +241,10 @@ export function trackDefiEvent(event: DefiEvent, live: DefiBaseline): DefiDaySta
     c.plinko_rounds = (c.plinko_rounds ?? 0) + 1
   } else if (event.type === 'plinko_drop') {
     if (event.mult >= 5) c.plinko_mult = (c.plinko_mult ?? 0) + 1
+  } else if (event.type === 'slots_spin') {
+    c.slots_rounds = (c.slots_rounds ?? 0) + 1
+  } else if (event.type === 'slots_win') {
+    if (event.mult >= 10) c.slots_mult = (c.slots_mult ?? 0) + 1
   }
 
   state.counters = c
