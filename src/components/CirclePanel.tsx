@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchCreditSeries, sendVaultCloud, type CreditSeriesPoint } from '../cercle/circleApi';
+import { fetchCreditSeries, sendVaultCloud, withdrawVaultCloud, type CreditSeriesPoint } from '../cercle/circleApi';
 import { consumeCircleSection } from '../cercle/circleNav';
 import { fmt } from '../lib/format';
 import {
@@ -62,11 +62,16 @@ export function useCircleKeepalive() {
         if (!state?.circleCode) return;
         void (async () => {
           const seed = currentScoreSeed();
-          const incoming = await peekIncomingVault(seed.vault);
-          if (incoming > seed.vault) {
-            useGame.getState().applyVaultAtLeast(incoming);
+          const incoming = await peekIncomingVault(seed.vault, seed.balance);
+          if (incoming !== useGame.getState().vault) {
+            useGame.getState().setVaultFromServer(incoming);
           }
-          await pushScore(state, { ...seed, vault: Math.max(seed.vault, incoming) });
+          const g = useGame.getState();
+          await pushScore(state, {
+            ...seed,
+            vault: g.vault,
+            balance: g.balance,
+          });
         })().catch(() => undefined);
       }, 450);
     };
@@ -89,7 +94,8 @@ export function CirclePanel() {
   const tableId = useGame((s) => s.tableId);
   const vaultDeposit = useGame((s) => s.vaultDeposit);
   const vaultWithdraw = useGame((s) => s.vaultWithdraw);
-  const applyVaultAtLeast = useGame((s) => s.applyVaultAtLeast);
+  const applyIncomingVault = useGame((s) => s.applyIncomingVault);
+  const applyVaultServerState = useGame((s) => s.applyVaultServerState);
   const setVaultFromServer = useGame((s) => s.setVaultFromServer);
 
   const [circle, setCircle] = useState<LocalCircleState | null>(() => loadCircle());
@@ -125,15 +131,62 @@ export function CirclePanel() {
     gamesPlayed,
   };
 
-  const applyVaultAmount = (mode: 'deposit' | 'withdraw') => {
+  const applyVaultAmount = async (mode: 'deposit' | 'withdraw') => {
     const cents = parseCreditsInput(vaultInput);
     if (cents == null) {
       setError('Indiquez un montant valide.');
       return;
     }
     setError(null);
-    if (mode === 'deposit') vaultDeposit(cents);
-    else vaultWithdraw(cents);
+    if (mode === 'deposit') {
+      vaultDeposit(cents);
+      return;
+    }
+    // Cercle cloud : retrait atomique serveur (anti glitch argent infini).
+    if (circle?.cloud && isSupabaseConfigured()) {
+      setBusy(true);
+      try {
+        // Sync dépôts locaux avant le retrait.
+        const g0 = useGame.getState();
+        await pushScore(circle, {
+          balance: g0.balance,
+          peakBalance: g0.peakBalance,
+          vault: g0.vault,
+          handsPlayed: g0.stats.handsPlayed,
+          blackjacks: g0.stats.blackjacks,
+          bestStreak: g0.stats.longestWinStreak,
+          highestTable: g0.tableId,
+          gamesBeforePeak: g0.gamesBeforePeak,
+          gamesPlayed: g0.gamesPlayed,
+        });
+        const res = await withdrawVaultCloud(cents);
+        applyVaultServerState(
+          {
+            balance: res.balance,
+            vault: res.vault,
+            peakBalance: res.peak_balance,
+          },
+          `Retiré du coffre. Crédit : ${fmt(res.balance)}.`,
+        );
+        const refreshed = await refreshLeaderboards(circle);
+        setCircle(refreshed.state);
+        setBoards(refreshed.boards);
+        setVaultInput('');
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : '';
+        // Migration pas encore collée → retrait local (le merge anti-dupe protège déjà).
+        if (/withdraw_my_vault|Could not find the function|schema cache/i.test(msg)) {
+          vaultWithdraw(cents);
+          setVaultInput('');
+        } else {
+          setError(msg || 'Retrait impossible');
+        }
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+    vaultWithdraw(cents);
   };
 
   const mates = (circle?.members ?? [])
@@ -163,8 +216,11 @@ export function CirclePanel() {
     setError(null);
     try {
       // 1) Pousse l’état local (dépôts) puis 2) transfert atomique serveur.
-      const incoming = await peekIncomingVault(useGame.getState().vault);
-      if (incoming > useGame.getState().vault) applyVaultAtLeast(incoming);
+      const gPeek = useGame.getState();
+      const incoming = await peekIncomingVault(gPeek.vault, gPeek.balance);
+      if (incoming !== useGame.getState().vault) {
+        setVaultFromServer(incoming);
+      }
       const g = useGame.getState();
       await pushScore(circle, {
         balance: g.balance,
@@ -206,9 +262,16 @@ export function CirclePanel() {
           const dirty = consumeScoreDirty();
           let next = circle;
           if (dirty) {
-            const incoming = await peekIncomingVault(seed.vault);
-            if (incoming > seed.vault) applyVaultAtLeast(incoming);
-            next = await pushScore(circle, { ...seed, vault: Math.max(seed.vault, incoming) });
+            const incoming = await peekIncomingVault(seed.vault, seed.balance);
+            if (incoming !== useGame.getState().vault) {
+              setVaultFromServer(incoming);
+            }
+            const g = useGame.getState();
+            next = await pushScore(circle, {
+              ...seed,
+              vault: g.vault,
+              balance: g.balance,
+            });
             if (cancelled) return;
             setCircle(next);
           }
@@ -217,8 +280,8 @@ export function CirclePanel() {
           setCircle(refreshed.state);
           setBoards(refreshed.boards);
           const me = refreshed.boards.live.find((r) => r.is_me) ?? refreshed.boards.peak.find((r) => r.is_me);
-          if (me?.vault != null && me.vault > useGame.getState().vault) {
-            applyVaultAtLeast(me.vault);
+          if (me?.vault != null && me.balance != null) {
+            applyIncomingVault(me.vault, me.balance);
           }
         } catch {
           if (circle) setBoards(leaderboardsFromLocal(circle));

@@ -246,7 +246,7 @@ export async function restoreCircleFromCloud(
 export async function pushScore(state: LocalCircleState, seed: Omit<CircleMemberScore, 'nickname' | 'updatedAt'>): Promise<LocalCircleState> {
   let vault = seed.vault;
   if (state.cloud && isSupabaseConfigured()) {
-    vault = await pullIncomingVault(seed.vault);
+    vault = await pullIncomingVault(seed.vault, seed.balance);
   }
   const mergedSeed = { ...seed, vault };
   const local = upsertSelfScore(state, { ...mergedSeed, nickname: state.nickname });
@@ -281,9 +281,12 @@ export async function pushScore(state: LocalCircleState, seed: Omit<CircleMember
 }
 
 /** Expose le coffre fusionné après pull (cadeaux reçus). */
-export async function peekIncomingVault(localVault: number): Promise<number> {
+export async function peekIncomingVault(
+  localVault: number,
+  localBalance: number,
+): Promise<number> {
   if (!isSupabaseConfigured()) return localVault;
-  return pullIncomingVault(localVault);
+  return pullIncomingVault(localVault, localBalance);
 }
 
 export async function exitCircle(): Promise<void> {
