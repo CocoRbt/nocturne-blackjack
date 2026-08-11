@@ -1,3 +1,4 @@
+import { mergeIncomingVault } from '../store/vaultMerge';
 import { getSupabase, isSupabaseConfigured } from './supabaseClient';
 
 export interface LeaderboardRow {
@@ -207,11 +208,45 @@ export async function sendVaultCloud(
   return data as SendVaultResult;
 }
 
-/** Si le cloud a un coffre plus haut (cadeau), on le prend. */
-export async function pullIncomingVault(localVault: number): Promise<number> {
+export type WithdrawVaultResult = {
+  ok: true;
+  amount: number;
+  balance: number;
+  vault: number;
+  peak_balance: number;
+};
+
+/** Retrait coffre → solde atomique côté serveur. */
+export async function withdrawVaultCloud(amountCents: number): Promise<WithdrawVaultResult> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase non configuré');
+  await ensureAnonSession();
+  const { data, error } = await sb.rpc('withdraw_my_vault', {
+    p_amount: Math.floor(amountCents),
+  });
+  if (error) throw new Error(rpcMessage(error));
+  return data as WithdrawVaultResult;
+}
+
+/**
+ * Si le cloud a un coffre plus haut *et* une richesse supérieure (cadeau), on le prend.
+ * Sinon on garde le local — évite de re-créditer après un retrait.
+ */
+export async function pullIncomingVault(
+  localVault: number,
+  localBalance: number,
+): Promise<number> {
   try {
     const mine = await fetchMyScore();
-    if (typeof mine.vault === 'number' && mine.vault > localVault) return mine.vault;
+    if (typeof mine.vault !== 'number' || typeof mine.balance !== 'number') {
+      return localVault;
+    }
+    return mergeIncomingVault({
+      localBalance,
+      localVault,
+      cloudBalance: mine.balance,
+      cloudVault: mine.vault,
+    });
   } catch {
     /* ignore */
   }

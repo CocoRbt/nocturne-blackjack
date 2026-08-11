@@ -35,6 +35,7 @@ import {
 import { fmt } from '../lib/format';
 import { creditWithoutGame, settleGamePeak } from './peakMeta';
 import { depositToVault, vaultableAmount, withdrawFromVault } from './vault';
+import { mergeIncomingVault } from './vaultMerge';
 import { markScoreDirty } from '../cercle/scoreSync';
 import { TIMING, type GameSpeed } from './timing';
 
@@ -164,8 +165,15 @@ interface GameState {
   vaultDeposit(amountCents: number): void;
   /** Retire du coffre vers le solde jouable. */
   vaultWithdraw(amountCents: number): void;
-  /** Applique un coffre cloud plus haut (cadeau reçu) sans toucher au solde. */
-  applyVaultAtLeast(vaultCents: number): void;
+  /** Applique un coffre cloud (cadeau) sans dupliquer après un retrait. */
+  applyIncomingVault(cloudVault: number, cloudBalance: number): void;
+  /** @deprecated préférer applyIncomingVault — alias richesse-aware. */
+  applyVaultAtLeast(vaultCents: number, cloudBalance?: number): void;
+  /** Fixe solde + coffre après RPC serveur (retrait / envoi). */
+  applyVaultServerState(
+    payload: { balance: number; vault: number; peakBalance?: number },
+    notice?: string,
+  ): void;
   /** Fixe le coffre après un envoi serveur (source de vérité). */
   setVaultFromServer(vaultCents: number, notice?: string): void;
   refill(): void;
@@ -1302,12 +1310,46 @@ export const useGame = create<GameState>((set, get) => {
       markScoreDirty();
     },
 
-    applyVaultAtLeast(vaultCents) {
-      const next = Math.max(0, Math.floor(vaultCents));
+    applyIncomingVault(cloudVault, cloudBalance) {
       const s = get();
-      if (next <= s.vault) return;
+      const next = mergeIncomingVault({
+        localBalance: s.balance,
+        localVault: s.vault,
+        cloudBalance,
+        cloudVault,
+      });
+      if (next === s.vault) return;
       set({ vault: next });
       persist();
+    },
+
+    applyVaultAtLeast(vaultCents, cloudBalance) {
+      const s = get();
+      if (typeof cloudBalance === 'number') {
+        get().applyIncomingVault(vaultCents, cloudBalance);
+        return;
+      }
+      // Sans solde cloud : ne jamais remonter le coffre (évite le glitch).
+      // Les cadeaux passent par peekIncomingVault qui fournit le solde.
+      void s;
+      void vaultCents;
+    },
+
+    applyVaultServerState(payload, notice) {
+      const balance = Math.max(0, Math.floor(payload.balance));
+      const vault = Math.max(0, Math.floor(payload.vault));
+      const peakBalance =
+        typeof payload.peakBalance === 'number'
+          ? Math.max(balance, Math.floor(payload.peakBalance))
+          : Math.max(get().peakBalance, balance);
+      set({
+        balance,
+        vault,
+        peakBalance,
+        ...(notice ? { notice } : {}),
+      });
+      persist();
+      markScoreDirty();
     },
 
     setVaultFromServer(vaultCents, notice) {
