@@ -6560,6 +6560,33 @@ button:disabled {
   flex-direction: column;
   gap: 6px;
 }
+.slots-auto-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--ink-dim);
+  cursor: pointer;
+  user-select: none;
+}
+.slots-auto-opt input {
+  accent-color: var(--slots-amber, #e9a33d);
+  width: 14px;
+  height: 14px;
+}
+.slots-chip.is-stop,
+.slots-cta.is-stop {
+  background: linear-gradient(180deg, #a84828, #6e2410) !important;
+  border-color: rgba(246, 200, 106, 0.45) !important;
+  color: #ffeccb !important;
+}
+.slots-special.is-compact {
+  padding: 0;
+}
+.slots-special.is-compact .slots-glyph {
+  max-height: 100%;
+}
 .slots-cta {
   width: 100%;
   min-height: 54px;
@@ -6651,6 +6678,136 @@ button:disabled {
 }
 
 /* ---------- guide de règles ---------- */
+/* Paytable Stampede (règles façon Stake) */
+.rules-pay-note {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--ink-dim);
+  line-height: 1.45;
+}
+.rules-paytable-head {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1.2fr) repeat(3, minmax(52px, 1fr));
+  gap: 8px;
+  padding: 0 10px 6px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  text-align: right;
+}
+.rules-paytable-head span:nth-child(2) {
+  text-align: left;
+}
+.rules-paytable {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rules-paytable > li {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1.2fr) repeat(3, minmax(52px, 1fr));
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.22);
+}
+.rules-paytable-special > li {
+  grid-template-columns: 40px minmax(0, 1fr);
+}
+.rules-pay-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--slots-ochre, #c9a27a);
+  overflow: hidden;
+}
+.rules-pay-icon .slots-glyph {
+  width: 28px;
+  height: 28px;
+  max-height: 28px;
+}
+.rules-pay-icon .slots-letter {
+  font-size: 18px;
+  text-shadow: none;
+}
+.rules-pay-icon.sym-bison {
+  color: var(--slots-amber, #e9a33d);
+}
+.rules-pay-icon.sym-eagle {
+  color: var(--slots-gold, #f6c86a);
+}
+.rules-pay-icon.sym-cougar {
+  color: #d97a35;
+}
+.rules-pay-icon.sym-wolf {
+  color: var(--slots-slate, #8a9bb0);
+}
+.rules-pay-icon.sym-elk {
+  color: #c98a4b;
+}
+.rules-pay-icon.sym-A {
+  color: #e2653a;
+}
+.rules-pay-icon.sym-K {
+  color: var(--slots-ochre, #c9a27a);
+}
+.rules-pay-icon.sym-Q {
+  color: var(--slots-sage, #9aa878);
+}
+.rules-pay-icon.sym-J {
+  color: #e8d7c2;
+}
+.rules-pay-icon.sym-wild {
+  background: linear-gradient(180deg, rgba(180, 68, 31, 0.45), rgba(42, 18, 9, 0.7));
+  box-shadow: inset 0 0 0 1px rgba(246, 200, 106, 0.35);
+}
+.rules-pay-icon.sym-scatter {
+  background: linear-gradient(180deg, rgba(20, 11, 6, 0.9), rgba(58, 30, 16, 0.85));
+  box-shadow: inset 0 0 0 1px rgba(246, 200, 106, 0.55);
+}
+.rules-pay-name {
+  font-size: 13px;
+  color: var(--ink);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rules-pay-val {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  text-align: right;
+  color: var(--brass);
+}
+.rules-pay-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.rules-pay-body strong {
+  font-size: 13px;
+  color: var(--ink);
+}
+.rules-pay-body span {
+  font-size: 12px;
+  color: var(--ink-dim);
+  line-height: 1.4;
+}
+.tone-slots .rules-pay-val {
+  color: #e9a33d;
+}
+
 .rules-guide-panel.tone-slots {
   border-color: rgba(233, 163, 61, 0.35);
   background:
