@@ -36,8 +36,15 @@ sur brun profond `#1d0f08`. Symboles en SVG inline (aucune dépendance image).
 Trois mouvements portants : rotation des rouleaux (boucle CSS + rebond d’arrêt),
 pulse des cases gagnantes, balayage lumineux du bandeau de tours gratuits.
 
+## Feel (polish)
+- Ambiance audio dédiée `stampede` (vent + pads chauds)
+- Overlay gros gain (≥10×) avec compteur + pause
+- Célébration entrée free spins
+- Anticipation : tremblement des rouleaux si 2+ médailles déjà arrêtées
+- Jauge Troupeau avec paliers marqués (1,5× / 2× / 2,5× / 3×)
+
 ## Hors scope v1
 - Autoplay programmé
 - Jackpot progressif
-- Sons dédiés (réutilise win/click/bigwin)
+- Samples audio western dédiés (réutilise win/click/bigwin)
 - Provably fair UI

@@ -878,7 +878,7 @@ export const useGame = create<GameState>((set, get) => {
     enterSlots() {
       presentToken++;
       shoe = null;
-      sounds.setAmbience('salon');
+      sounds.setAmbience('stampede');
       sounds.startAmbience();
       set({
         screen: 'slots',
