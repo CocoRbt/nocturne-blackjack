@@ -132,6 +132,22 @@ export function ScatterGlyph() {
   );
 }
 
+/** Étoile jackpot — distincte de la Médaille. */
+export function JackpotStarGlyph() {
+  return (
+    <svg className="slots-glyph" viewBox="0 0 40 40" aria-hidden>
+      <path
+        className="jp-ray"
+        d="M20 3.5v6.2M20 30.3v6.2M3.5 20h6.2M30.3 20h6.2M8.2 8.2l4.4 4.4M27.4 27.4l4.4 4.4M31.8 8.2l-4.4 4.4M12.6 27.4l-4.4 4.4"
+      />
+      <path
+        className="jp-star"
+        d="m20 8.2 3.2 6.6 7.3 1.1-5.3 5.1 1.2 7.2L20 24.8l-6.4 3.4 1.2-7.2-5.3-5.1 7.3-1.1z"
+      />
+    </svg>
+  );
+}
+
 export function SymbolTile({ symbol, compact = false }: { symbol: SlotSymbol; compact?: boolean }) {
   if (symbol === 'bison') return <BisonGlyph />;
   if (symbol === 'eagle') return <EagleGlyph />;
@@ -151,6 +167,14 @@ export function SymbolTile({ symbol, compact = false }: { symbol: SlotSymbol; co
       <span className={`slots-special${compact ? ' is-compact' : ''}`}>
         <ScatterGlyph />
         {!compact && <span className="slots-tag">Médaille</span>}
+      </span>
+    );
+  }
+  if (symbol === 'star') {
+    return (
+      <span className={`slots-special${compact ? ' is-compact' : ''}`}>
+        <JackpotStarGlyph />
+        {!compact && <span className="slots-tag">Jackpot</span>}
       </span>
     );
   }

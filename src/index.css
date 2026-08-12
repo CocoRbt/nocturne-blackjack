@@ -6137,6 +6137,88 @@ button:disabled {
   stroke-width: 3;
   stroke-linejoin: round;
 }
+.slots-cell.sym-star {
+  background: linear-gradient(180deg, rgba(48, 28, 8, 0.95), rgba(90, 42, 12, 0.88));
+  box-shadow: inset 0 0 0 1px rgba(246, 200, 106, 0.65);
+}
+.slots-cell.sym-star .jp-star {
+  fill: #ffe7a8;
+}
+.slots-cell.sym-star .jp-ray {
+  fill: none;
+  stroke: rgba(246, 200, 106, 0.75);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+/* ---------- bandeau jackpots ---------- */
+.slots-jp-banner {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: min(1100px, 100%);
+  margin: 0 auto 10px;
+  padding: 0 4px;
+  flex: 0 0 auto;
+}
+.slots-jp-pot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(233, 163, 61, 0.22);
+  background: linear-gradient(180deg, rgba(42, 22, 12, 0.9), rgba(18, 10, 6, 0.85));
+}
+.slots-jp-pot.is-mini {
+  border-color: rgba(147, 168, 109, 0.35);
+}
+.slots-jp-pot.is-major {
+  border-color: rgba(233, 163, 61, 0.4);
+}
+.slots-jp-pot.is-grand {
+  border-color: rgba(246, 200, 106, 0.55);
+  background: linear-gradient(180deg, rgba(90, 42, 18, 0.55), rgba(18, 10, 6, 0.9));
+}
+.slots-jp-tier {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 236, 195, 0.55);
+}
+.slots-jp-amt {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(13px, 3.2vw, 17px);
+  font-weight: 600;
+  color: var(--slots-gold);
+}
+.slots-jp-hits {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.slots-jp-hits ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.slots-jp-hits li {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+.slots-jp-hits li strong {
+  color: var(--slots-gold);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
 
 /* ---------- bandeau de gain ---------- */
 .slots-win-strip {
@@ -6361,6 +6443,12 @@ button:disabled {
 }
 .slots-bigwin.is-fs .slots-bigwin-card {
   border-color: rgba(233, 163, 61, 0.7);
+}
+.slots-bigwin.is-jackpot .slots-bigwin-card {
+  border-color: rgba(255, 220, 140, 0.85);
+  background:
+    radial-gradient(90% 80% at 50% 0%, rgba(255, 220, 140, 0.28), transparent 55%),
+    linear-gradient(180deg, #5a2a12, #140804);
 }
 @keyframes slots-bigwin-glow {
   0%,
@@ -6774,6 +6862,11 @@ button:disabled {
   background: linear-gradient(180deg, rgba(20, 11, 6, 0.9), rgba(58, 30, 16, 0.85));
   box-shadow: inset 0 0 0 1px rgba(246, 200, 106, 0.55);
 }
+.rules-pay-icon.sym-star {
+  background: linear-gradient(180deg, rgba(48, 28, 8, 0.95), rgba(90, 42, 12, 0.88));
+  box-shadow: inset 0 0 0 1px rgba(246, 200, 106, 0.65);
+  color: #ffe7a8;
+}
 .rules-pay-name {
   font-size: 13px;
   color: var(--ink);
@@ -6861,6 +6954,16 @@ button:disabled {
   }
   .slots-machine {
     padding: 8px 8px 6px;
+  }
+  .slots-jp-banner {
+    gap: 5px;
+    margin-bottom: 6px;
+  }
+  .slots-jp-pot {
+    padding: 6px 4px;
+  }
+  .slots-jp-amt {
+    font-size: 12px;
   }
   .slots-marquee {
     padding-bottom: 6px;

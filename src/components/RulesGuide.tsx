@@ -4,6 +4,7 @@ import { getTable } from '../engine/rules';
 import { SIDE_BET_DEFS } from '../engine/sidebets';
 import { fmt, fmtMult, fmtPays } from '../lib/format';
 import { SymbolTile } from '../slots/glyphs';
+import { JACKPOT_SEEDS_CENTS } from '../slots/jackpot';
 import {
   FREE_SPINS_AWARD,
   FREE_SPINS_RETRIGGER,
@@ -556,7 +557,31 @@ function SlotsRules() {
               </span>
             </div>
           </li>
+          <li>
+            <SlotsPayIcon symbol="star" />
+            <div className="rules-pay-body">
+              <strong>{SYMBOL_LABEL.star}</strong>
+              <span>
+                Jackpot — 3 / 4 / 5 étoiles (n’importe où) déclenchent Mini / Major / Grand. Hors
+                tours gratuits uniquement.
+              </span>
+            </div>
+          </li>
         </ul>
+      </section>
+
+      <section className="rules-section">
+        <h3>Jackpots progressifs</h3>
+        <div className="rules-grid compact">
+          <RuleRow label="Mini (3★)" value={`${JACKPOT_SEEDS_CENTS.mini / 100} crédits min.`} />
+          <RuleRow label="Major (4★)" value={`${JACKPOT_SEEDS_CENTS.major / 100} crédits min.`} />
+          <RuleRow label="Grand (5★)" value={`${JACKPOT_SEEDS_CENTS.grand / 100} crédits min.`} />
+          <RuleRow label="Contribution" value="1 % de la mise de base" />
+        </div>
+        <p className="rules-pay-note" style={{ marginTop: 8 }}>
+          Chaque spin de base alimente les trois pots du cercle (0,5 % + 0,3 % + 0,2 %). En solo, les
+          pots restent sur cet appareil.
+        </p>
       </section>
 
       <section className="rules-section">

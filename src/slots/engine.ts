@@ -1,4 +1,5 @@
 import { cryptoRng, type Rng } from '../engine/rng';
+import type { JackpotTier } from './jackpot';
 import {
   BASE_STRIPS,
   FREE_STRIPS,
@@ -31,6 +32,8 @@ export interface SlotsRound {
   herdHeads: number;
   /** Spins free accordés par CE résultat (trigger ou retrigger). */
   freeSpinsGranted: number;
+  /** Jackpot progressif (spin de base uniquement). */
+  jackpotTier: JackpotTier | null;
 }
 
 export function createIdleRound(): SlotsRound {
@@ -46,6 +49,7 @@ export function createIdleRound(): SlotsRound {
     freeSpinsLeft: 0,
     herdHeads: 0,
     freeSpinsGranted: 0,
+    jackpotTier: null,
   };
 }
 
@@ -98,6 +102,7 @@ export function startSpin(input: StartSpinInput): SlotsRound {
     freeSpinsLeft: nextFree,
     herdHeads: mode === 'free' ? nextHerd : 0,
     freeSpinsGranted: ev.freeSpins,
+    jackpotTier: mode === 'base' ? ev.jackpotTier : null,
   };
 }
 
@@ -117,6 +122,7 @@ export function resetAfterSettle(round: SlotsRound): SlotsRound {
       wayWins: [],
       payout: 0,
       freeSpinsGranted: 0,
+      jackpotTier: null,
     };
   }
   return {

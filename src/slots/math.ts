@@ -20,9 +20,10 @@ export type SlotSymbol =
   | 'Q'
   | 'J'
   | 'wild'
-  | 'scatter';
+  | 'scatter'
+  | 'star';
 
-export type PaySymbol = Exclude<SlotSymbol, 'wild' | 'scatter'>;
+export type PaySymbol = Exclude<SlotSymbol, 'wild' | 'scatter' | 'star'>;
 
 /** Gains en « crédits » pour 1 way — divisés par SLOT_WAYS pour le mult bet. */
 export const WAY_PAY: Record<PaySymbol, { 3: number; 4: number; 5: number }> = {
@@ -80,40 +81,40 @@ export function herdWinMultiplier(heads: number): number {
 
 /** Bandes de rouleaux (base) — fréquences calibrées pour ~96–97 % RTP. */
 export const BASE_STRIPS: readonly (readonly SlotSymbol[])[] = [
-  // Reel 1 — pas de wild (classique ways)
+  // Reel 1 — pas de wild (classique ways) ; 1 étoile jackpot
   [
     'bison', 'J', 'eagle', 'Q', 'wolf', 'K', 'cougar', 'A', 'elk', 'J',
     'scatter', 'Q', 'wolf', 'K', 'eagle', 'A', 'bison', 'J', 'cougar', 'Q',
     'elk', 'K', 'wolf', 'A', 'eagle', 'J', 'Q', 'cougar', 'K', 'bison',
-    'A', 'elk', 'J', 'wolf', 'Q', 'eagle', 'K', 'cougar', 'A', 'J',
+    'A', 'elk', 'J', 'wolf', 'Q', 'eagle', 'K', 'cougar', 'star', 'J',
   ],
   // Reel 2
   [
     'wild', 'J', 'eagle', 'Q', 'wolf', 'K', 'bison', 'A', 'elk', 'J',
     'cougar', 'Q', 'scatter', 'K', 'eagle', 'A', 'wolf', 'J', 'bison', 'Q',
     'elk', 'K', 'cougar', 'A', 'wild', 'J', 'eagle', 'Q', 'wolf', 'K',
-    'A', 'elk', 'J', 'bison', 'Q', 'cougar', 'K', 'eagle', 'A', 'J',
+    'A', 'elk', 'J', 'bison', 'Q', 'cougar', 'K', 'eagle', 'star', 'J',
   ],
   // Reel 3
   [
     'J', 'wild', 'eagle', 'Q', 'bison', 'K', 'wolf', 'A', 'elk', 'J',
     'cougar', 'Q', 'eagle', 'K', 'scatter', 'A', 'wolf', 'J', 'bison', 'Q',
     'wild', 'K', 'elk', 'A', 'cougar', 'J', 'eagle', 'Q', 'wolf', 'K',
-    'bison', 'A', 'J', 'elk', 'Q', 'cougar', 'K', 'eagle', 'A', 'J',
+    'bison', 'A', 'J', 'elk', 'Q', 'cougar', 'K', 'eagle', 'star', 'J',
   ],
   // Reel 4
   [
     'J', 'eagle', 'wild', 'Q', 'wolf', 'K', 'bison', 'A', 'elk', 'J',
     'cougar', 'Q', 'eagle', 'K', 'wolf', 'A', 'scatter', 'J', 'bison', 'Q',
     'elk', 'K', 'wild', 'A', 'cougar', 'J', 'eagle', 'Q', 'wolf', 'K',
-    'A', 'bison', 'J', 'elk', 'Q', 'cougar', 'K', 'eagle', 'A', 'J',
+    'A', 'bison', 'J', 'elk', 'Q', 'cougar', 'K', 'eagle', 'star', 'J',
   ],
   // Reel 5
   [
     'J', 'eagle', 'Q', 'wolf', 'K', 'bison', 'A', 'elk', 'J', 'cougar',
     'Q', 'eagle', 'K', 'wolf', 'A', 'bison', 'J', 'scatter', 'Q', 'elk',
     'K', 'cougar', 'A', 'eagle', 'J', 'wolf', 'Q', 'bison', 'K', 'elk',
-    'A', 'cougar', 'J', 'eagle', 'Q', 'wolf', 'K', 'A', 'J', 'elk',
+    'A', 'cougar', 'J', 'eagle', 'Q', 'wolf', 'K', 'A', 'star', 'elk',
   ],
 ];
 
@@ -163,6 +164,7 @@ export const SYMBOL_LABEL: Record<SlotSymbol, string> = {
   J: 'J',
   wild: 'Crépuscule',
   scatter: 'Médaille',
+  star: 'Étoile',
 };
 
 export function payoutCents(bet: number, multiplier: number): number {
@@ -171,7 +173,7 @@ export function payoutCents(bet: number, multiplier: number): number {
 }
 
 export function isPaySymbol(s: SlotSymbol): s is PaySymbol {
-  return s !== 'wild' && s !== 'scatter';
+  return s !== 'wild' && s !== 'scatter' && s !== 'star';
 }
 
 /** Grille [reel][row] depuis stops (index haut de fenêtre). */
@@ -193,6 +195,22 @@ export function countScatter(grid: readonly (readonly SlotSymbol[])[]): number {
   let n = 0;
   for (const col of grid) for (const s of col) if (s === 'scatter') n += 1;
   return n;
+}
+
+export function countStars(grid: readonly (readonly SlotSymbol[])[]): number {
+  let n = 0;
+  for (const col of grid) for (const s of col) if (s === 'star') n += 1;
+  return n;
+}
+
+/** Plus haut tier : 5=grand, 4=major, 3=mini. */
+export function jackpotTierFromStars(
+  starCount: number,
+): 'mini' | 'major' | 'grand' | null {
+  if (starCount >= 5) return 'grand';
+  if (starCount >= 4) return 'major';
+  if (starCount >= 3) return 'mini';
+  return null;
 }
 
 export function countBison(grid: readonly (readonly SlotSymbol[])[]): number {
@@ -251,7 +269,7 @@ export function evaluateWays(grid: readonly (readonly SlotSymbol[])[]): WayWin[]
             let paySym: PaySymbol | null = null;
             let length = 0;
             for (const cell of cells) {
-              if (cell === 'scatter') break;
+              if (cell === 'scatter' || cell === 'star') break;
               if (cell === 'wild') {
                 length += 1;
                 continue;
@@ -348,6 +366,10 @@ export type SpinEval = {
   totalMult: number;
   freeSpins: number;
   bisonLanded: number;
+  /** Étoiles jackpot sur la grille (base uniquement utiles). */
+  starCount: number;
+  /** Palier jackpot déclenché (base) — null hors hit. */
+  jackpotTier: 'mini' | 'major' | 'grand' | null;
 };
 
 export function evaluateSpin(
@@ -389,6 +411,9 @@ export function evaluateSpin(
     freeSpins = FREE_SPINS_RETRIGGER;
   }
 
+  const starCount = countStars(gridIn);
+  const jackpotTier = opts.freeSpinMode ? null : jackpotTierFromStars(starCount);
+
   return {
     grid: displayGrid,
     wayWins,
@@ -400,6 +425,8 @@ export function evaluateSpin(
     totalMult,
     freeSpins,
     bisonLanded,
+    starCount,
+    jackpotTier,
   };
 }
 
