@@ -21,13 +21,14 @@ export type SoundName =
   | 'flip'
   | 'bigWin';
 
-/** Identifiants d’ambiance (tables BJ + salon / lobby). */
+/** Identifiants d’ambiance (tables BJ + salon / lobby / Stampede). */
 export type AmbienceId =
   | 'emeraude'
   | 'onyx'
   | 'imperiale'
   | 'privee'
   | 'salon'
+  | 'stampede'
   | 'lobby'
   | 'off';
 
@@ -109,6 +110,17 @@ const AMBIENCES: Record<Exclude<AmbienceId, 'off'>, AmbienceProfile> = {
     pads: [123.47, 155.56],
     padGain: 0.01,
     lfoHz: 0.08,
+  },
+  /**
+   * Stampede — prairie au crépuscule :
+   * bruit un peu plus ouvert (vent), pads chauds Bb/F, LFO lent.
+   */
+  stampede: {
+    noiseHz: 320,
+    noiseGain: 0.009,
+    pads: [116.54, 174.61, 233.08, 349.23],
+    padGain: 0.015,
+    lfoHz: 0.055,
   },
   /** Lobby — souffle très discret. */
   lobby: {

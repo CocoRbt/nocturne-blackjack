@@ -35,12 +35,20 @@ const STOP_STAGGER_MS = 230;
 const ANTICIPATION_MS = 520;
 /** Temps d’affichage du résultat avant le tour suivant. */
 const SETTLE_HOLD_MS = 900;
+/** Pause plus longue pendant l’écran gros gain. */
+const BIG_WIN_HOLD_MS = 2_800;
+/** Pause à l’entrée en tours gratuits. */
+const FS_TRIGGER_HOLD_MS = 2_000;
 /** Respiration entre deux tours gratuits enchaînés. */
 const FREE_SPIN_GAP_MS = 520;
 /** Nombre de têtes affichées dans la jauge troupeau. */
 const HERD_METER_MAX = 15;
-/** Seuil « gros gain » : pulse renforcé + notif défi. */
+/** Seuil « gros gain » : overlay + pulse + notif défi. */
 const BIG_WIN_MULT = 10;
+
+type BigWinCelebrate =
+  | { kind: 'win'; amount: number; mult: number }
+  | { kind: 'freespins'; amount: number; mult: number; spins: number };
 
 const NO_WINS: readonly WayWin[] = [];
 
@@ -77,6 +85,20 @@ function reelStopTimes(grid: readonly (readonly SlotSymbol[])[]): number[] {
     t += STOP_STAGGER_MS;
   }
   return times;
+}
+
+/** 2+ médailles déjà arrêtées → les rouleaux encore en jeu tremblent. */
+function isAnticipating(
+  grid: readonly (readonly SlotSymbol[])[],
+  stoppedReels: number,
+  spinning: boolean,
+): boolean {
+  if (!spinning || stoppedReels < 2) return false;
+  let scatters = 0;
+  for (let r = 0; r < stoppedReels && r < SLOT_REELS; r++) {
+    scatters += (grid[r] ?? []).filter((s) => s === 'scatter').length;
+  }
+  return scatters >= 2;
 }
 
 /**
@@ -276,6 +298,7 @@ function ReelColumn({
   reel,
   cells,
   spinning,
+  anticipating,
   winCells,
   dim,
   stripKey,
@@ -283,16 +306,32 @@ function ReelColumn({
   reel: number;
   cells: readonly SlotSymbol[];
   spinning: boolean;
+  anticipating: boolean;
   winCells: ReadonlySet<string>;
   dim: boolean;
   stripKey: string;
 }) {
+  const cls = [
+    'slots-reel',
+    spinning ? 'is-spinning' : 'is-stopped',
+    spinning && anticipating ? 'is-anticipating' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
   return (
-    <div className={`slots-reel ${spinning ? 'is-spinning' : 'is-stopped'}`}>
+    <div className={cls}>
       <div
         className="slots-reel-strip"
         key={stripKey}
-        style={spinning ? { animationDuration: `${0.34 + reel * 0.025}s` } : undefined}
+        style={
+          spinning
+            ? {
+                animationDuration: anticipating
+                  ? `${0.22 + reel * 0.02}s`
+                  : `${0.34 + reel * 0.025}s`,
+              }
+            : undefined
+        }
       >
         {cells.map((s, row) => {
           const win = !spinning && winCells.has(`${reel}:${row}`);
@@ -312,25 +351,125 @@ function ReelColumn({
   );
 }
 
+function CountUpCredits({ to, durationMs = 1_600 }: { to: number; durationMs?: number }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    const target = Math.max(0, Math.floor(to));
+    if (target <= 0) {
+      setN(0);
+      return;
+    }
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / durationMs);
+      const eased = 1 - (1 - p) ** 3;
+      setN(Math.floor(target * eased));
+      if (p < 1) raf = requestAnimationFrame(tick);
+      else setN(target);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [to, durationMs]);
+  return <>{fmt(n)}</>;
+}
+
+function BigWinOverlay({
+  celebrate,
+  onDismiss,
+}: {
+  celebrate: BigWinCelebrate;
+  onDismiss: () => void;
+}) {
+  const isFs = celebrate.kind === 'freespins';
+  return (
+    <motion.button
+      type="button"
+      className={`slots-bigwin${isFs ? ' is-fs' : ''}`}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.35 }}
+      onClick={onDismiss}
+      aria-label={isFs ? 'Tours gratuits' : 'Gros gain'}
+    >
+      <motion.div
+        className="slots-bigwin-card"
+        initial={{ scale: 0.72, y: 28 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.92, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+      >
+        <span className="slots-bigwin-kicker">
+          {isFs ? 'Ruée dorée' : 'Grosse prise'}
+        </span>
+        <strong className="slots-bigwin-amount">
+          {celebrate.amount > 0 ? (
+            <CountUpCredits to={celebrate.amount} />
+          ) : isFs ? (
+            `${celebrate.spins} tours`
+          ) : (
+            fmt(0)
+          )}
+        </strong>
+        <span className="slots-bigwin-meta">
+          {isFs
+            ? `${celebrate.spins} tours gratuits${celebrate.amount > 0 ? ` · ${fmtMult(celebrate.mult)}` : ''}`
+            : fmtMult(celebrate.mult)}
+        </span>
+        <span className="slots-bigwin-hint">Toucher pour continuer</span>
+      </motion.div>
+    </motion.button>
+  );
+}
+
 function HerdMeter({ heads }: { heads: number }) {
   const mult = herdWinMultiplier(heads);
   const next = HERD_MULT_THRESHOLDS.find((t) => heads < t.at);
+  const reached = HERD_MULT_THRESHOLDS.filter((t) => heads >= t.at);
   return (
-    <div className="slots-herd" aria-label={`Troupeau ${heads} têtes`}>
+    <div className="slots-herd" aria-label={`Troupeau ${heads} têtes · ${fmtMult(mult)}`}>
       <div className="slots-herd-head">
         <span className="slots-herd-label">Troupeau</span>
         <strong className="slots-herd-mult">{fmtMult(mult)}</strong>
       </div>
-      <div className="slots-herd-pips" aria-hidden>
-        {Array.from({ length: HERD_METER_MAX }, (_, i) => {
-          const on = i < Math.min(heads, HERD_METER_MAX);
-          const step = HERD_MULT_THRESHOLDS.some((t) => t.at === i + 1);
-          return <span key={i} className={`slots-pip${on ? ' on' : ''}${step ? ' step' : ''}`} />;
-        })}
+      <div className="slots-herd-track" aria-hidden>
+        <div className="slots-herd-pips">
+          {Array.from({ length: HERD_METER_MAX }, (_, i) => {
+            const on = i < Math.min(heads, HERD_METER_MAX);
+            const step = HERD_MULT_THRESHOLDS.some((t) => t.at === i + 1);
+            const nextStep = next?.at === i + 1;
+            return (
+              <span
+                key={i}
+                className={`slots-pip${on ? ' on' : ''}${step ? ' step' : ''}${nextStep ? ' next' : ''}`}
+              />
+            );
+          })}
+        </div>
+        <div className="slots-herd-marks">
+          {HERD_MULT_THRESHOLDS.map((t) => {
+            const done = heads >= t.at;
+            const isNext = next?.at === t.at;
+            return (
+              <span
+                key={t.at}
+                className={`slots-herd-mark${done ? ' done' : ''}${isNext ? ' next' : ''}`}
+                style={{ left: `${((t.at - 0.5) / HERD_METER_MAX) * 100}%` }}
+              >
+                {fmtMult(t.mult)}
+              </span>
+            );
+          })}
+        </div>
       </div>
       <p className="slots-herd-hint">
-        {heads} tête{heads > 1 ? 's' : ''}
-        {next ? ` · ${next.at - heads} avant ${fmtMult(next.mult)}` : ' · harde complète'}
+        <strong>
+          {heads}/{HERD_METER_MAX}
+        </strong>{' '}
+        tête{heads > 1 ? 's' : ''}
+        {reached.length > 0 ? ` · palier ${fmtMult(reached[reached.length - 1]!.mult)}` : ''}
+        {next ? ` · encore ${next.at - heads} pour ${fmtMult(next.mult)}` : ' · harde complète'}
       </p>
     </div>
   );
@@ -355,14 +494,19 @@ export function SlotScreen() {
   const [spinId, setSpinId] = useState(0);
   const [bonus, setBonus] = useState<{ total: number; spins: number; granted: number } | null>(null);
   const [bonusSummary, setBonusSummary] = useState<{ total: number; spins: number } | null>(null);
+  const [bigWin, setBigWin] = useState<BigWinCelebrate | null>(null);
+  /** Verrouille les contrôles pendant la pause post-spin (même si l’overlay est fermé). */
+  const [settleLocked, setSettleLocked] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
 
   const roundRef = useRef(round);
   const bonusRef = useRef(bonus);
   const spinningRef = useRef(false);
+  const bigWinRef = useRef<BigWinCelebrate | null>(null);
   const timers = useRef<number[]>([]);
   const creditRef = useRef(slotsCredit);
   creditRef.current = slotsCredit;
+  bigWinRef.current = bigWin;
 
   const setRoundBoth = useCallback((next: SlotsRound) => {
     roundRef.current = next;
@@ -400,7 +544,18 @@ export function SlotScreen() {
 
   const freeLeft = round.freeSpinsLeft;
   const inBonus = freeLeft > 0 || bonus != null;
-  const busy = spinning || inBonus;
+  const celebrating = bigWin != null;
+  const busy = spinning || inBonus || celebrating || settleLocked;
+
+  const anticipating = useMemo(
+    () => isAnticipating(round.grid, stoppedReels, spinning),
+    [round.grid, stoppedReels, spinning],
+  );
+
+  const dismissBigWin = useCallback(() => {
+    if (!bigWinRef.current) return;
+    setBigWin(null);
+  }, []);
 
   useEffect(() => {
     if (busy) return;
@@ -440,6 +595,8 @@ export function SlotScreen() {
     spinningRef.current = true;
     setSpinning(true);
     setShown(null);
+    setBigWin(null);
+    setSettleLocked(false);
     setStoppedReels(0);
     setBlur(blurGrid());
     setSpinId((n) => n + 1);
@@ -468,12 +625,35 @@ export function SlotScreen() {
         // Compte la partie même à 0 : un spin payé = une manche.
         creditRef.current(settled.payout);
       }
+
+      const mult = settled.eval?.totalMult ?? 0;
+      const isBig = settled.payout > 0 && mult >= BIG_WIN_MULT;
+      const fsGrant = !isFree ? settled.freeSpinsGranted : 0;
+      let hold = SETTLE_HOLD_MS;
+
       if (settled.payout > 0 && settled.eval) {
-        notifyDefi({ type: 'slots_win', mult: settled.eval.totalMult });
-        if (settled.eval.totalMult >= BIG_WIN_MULT) sounds.play('bigwin');
+        notifyDefi({ type: 'slots_win', mult });
+        if (isBig) sounds.play('bigwin');
         else sounds.play('win');
-      } else if (!isFree && settled.freeSpinsGranted > 0) {
+      } else if (fsGrant > 0) {
         sounds.play('blackjack');
+      }
+
+      if (isBig && fsGrant > 0) {
+        // Gros gain qui déclenche aussi la ruée.
+        setBigWin({ kind: 'freespins', amount: settled.payout, mult, spins: fsGrant });
+        hold = BIG_WIN_HOLD_MS;
+      } else if (isBig) {
+        setBigWin({ kind: 'win', amount: settled.payout, mult });
+        hold = BIG_WIN_HOLD_MS;
+      } else if (fsGrant > 0) {
+        setBigWin({
+          kind: 'freespins',
+          amount: settled.payout,
+          mult,
+          spins: fsGrant,
+        });
+        hold = FS_TRIGGER_HOLD_MS;
       }
 
       if (!isFree && settled.freeSpinsGranted > 0) {
@@ -487,7 +667,10 @@ export function SlotScreen() {
         });
       }
 
-      later(SETTLE_HOLD_MS, () => {
+      setSettleLocked(true);
+      later(hold, () => {
+        setBigWin(null);
+        setSettleLocked(false);
         const done = resetAfterSettle(roundRef.current);
         setRoundBoth(done);
         if (done.freeSpinsLeft > 0) {
@@ -523,14 +706,16 @@ export function SlotScreen() {
   const totalMult = settledEval?.totalMult ?? 0;
   const shownPayout = shown?.payout ?? 0;
   const shownBet = shown?.bet ?? round.bet;
-  const bigWin = shownPayout > 0 && totalMult >= BIG_WIN_MULT;
+  const isBigWinStrip = shownPayout > 0 && totalMult >= BIG_WIN_MULT;
   const stakeReady = Math.min(bet, balance);
   const canSpin = !busy && stakeReady >= MIN_BET;
   const lockReason = spinning
     ? 'Rouleaux en rotation'
-    : inBonus
-      ? 'Tours gratuits en cours'
-      : undefined;
+    : celebrating
+      ? 'Célébration en cours'
+      : inBonus
+        ? 'Tours gratuits en cours'
+        : undefined;
 
   const spinLabel = inBonus
     ? `Tours gratuits · ${freeLeft}`
@@ -597,7 +782,11 @@ export function SlotScreen() {
               <em>1024 ways · 5 × 4</em>
             </div>
 
-            <div className="slots-reels" role="grid" aria-label="Rouleaux Stampede">
+            <div
+              className={`slots-reels${anticipating ? ' is-anticipating' : ''}`}
+              role="grid"
+              aria-label="Rouleaux Stampede"
+            >
               {Array.from({ length: SLOT_REELS }, (_, r) => {
                 const isSpinning = r >= stoppedReels;
                 const stoppedGrid = shown?.grid ?? round.grid;
@@ -608,6 +797,7 @@ export function SlotScreen() {
                     reel={r}
                     cells={cells}
                     spinning={isSpinning}
+                    anticipating={anticipating}
                     winCells={highlight}
                     dim={highlight.size > 0}
                     stripKey={isSpinning ? `blur-${spinId}-${r}` : `stop-${spinId}-${r}`}
@@ -621,7 +811,7 @@ export function SlotScreen() {
                 {shown && shownPayout > 0 ? (
                   <motion.div
                     key={`win-${spinId}`}
-                    className={`slots-win${bigWin ? ' is-big' : ''}`}
+                    className={`slots-win${isBigWinStrip ? ' is-big' : ''}`}
                     initial={{ opacity: 0, scale: 0.85 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
@@ -825,6 +1015,10 @@ export function SlotScreen() {
             {notice}
           </motion.div>
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {bigWin && <BigWinOverlay celebrate={bigWin} onDismiss={dismissBigWin} />}
       </AnimatePresence>
 
       <RulesGuide game="slots" open={rulesOpen} onClose={() => setRulesOpen(false)} />
