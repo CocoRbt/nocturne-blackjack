@@ -42,9 +42,10 @@ pulse des cases gagnantes, balayage lumineux du bandeau de tours gratuits.
 - Célébration entrée free spins
 - Anticipation : tremblement des rouleaux si 2+ médailles déjà arrêtées
 - Jauge Troupeau avec paliers marqués (1,5× / 2× / 2,5× / 3×)
+- **Auto-spin** 10 / 25 / 50 / 100 / ∞ + stop FS / gros gain
+- Règles détaillées type Stake : paytable avec logos (`src/slots/glyphs.tsx`)
 
 ## Hors scope v1
-- Autoplay programmé
 - Jackpot progressif
 - Samples audio western dédiés (réutilise win/click/bigwin)
 - Provably fair UI

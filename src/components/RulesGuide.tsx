@@ -2,7 +2,20 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect } from 'react';
 import { getTable } from '../engine/rules';
 import { SIDE_BET_DEFS } from '../engine/sidebets';
-import { fmt, fmtPays } from '../lib/format';
+import { fmt, fmtMult, fmtPays } from '../lib/format';
+import { SymbolTile } from '../slots/glyphs';
+import {
+  FREE_SPINS_AWARD,
+  FREE_SPINS_RETRIGGER,
+  FREE_SPINS_RETRIGGER_MIN,
+  HERD_MULT_THRESHOLDS,
+  SCATTER_PAY,
+  SLOT_WAYS,
+  SYMBOL_LABEL,
+  WAY_PAY,
+  type PaySymbol,
+  type SlotSymbol,
+} from '../slots/math';
 import { useGame } from '../store/gameStore';
 
 export type RulesGame = 'blackjack' | 'mines' | 'craps' | 'crash' | 'plinko' | 'slots';
@@ -452,62 +465,174 @@ function IlluSlots() {
   );
 }
 
+/** Ordre d’affichage paytable (du plus fort au plus faible). */
+const PAYTABLE_ORDER: PaySymbol[] = [
+  'bison',
+  'eagle',
+  'cougar',
+  'wolf',
+  'elk',
+  'A',
+  'K',
+  'Q',
+  'J',
+];
+
+/** Multiplicateur de mise pour 1 way. */
+function wayPayMult(sym: PaySymbol, len: 3 | 4 | 5): number {
+  return WAY_PAY[sym][len] / SLOT_WAYS;
+}
+
+function fmtWayMult(m: number): string {
+  const digits = m >= 0.1 ? 2 : 3;
+  return (
+    m.toLocaleString('fr-FR', {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    }) + '×'
+  );
+}
+
+function SlotsPayIcon({ symbol }: { symbol: SlotSymbol }) {
+  return (
+    <span className={`rules-pay-icon sym-${symbol}`} aria-hidden>
+      <SymbolTile symbol={symbol} compact />
+    </span>
+  );
+}
+
 function SlotsRules() {
   return (
     <>
       <IlluSlots />
       <p className="rules-lead">
-        Cinq rouleaux, quatre rangs, <strong>1024 façons</strong> de gagner. Pas de lignes : trois
-        symboles identiques sur des rouleaux voisins à partir de la gauche, où qu’ils soient.
+        Cinq rouleaux, quatre rangs, <strong>{SLOT_WAYS} façons</strong> de gagner. Pas de lignes
+        fixes : trois symboles identiques (ou wild) sur des rouleaux voisins à partir de la gauche,
+        où qu’ils soient dans la colonne.
       </p>
+
       <section className="rules-section">
         <h3>Déroulement</h3>
         <ol className="rules-steps">
           <li>
             <span className="n">1</span>
-            <span>Réglez la mise, puis lancez la ruée. Une mise = un spin.</span>
+            <span>
+              Réglez la mise, lancez — ou activez l’<strong>Auto</strong> (10 / 25 / 50 / 100 / ∞).
+            </span>
           </li>
           <li>
             <span className="n">2</span>
             <span>
-              Le <strong>Crépuscule</strong> (wild) remplace tout sauf la Médaille. Le bison paie le
-              plus fort.
+              Le <strong>Crépuscule</strong> (wild) remplace tout sauf la Médaille. Les gains ways
+              s’additionnent.
             </span>
           </li>
           <li>
             <span className="n">3</span>
             <span>
-              3 Médailles ou plus n’importe où déclenchent les tours gratuits — aucune mise n’est
-              prélevée pendant le bonus.
+              3 Médailles ou plus déclenchent les tours gratuits — aucune mise pendant le bonus.
             </span>
           </li>
         </ol>
       </section>
+
+      <section className="rules-section">
+        <h3>Symboles spéciaux</h3>
+        <ul className="rules-paytable rules-paytable-special">
+          <li>
+            <SlotsPayIcon symbol="wild" />
+            <div className="rules-pay-body">
+              <strong>{SYMBOL_LABEL.wild}</strong>
+              <span>Wild — remplace tout sauf la Médaille. En bonus : ×2 ou ×3 (max produit ×9).</span>
+            </div>
+          </li>
+          <li>
+            <SlotsPayIcon symbol="scatter" />
+            <div className="rules-pay-body">
+              <strong>{SYMBOL_LABEL.scatter}</strong>
+              <span>
+                Scatter — paie n’importe où · 3→{fmtMult(SCATTER_PAY[3])} · 4→
+                {fmtMult(SCATTER_PAY[4])} · 5→{fmtMult(SCATTER_PAY[5])} + tours gratuits.
+              </span>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <section className="rules-section">
+        <h3>Table des gains</h3>
+        <p className="rules-pay-note">
+          Multiplicateurs de la mise pour <strong>1 way</strong> — multipliés ensuite par le nombre
+          de ways gagnantes.
+        </p>
+        <div className="rules-paytable-head" aria-hidden>
+          <span />
+          <span>3</span>
+          <span>4</span>
+          <span>5</span>
+        </div>
+        <ul className="rules-paytable">
+          {PAYTABLE_ORDER.map((sym) => (
+            <li key={sym}>
+              <SlotsPayIcon symbol={sym} />
+              <span className="rules-pay-name">{SYMBOL_LABEL[sym]}</span>
+              <span className="rules-pay-val">{fmtWayMult(wayPayMult(sym, 3))}</span>
+              <span className="rules-pay-val">{fmtWayMult(wayPayMult(sym, 4))}</span>
+              <span className="rules-pay-val">{fmtWayMult(wayPayMult(sym, 5))}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <section className="rules-section">
         <h3>Tours gratuits</h3>
-        <div className="rules-grid">
-          <RuleRow label="3 Médailles" value="8 tours" />
-          <RuleRow label="4 Médailles" value="15 tours" />
-          <RuleRow label="5 Médailles" value="20 tours" />
-          <RuleRow label="Relance (2+)" value="+5 tours" />
-          <RuleRow label="Wilds bonus" value="×2 / ×3 (produit)" />
-          <RuleRow label="Compteur Troupeau" value="Jusqu’à ×3 sur les gains" />
-        </div>
-      </section>
-      <section className="rules-section">
-        <h3>Paiements</h3>
-        <div className="rules-grid">
-          <RuleRow label="Grille" value="5 × 4 · 1024 ways" />
-          <RuleRow label="Symbole fort" value="Bison" />
-          <RuleRow label="Médaille (3 / 4 / 5)" value="×1,2 / ×5 / ×20" />
+        <ul className="rules-paytable rules-paytable-special">
+          <li>
+            <SlotsPayIcon symbol="scatter" />
+            <div className="rules-pay-body">
+              <strong>3 Médailles</strong>
+              <span>{FREE_SPINS_AWARD[3]} tours</span>
+            </div>
+          </li>
+          <li>
+            <SlotsPayIcon symbol="scatter" />
+            <div className="rules-pay-body">
+              <strong>4 Médailles</strong>
+              <span>{FREE_SPINS_AWARD[4]} tours</span>
+            </div>
+          </li>
+          <li>
+            <SlotsPayIcon symbol="scatter" />
+            <div className="rules-pay-body">
+              <strong>5 Médailles</strong>
+              <span>{FREE_SPINS_AWARD[5]} tours</span>
+            </div>
+          </li>
+        </ul>
+        <div className="rules-grid compact" style={{ marginTop: 10 }}>
+          <RuleRow
+            label={`Relance (${FREE_SPINS_RETRIGGER_MIN}+)`}
+            value={`+${FREE_SPINS_RETRIGGER} tours`}
+          />
+          <RuleRow label="Wilds bonus" value="×2 / ×3 (produit ≤ ×9)" />
           <RuleRow label="RTP cible" value="~96–97 %" />
         </div>
       </section>
+
+      <section className="rules-section">
+        <h3>Compteur Troupeau</h3>
+        <div className="rules-grid compact">
+          {HERD_MULT_THRESHOLDS.map((t) => (
+            <RuleRow key={t.at} label={`${t.at} têtes`} value={fmtMult(t.mult)} />
+          ))}
+        </div>
+      </section>
+
       <div className="rules-callout">
         <strong>Compteur Troupeau</strong>
         <span>
-          Chaque bison tombé pendant le bonus remplit la harde : à 4, 7, 13 puis 15 têtes, les gains
-          sont multipliés et les autres animaux prennent les traits du bison.
+          Chaque bison tombé pendant le bonus remplit la harde. Les paliers multiplient les gains
+          ways ; les animaux transformés (affichage) prennent les traits du bison.
         </span>
       </div>
       <p className="rules-foot">
