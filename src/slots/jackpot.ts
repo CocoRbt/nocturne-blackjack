@@ -16,11 +16,11 @@ export type JackpotHitRecord = {
   createdAt: string
 }
 
-/** Seeds en centimes (= unités solde) : 50 / 250 / 1 000 crédits. */
+/** Seeds en centimes (= unités solde) : 1 000 / 5 000 / 15 000 crédits. */
 export const JACKPOT_SEEDS_CENTS: Record<JackpotTier, number> = {
-  mini: 5_000,
-  major: 25_000,
-  grand: 100_000,
+  mini: 100_000,
+  major: 500_000,
+  grand: 1_500_000,
 }
 
 /** Parts de contribution sur la mise de base (total 1 %). */

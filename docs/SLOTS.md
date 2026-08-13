@@ -47,7 +47,7 @@ pulse des cases gagnantes, balayage lumineux du bandeau de tours gratuits.
 
 ## Jackpots progressifs
 - Pots **Mini / Major / Grand** par cercle (Supabase) ou localStorage en solo
-- Seeds : 50 / 250 / 1 000 crédits — contribution **1 %** des mises de base
+- Seeds : 1 000 / 5 000 / 15 000 crédits — contribution **1 %** des mises de base
 - Trigger : 3 / 4 / 5 **Étoiles** sur la grille (base uniquement, plus haut tier)
 - Migration : `supabase/migrations/20260812220000_circle_jackpots.sql`
 
