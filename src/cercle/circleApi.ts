@@ -286,4 +286,75 @@ export async function leaveCircleCloud(): Promise<void> {
   }
 }
 
+export type CircleJackpotsPayload = {
+  ok: boolean;
+  in_circle?: boolean;
+  mini?: number;
+  major?: number;
+  grand?: number;
+  updated_at?: string;
+  hits?: Array<{
+    tier: 'mini' | 'major' | 'grand';
+    amount: number;
+    created_at: string;
+    nickname: string;
+  }>;
+};
+
+export async function fetchCircleJackpots(): Promise<CircleJackpotsPayload> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase non configuré');
+  await ensureAnonSession();
+  const { data, error } = await sb.rpc('get_circle_jackpots');
+  if (error) throw new Error(rpcMessage(error));
+  return data as CircleJackpotsPayload;
+}
+
+export type ContributeJackpotResult = {
+  ok: true;
+  mini: number;
+  major: number;
+  grand: number;
+  added: { mini: number; major: number; grand: number };
+};
+
+export async function contributeStampedeJackpot(
+  betCents: number,
+): Promise<ContributeJackpotResult> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase non configuré');
+  await ensureAnonSession();
+  const { data, error } = await sb.rpc('contribute_stampede_jackpot', {
+    p_bet: Math.floor(betCents),
+  });
+  if (error) throw new Error(rpcMessage(error));
+  return data as ContributeJackpotResult;
+}
+
+export type ClaimJackpotResult = {
+  ok: true;
+  tier: 'mini' | 'major' | 'grand';
+  amount: number;
+  balance: number;
+  peak_balance: number;
+  mini: number;
+  major: number;
+  grand: number;
+};
+
+export async function claimStampedeJackpot(
+  tier: 'mini' | 'major' | 'grand',
+  betCents: number,
+): Promise<ClaimJackpotResult> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase non configuré');
+  await ensureAnonSession();
+  const { data, error } = await sb.rpc('claim_stampede_jackpot', {
+    p_tier: tier,
+    p_bet: Math.floor(betCents),
+  });
+  if (error) throw new Error(rpcMessage(error));
+  return data as ClaimJackpotResult;
+}
+
 export { isSupabaseConfigured };

@@ -11,6 +11,14 @@ import {
   type SlotsRound,
 } from '../slots/engine';
 import {
+  claimJackpot,
+  contributeJackpot,
+  readJackpotView,
+  refreshJackpotView,
+  type JackpotView,
+} from '../slots/jackpotService';
+import { jackpotLabel, type JackpotTier } from '../slots/jackpot';
+import {
   HERD_MULT_THRESHOLDS,
   SLOT_REELS,
   SLOT_ROWS,
@@ -42,6 +50,8 @@ const SETTLE_HOLD_MS = 900;
 const BIG_WIN_HOLD_MS = 2_800;
 /** Pause à l’entrée en tours gratuits. */
 const FS_TRIGGER_HOLD_MS = 2_000;
+/** Pause jackpot progressif. */
+const JACKPOT_HOLD_MS = 3_400;
 /** Respiration entre deux tours gratuits enchaînés. */
 const FREE_SPIN_GAP_MS = 520;
 /** Nombre de têtes affichées dans la jauge troupeau. */
@@ -51,13 +61,14 @@ const BIG_WIN_MULT = 10;
 
 type BigWinCelebrate =
   | { kind: 'win'; amount: number; mult: number }
-  | { kind: 'freespins'; amount: number; mult: number; spins: number };
+  | { kind: 'freespins'; amount: number; mult: number; spins: number }
+  | { kind: 'jackpot'; amount: number; tier: JackpotTier };
 
 const NO_WINS: readonly WayWin[] = [];
 
 const BLUR_POOL: readonly SlotSymbol[] = [
   'J', 'Q', 'K', 'A', 'elk', 'wolf', 'cougar', 'eagle', 'bison', 'wild',
-  'J', 'Q', 'K', 'A', 'elk', 'wolf', 'scatter',
+  'J', 'Q', 'K', 'A', 'elk', 'wolf', 'scatter', 'star',
 ];
 
 /** Bande floutée d’un rouleau : 8 symboles dupliqués → boucle sans raccord. */
@@ -135,6 +146,16 @@ function scatterCells(grid: readonly (readonly SlotSymbol[])[]): Set<string> {
   grid.forEach((col, r) =>
     col.forEach((s, row) => {
       if (s === 'scatter') out.add(`${r}:${row}`);
+    }),
+  );
+  return out;
+}
+
+function starCells(grid: readonly (readonly SlotSymbol[])[]): Set<string> {
+  const out = new Set<string>();
+  grid.forEach((col, r) =>
+    col.forEach((s, row) => {
+      if (s === 'star') out.add(`${r}:${row}`);
     }),
   );
   return out;
@@ -228,16 +249,17 @@ function BigWinOverlay({
   onDismiss: () => void;
 }) {
   const isFs = celebrate.kind === 'freespins';
+  const isJp = celebrate.kind === 'jackpot';
   return (
     <motion.button
       type="button"
-      className={`slots-bigwin${isFs ? ' is-fs' : ''}`}
+      className={`slots-bigwin${isFs ? ' is-fs' : ''}${isJp ? ' is-jackpot' : ''}`}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.35 }}
       onClick={onDismiss}
-      aria-label={isFs ? 'Tours gratuits' : 'Gros gain'}
+      aria-label={isJp ? 'Jackpot' : isFs ? 'Tours gratuits' : 'Gros gain'}
     >
       <motion.div
         className="slots-bigwin-card"
@@ -247,7 +269,11 @@ function BigWinOverlay({
         transition={{ type: 'spring', stiffness: 260, damping: 18 }}
       >
         <span className="slots-bigwin-kicker">
-          {isFs ? 'Ruée dorée' : 'Grosse prise'}
+          {isJp
+            ? `Jackpot ${jackpotLabel(celebrate.tier)}`
+            : isFs
+              ? 'Ruée dorée'
+              : 'Grosse prise'}
         </span>
         <strong className="slots-bigwin-amount">
           {celebrate.amount > 0 ? (
@@ -259,13 +285,34 @@ function BigWinOverlay({
           )}
         </strong>
         <span className="slots-bigwin-meta">
-          {isFs
-            ? `${celebrate.spins} tours gratuits${celebrate.amount > 0 ? ` · ${fmtMult(celebrate.mult)}` : ''}`
-            : fmtMult(celebrate.mult)}
+          {isJp
+            ? 'Pot progressif · crédit partagé'
+            : isFs
+              ? `${celebrate.spins} tours gratuits${celebrate.amount > 0 ? ` · ${fmtMult(celebrate.mult)}` : ''}`
+              : fmtMult(celebrate.mult)}
         </span>
         <span className="slots-bigwin-hint">Toucher pour continuer</span>
       </motion.div>
     </motion.button>
+  );
+}
+
+function JackpotBanner({ pots }: { pots: JackpotView }) {
+  return (
+    <div className="slots-jp-banner" role="status" aria-label="Jackpots Stampede">
+      {(
+        [
+          ['mini', pots.miniCents],
+          ['major', pots.majorCents],
+          ['grand', pots.grandCents],
+        ] as const
+      ).map(([tier, cents]) => (
+        <div key={tier} className={`slots-jp-pot is-${tier}`}>
+          <span className="slots-jp-tier">{jackpotLabel(tier)}</span>
+          <strong className="slots-jp-amt">{fmt(cents)}</strong>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -348,6 +395,7 @@ export function SlotScreen() {
   const [stopOnFeature, setStopOnFeature] = useState(true);
   const [stopOnBigWin, setStopOnBigWin] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [jackpots, setJackpots] = useState<JackpotView>(() => readJackpotView());
 
   const roundRef = useRef(round);
   const bonusRef = useRef(bonus);
@@ -389,6 +437,16 @@ export function SlotScreen() {
   useEffect(() => {
     const el = document.querySelector('.slots-screen');
     if (el instanceof HTMLElement) el.scrollTop = 0;
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    void refreshJackpotView().then((v) => {
+      if (alive) setJackpots(v);
+    });
+    return () => {
+      alive = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -479,106 +537,137 @@ export function SlotScreen() {
     );
 
     later((stops[SLOT_REELS - 1] ?? FIRST_STOP_MS) + 160, () => {
-      const settled = settleSpin(roundRef.current);
-      setRoundBoth(settled);
-      setShown(settled);
-      spinningRef.current = false;
-      setSpinning(false);
+      void (async () => {
+        const settled = settleSpin(roundRef.current);
+        setRoundBoth(settled);
+        setShown(settled);
+        spinningRef.current = false;
+        setSpinning(false);
 
-      const isFree = settled.mode === 'free';
-      if (isFree) {
-        if (settled.payout > 0) creditRef.current(settled.payout, false);
-      } else {
-        // Compte la partie même à 0 : un spin payé = une manche.
-        creditRef.current(settled.payout);
-      }
+        const isFree = settled.mode === 'free';
+        if (isFree) {
+          if (settled.payout > 0) creditRef.current(settled.payout, false);
+        } else {
+          // Compte la partie même à 0 : un spin payé = une manche.
+          creditRef.current(settled.payout);
+        }
 
-      const mult = settled.eval?.totalMult ?? 0;
-      const isBig = settled.payout > 0 && mult >= BIG_WIN_MULT;
-      const fsGrant = !isFree ? settled.freeSpinsGranted : 0;
-      let hold = SETTLE_HOLD_MS;
+        let jpAmount = 0;
+        let jpTier: JackpotTier | null = null;
+        if (!isFree) {
+          jpTier = settled.jackpotTier;
+          if (jpTier) {
+            try {
+              const hit = await claimJackpot(jpTier, settled.bet);
+              jpAmount = hit.amountCents;
+              setJackpots((prev) => ({
+                ...prev,
+                ...hit.pots,
+              }));
+              void refreshJackpotView().then(setJackpots);
+            } catch {
+              /* claim déjà fallback local dans le service */
+            }
+          } else {
+            void contributeJackpot(settled.bet).then((v) => {
+              setJackpots((prev) => ({ ...prev, ...v, hits: prev.hits }));
+            });
+          }
+        }
 
-      if (settled.payout > 0 && settled.eval) {
-        notifyDefi({ type: 'slots_win', mult });
-        if (isBig) sounds.play('bigwin');
-        else sounds.play('win');
-      } else if (fsGrant > 0) {
-        sounds.play('blackjack');
-      }
+        const mult = settled.eval?.totalMult ?? 0;
+        const isBig = settled.payout > 0 && mult >= BIG_WIN_MULT;
+        const fsGrant = !isFree ? settled.freeSpinsGranted : 0;
+        let hold = SETTLE_HOLD_MS;
 
-      if (isBig && fsGrant > 0) {
-        // Gros gain qui déclenche aussi la ruée.
-        setBigWin({ kind: 'freespins', amount: settled.payout, mult, spins: fsGrant });
-        hold = BIG_WIN_HOLD_MS;
-      } else if (isBig) {
-        setBigWin({ kind: 'win', amount: settled.payout, mult });
-        hold = BIG_WIN_HOLD_MS;
-      } else if (fsGrant > 0) {
-        setBigWin({
-          kind: 'freespins',
-          amount: settled.payout,
-          mult,
-          spins: fsGrant,
-        });
-        hold = FS_TRIGGER_HOLD_MS;
-      }
+        if (jpAmount > 0 && jpTier) {
+          sounds.play('bigwin');
+          setBigWin({ kind: 'jackpot', amount: jpAmount, tier: jpTier });
+          hold = JACKPOT_HOLD_MS;
+          if (autoLeftRef.current !== 0) pendingAutoStopRef.current = true;
+        } else if (settled.payout > 0 && settled.eval) {
+          notifyDefi({ type: 'slots_win', mult });
+          if (isBig) sounds.play('bigwin');
+          else sounds.play('win');
+        } else if (fsGrant > 0) {
+          sounds.play('blackjack');
+        }
 
-      if (!isFree && settled.freeSpinsGranted > 0) {
-        setBonusBoth({ total: 0, spins: 0, granted: settled.freeSpinsGranted });
-      } else if (isFree) {
-        const prev = bonusRef.current ?? { total: 0, spins: 0, granted: 0 };
-        setBonusBoth({
-          total: prev.total + settled.payout,
-          spins: prev.spins + 1,
-          granted: prev.granted + settled.freeSpinsGranted,
-        });
-      }
+        if (!(jpAmount > 0 && jpTier)) {
+          if (isBig && fsGrant > 0) {
+            setBigWin({ kind: 'freespins', amount: settled.payout, mult, spins: fsGrant });
+            hold = BIG_WIN_HOLD_MS;
+          } else if (isBig) {
+            setBigWin({ kind: 'win', amount: settled.payout, mult });
+            hold = BIG_WIN_HOLD_MS;
+          } else if (fsGrant > 0) {
+            setBigWin({
+              kind: 'freespins',
+              amount: settled.payout,
+              mult,
+              spins: fsGrant,
+            });
+            hold = FS_TRIGGER_HOLD_MS;
+          }
+        }
 
-      // Conditions d’arrêt auto (évaluées sur un spin de base uniquement).
-      if (!isFree && autoLeftRef.current !== 0) {
-        if (fsGrant > 0 && stopOnFeatureRef.current) pendingAutoStopRef.current = true;
-        if (isBig && stopOnBigWinRef.current) pendingAutoStopRef.current = true;
-      }
+        if (!isFree && settled.freeSpinsGranted > 0) {
+          setBonusBoth({ total: 0, spins: 0, granted: settled.freeSpinsGranted });
+        } else if (isFree) {
+          const prev = bonusRef.current ?? { total: 0, spins: 0, granted: 0 };
+          setBonusBoth({
+            total: prev.total + settled.payout,
+            spins: prev.spins + 1,
+            granted: prev.granted + settled.freeSpinsGranted,
+          });
+        }
 
-      setSettleLocked(true);
-      later(hold, () => {
-        setBigWin(null);
-        setSettleLocked(false);
-        const done = resetAfterSettle(roundRef.current);
-        setRoundBoth(done);
-        if (done.freeSpinsLeft > 0) {
+        // Conditions d’arrêt auto (évaluées sur un spin de base uniquement).
+        if (!isFree && autoLeftRef.current !== 0) {
+          if (fsGrant > 0 && stopOnFeatureRef.current) pendingAutoStopRef.current = true;
+          if (isBig && stopOnBigWinRef.current) pendingAutoStopRef.current = true;
+        }
+
+        setSettleLocked(true);
+        later(hold, () => {
+          setBigWin(null);
+          setSettleLocked(false);
+          const done = resetAfterSettle(roundRef.current);
+          setRoundBoth(done);
+          if (done.freeSpinsLeft > 0) {
+            later(FREE_SPIN_GAP_MS, () => spin());
+            return;
+          }
+          const finished = bonusRef.current;
+          if (finished && finished.spins > 0) {
+            setBonusSummary({ total: finished.total, spins: finished.spins });
+            later(6_000, () => setBonusSummary(null));
+          }
+          setBonusBoth(null);
+
+          // Chaîne auto-spin (hors free spins).
+          if (pendingAutoStopRef.current) {
+            pendingAutoStopRef.current = false;
+            autoLeftRef.current = 0;
+            setAutoLeft(0);
+            return;
+          }
+          let left = autoLeftRef.current;
+          if (left === 0) return;
+          if (left > 0) {
+            left -= 1;
+            autoLeftRef.current = left;
+            setAutoLeft(left);
+          }
+          if (left === 0) return;
+          if (useGame.getState().balance < MIN_BET) {
+            autoLeftRef.current = 0;
+            setAutoLeft(0);
+            return;
+          }
           later(FREE_SPIN_GAP_MS, () => spin());
-          return;
-        }
-        const finished = bonusRef.current;
-        if (finished && finished.spins > 0) {
-          setBonusSummary({ total: finished.total, spins: finished.spins });
-          later(6_000, () => setBonusSummary(null));
-        }
-        setBonusBoth(null);
-
-        // Chaîne auto-spin (hors free spins).
-        if (pendingAutoStopRef.current) {
-          pendingAutoStopRef.current = false;
-          autoLeftRef.current = 0;
-          setAutoLeft(0);
-          return;
-        }
-        let left = autoLeftRef.current;
-        if (left === 0) return;
-        if (left > 0) {
-          left -= 1;
-          autoLeftRef.current = left;
-          setAutoLeft(left);
-        }
-        if (left === 0) return;
-        if (useGame.getState().balance < MIN_BET) {
-          autoLeftRef.current = 0;
-          setAutoLeft(0);
-          return;
-        }
-        later(FREE_SPIN_GAP_MS, () => spin());
-      });
+        });
+      })();
     });
   }, [bet, clearTimers, later, setBonusBoth, setRoundBoth, slotsDebit]);
 
@@ -601,6 +690,9 @@ export function SlotScreen() {
     const cells = winningCells(shown.grid, wins, shown.herdHeads, shown.mode === 'free');
     if ((shown.eval?.scatterCount ?? 0) >= 3) {
       for (const c of scatterCells(shown.grid)) cells.add(c);
+    }
+    if (shown.jackpotTier) {
+      for (const c of starCells(shown.grid)) cells.add(c);
     }
     return cells;
   }, [shown, wins]);
@@ -693,6 +785,8 @@ export function SlotScreen() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <JackpotBanner pots={jackpots} />
 
       <div className="slots-layout">
         <main className="slots-stage">
@@ -951,7 +1045,28 @@ export function SlotScreen() {
                 </span>
               </div>
             )}
+            {shown?.jackpotTier && (
+              <div>
+                <span className="k">Jackpot</span>
+                <span className="v win">{jackpotLabel(shown.jackpotTier)}</span>
+              </div>
+            )}
           </div>
+
+          {jackpots.hits.length > 0 && (
+            <div className="slots-jp-hits" aria-label="Derniers jackpots du cercle">
+              <span className="slots-label">Jackpots cercle</span>
+              <ul>
+                {jackpots.hits.slice(0, 4).map((h) => (
+                  <li key={h.id}>
+                    <span>{jackpotLabel(h.tier)}</span>
+                    <span>{h.playerName}</span>
+                    <strong>{fmt(h.amountCents)}</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="slots-actions">
             <button
@@ -972,7 +1087,7 @@ export function SlotScreen() {
           </div>
 
           <p className="slots-footnote">
-            5 rouleaux · 4 rangs · 1024 ways · RTP ~96–97&nbsp;% · jetons virtuels uniquement
+            5×4 · 1024 ways · jackpots Mini/Major/Grand · RTP ~96–97&nbsp;% · jetons virtuels
           </p>
         </aside>
       </div>

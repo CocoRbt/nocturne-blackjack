@@ -45,7 +45,12 @@ pulse des cases gagnantes, balayage lumineux du bandeau de tours gratuits.
 - **Auto-spin** 10 / 25 / 50 / 100 / ∞ + stop FS / gros gain
 - Règles détaillées type Stake : paytable avec logos (`src/slots/glyphs.tsx`)
 
+## Jackpots progressifs
+- Pots **Mini / Major / Grand** par cercle (Supabase) ou localStorage en solo
+- Seeds : 50 / 250 / 1 000 crédits — contribution **1 %** des mises de base
+- Trigger : 3 / 4 / 5 **Étoiles** sur la grille (base uniquement, plus haut tier)
+- Migration : `supabase/migrations/20260812220000_circle_jackpots.sql`
+
 ## Hors scope v1
-- Jackpot progressif
 - Samples audio western dédiés (réutilise win/click/bigwin)
 - Provably fair UI
