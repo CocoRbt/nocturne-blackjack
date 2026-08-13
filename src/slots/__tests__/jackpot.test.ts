@@ -8,12 +8,12 @@ import {
 import { evaluateSpin, jackpotTierFromStars, type SlotSymbol } from '../math';
 
 describe('stampede jackpot', () => {
-  it('seeds = 50 / 250 / 1000 crédits', () => {
+  it('seeds = 1000 / 5000 / 15000 crédits', () => {
     const e = emptyJackpots();
-    expect(e.miniCents).toBe(5_000);
-    expect(e.majorCents).toBe(25_000);
-    expect(e.grandCents).toBe(100_000);
-    expect(JACKPOT_SEEDS_CENTS.mini).toBe(5_000);
+    expect(e.miniCents).toBe(100_000);
+    expect(e.majorCents).toBe(500_000);
+    expect(e.grandCents).toBe(1_500_000);
+    expect(JACKPOT_SEEDS_CENTS.mini).toBe(100_000);
   });
 
   it('contribution 1 % découpée (alignée SQL)', () => {

@@ -3,9 +3,9 @@
 
 create table if not exists public.circle_jackpots (
   circle_id uuid primary key references public.circles (id) on delete cascade,
-  mini integer not null default 5000 check (mini >= 0),
-  major integer not null default 25000 check (major >= 0),
-  grand integer not null default 100000 check (grand >= 0),
+  mini integer not null default 100000 check (mini >= 0),
+  major integer not null default 500000 check (major >= 0),
+  grand integer not null default 1500000 check (grand >= 0),
   updated_at timestamptz not null default now()
 );
 
@@ -39,7 +39,7 @@ declare
   v_row public.circle_jackpots%rowtype;
 begin
   insert into public.circle_jackpots (circle_id, mini, major, grand)
-  values (p_circle, 5000, 25000, 100000)
+  values (p_circle, 100000, 500000, 1500000)
   on conflict (circle_id) do nothing;
 
   select * into v_row from public.circle_jackpots where circle_id = p_circle for update;
@@ -205,13 +205,13 @@ begin
 
   if v_tier = 'mini' then
     v_amount := v_row.mini;
-    v_seed := 5000;
+    v_seed := 100000;
   elsif v_tier = 'major' then
     v_amount := v_row.major;
-    v_seed := 25000;
+    v_seed := 500000;
   else
     v_amount := v_row.grand;
-    v_seed := 100000;
+    v_seed := 1500000;
   end if;
 
   if v_amount <= 0 then
