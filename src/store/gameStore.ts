@@ -33,10 +33,10 @@ import {
   type Stats,
 } from './persistence';
 import { fmt } from '../lib/format';
+import { clearScoreDirty, markScoreDirty } from '../cercle/scoreSync';
 import { creditWithoutGame, settleGamePeak } from './peakMeta';
 import { depositToVault, vaultableAmount, withdrawFromVault } from './vault';
 import { mergeIncomingVault } from './vaultMerge';
-import { markScoreDirty } from '../cercle/scoreSync';
 import { TIMING, type GameSpeed } from './timing';
 
 export type BetSpot = 'main' | SideBetId;
@@ -191,17 +191,20 @@ interface GameState {
   setVaultFromServer(vaultCents: number, notice?: string): void;
   refill(): void;
   /** Hydrate le portefeuille local depuis le cloud (connexion compte). */
-  hydrateFromCloud(payload: {
-    balance: number;
-    peakBalance: number;
-    vault?: number;
-    gamesPlayed?: number;
-    gamesBeforePeak?: number;
-    handsPlayed?: number;
-    blackjacks?: number;
-    bestStreak?: number;
-    highestTable?: string;
-  }): void;
+  hydrateFromCloud(
+    payload: {
+      balance: number;
+      peakBalance: number;
+      vault?: number;
+      gamesPlayed?: number;
+      gamesBeforePeak?: number;
+      handsPlayed?: number;
+      blackjacks?: number;
+      bestStreak?: number;
+      highestTable?: string;
+    },
+    opts?: { force?: boolean; silent?: boolean },
+  ): void;
   resetAll(): void;
   dismissNotice(): void;
   /** DEV/QA : force une manche multi-places en phase assurance. */
@@ -1452,12 +1455,13 @@ export const useGame = create<GameState>((set, get) => {
       markScoreDirty();
     },
 
-    hydrateFromCloud(payload) {
+    hydrateFromCloud(payload, opts) {
       const s = get();
-      if (s.round || s.salonStakeOpen) {
+      if (!opts?.force && (s.round || s.salonStakeOpen)) {
         set({ notice: 'Terminez la manche avant de synchroniser le compte.' });
         return;
       }
+      clearScoreDirty();
       const balance = Math.max(0, Math.floor(payload.balance));
       const peakBalance = Math.max(balance, Math.floor(payload.peakBalance));
       const vault =
@@ -1477,7 +1481,7 @@ export const useGame = create<GameState>((set, get) => {
           longestWinStreak: payload.bestStreak ?? s.stats.longestWinStreak,
         },
         tableId: payload.highestTable ?? s.tableId,
-        notice: 'Compte connecté — crédit synchronisé.',
+        notice: opts?.silent ? s.notice : 'Compte connecté — crédit synchronisé.',
       });
       persist();
     },

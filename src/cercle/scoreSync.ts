@@ -6,6 +6,8 @@
 const EVENT = 'nocturne-score-dirty';
 
 let dirty = false;
+/** Invalide les push en vol (login compte / hydrate cloud). */
+let syncEpoch = 0;
 
 export function markScoreDirty(): void {
   dirty = true;
@@ -22,8 +24,22 @@ export function consumeScoreDirty(): boolean {
   return was;
 }
 
+/** Annule un push pending — le local n’est plus la source de vérité. */
+export function clearScoreDirty(): void {
+  dirty = false;
+}
+
 export function isScoreDirty(): boolean {
   return dirty;
+}
+
+export function bumpSyncEpoch(): number {
+  syncEpoch += 1;
+  return syncEpoch;
+}
+
+export function getSyncEpoch(): number {
+  return syncEpoch;
 }
 
 export function onScoreDirty(cb: () => void): () => void {

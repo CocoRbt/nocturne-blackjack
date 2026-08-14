@@ -14,6 +14,23 @@ import {
   type LeaderboardRow,
   type Leaderboards,
 } from './circleApi';
+import { getSyncEpoch } from './scoreSync';
+
+const CIRCLE_CHANGED = 'nocturne-circle-changed';
+
+export function notifyCircleChanged(): void {
+  try {
+    window.dispatchEvent(new Event(CIRCLE_CHANGED));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function onCircleChanged(cb: () => void): () => void {
+  const handler = () => cb();
+  window.addEventListener(CIRCLE_CHANGED, handler);
+  return () => window.removeEventListener(CIRCLE_CHANGED, handler);
+}
 
 export interface CircleMemberScore {
   nickname: string;
@@ -235,6 +252,7 @@ export async function restoreCircleFromCloud(
   };
   let state = upsertSelfScore(base, { ...seed, nickname: score.nickname });
   saveCircle(state);
+  notifyCircleChanged();
   try {
     const refreshed = await refreshLeaderboards(state);
     return refreshed.state;
@@ -244,14 +262,17 @@ export async function restoreCircleFromCloud(
 }
 
 export async function pushScore(state: LocalCircleState, seed: Omit<CircleMemberScore, 'nickname' | 'updatedAt'>): Promise<LocalCircleState> {
+  const epoch = getSyncEpoch();
   let vault = seed.vault;
   if (state.cloud && isSupabaseConfigured()) {
     vault = await pullIncomingVault(seed.vault, seed.balance);
   }
+  if (epoch !== getSyncEpoch()) return state;
   const mergedSeed = { ...seed, vault };
   const local = upsertSelfScore(state, { ...mergedSeed, nickname: state.nickname });
   if (state.cloud && isSupabaseConfigured()) {
     try {
+      if (epoch !== getSyncEpoch()) return state;
       await syncScoreCloud({
         balance: mergedSeed.balance,
         peakBalance: mergedSeed.peakBalance,
@@ -263,6 +284,7 @@ export async function pushScore(state: LocalCircleState, seed: Omit<CircleMember
         gamesPlayed: mergedSeed.gamesPlayed,
         vault: mergedSeed.vault,
       });
+      if (epoch !== getSyncEpoch()) return state;
       const boards = await fetchLeaderboards();
       const next = {
         ...local,

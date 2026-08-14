@@ -46,7 +46,7 @@ Sans allowlist, Supabase retombe sur Site URL → localhost cassé.
 - **Créer** : laisser le code vide → génère `NOC-XXXX`.
 - **Rejoindre** : coller le code **exact** d’un pote. Un code inexistant renvoie une erreur (ne crée plus un 2ᵉ cercle par typo).
 - **Quitter** : détache du cercle (`leave_circle` soft) — **les scores sont conservés**. Rejoindre le même code + pseudo les ramène.
-- Sans compte email : téléphone et PC = **2 joueurs séparés**. Avec compte : même uid → même crédit / cercle après « Se connecter ».
+- Sans compte email : téléphone et PC = **2 joueurs séparés**. Avec compte : même uid → même crédit / cercle après « Se connecter » (le cloud écrase le localStorage de l’appareil).
 
 ## Nettoyer un profil fantôme (ex. test « Minuit »)
 Si quelqu’un a quitté **avant** le fix `leave_circle`, son pseudo peut rester dans le classement.

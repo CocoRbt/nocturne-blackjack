@@ -1,5 +1,4 @@
-import { motion } from 'framer-motion';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   allLobbyTables,
   canSitAtTable,
@@ -18,6 +17,7 @@ import { AppMenu } from './AppMenu';
 import { useCircleKeepalive } from './CirclePanel';
 import { useDefiSync } from './DailyChallenges';
 import { exitCircle } from '../cercle/circleStore';
+import { pullAccountWallet } from '../cercle/accountHydrate';
 
 type LobbyView = 'hub' | 'tables';
 
@@ -44,6 +44,10 @@ export function Lobby() {
 
   useCircleKeepalive();
   useDefiSync();
+
+  useEffect(() => {
+    void pullAccountWallet().catch(() => undefined);
+  }, []);
 
   const tables = useMemo(() => allLobbyTables(privateLimits), [privateLimits]);
   const broke = balance < 1_00;
