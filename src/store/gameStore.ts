@@ -3,7 +3,9 @@ import { sounds } from '../audio/sounds';
 import { handValue, isNaturalBlackjack } from '../engine/hand';
 import {
   canSitAtTable,
+  defaultPrivateLimits,
   getTable,
+  migratePrivateLimits,
   PRIVATE_TABLE_ID,
   setPrivateLimits as setEnginePrivateLimits,
   type PrivateLimits,
@@ -321,7 +323,9 @@ const initialBalance = saved?.balance ?? STARTING_BALANCE;
 const initialPeak = saved?.peakBalance ?? Math.max(initialBalance, STARTING_BALANCE);
 const initialGamesPlayed = saved?.gamesPlayed ?? saved?.stats.rounds ?? 0;
 const initialGamesBeforePeak = saved?.gamesBeforePeak ?? 0;
-const initialPrivate = saved?.privateLimits ?? { minBet: 250_00, maxBet: 25_000_00 };
+const initialPrivate = migratePrivateLimits(
+  saved?.privateLimits ?? defaultPrivateLimits(),
+);
 const initialSeatCapacity = orientationSeatCapacity();
 setEnginePrivateLimits(initialPrivate);
 
@@ -1489,7 +1493,7 @@ export const useGame = create<GameState>((set, get) => {
     resetAll() {
       presentToken++;
       shoe = null;
-      const privateLimits = { minBet: 250_00, maxBet: 25_000_00 };
+      const privateLimits = defaultPrivateLimits();
       const seatCapacity = orientationSeatCapacity();
       setEnginePrivateLimits(privateLimits);
       set({

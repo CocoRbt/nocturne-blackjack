@@ -179,12 +179,24 @@ export const TABLES: TableConfig[] = [
 /** Identifiant de la table privée (endgame). */
 export const PRIVATE_TABLE_ID = 'privee';
 
-/** Bornes du salon privé — pas un sur-mesure total dès le lobby. */
+/** Bornes du salon privé — max élevé pour stacks endgame (plus de plafond à 25k). */
 export const PRIVATE_BOUNDS = {
   minBetChoices: [25_00, 50_00, 100_00, 250_00, 500_00, 1_000_00] as const,
-  maxBetChoices: [1_000_00, 2_500_00, 5_000_00, 10_000_00, 25_000_00, 50_000_00, 100_000_00] as const,
+  maxBetChoices: [
+    1_000_00,
+    2_500_00,
+    5_000_00,
+    10_000_00,
+    25_000_00,
+    50_000_00,
+    100_000_00,
+    250_000_00,
+    500_000_00,
+  ] as const,
   /** Pic requis : plafond Impériale (le joueur a été bridé). */
   unlockPeak: 10_000_00,
+  /** Ancien défaut — on le remonte à la sync pour ne plus bloquer à 25k. */
+  legacyDefaultMaxBet: 25_000_00,
 };
 
 export interface PrivateLimits {
@@ -192,8 +204,17 @@ export interface PrivateLimits {
   maxBet: number;
 }
 
+/** Défaut : min 250 · max 500k (plafond sync cloud) — plus de mur à 25k. */
 export function defaultPrivateLimits(): PrivateLimits {
-  return { minBet: 250_00, maxBet: 25_000_00 };
+  return { minBet: 250_00, maxBet: 500_000_00 };
+}
+
+/** Remonte l’ancien plafond 25k sauvegardé. */
+export function migratePrivateLimits(limits: PrivateLimits): PrivateLimits {
+  if (limits.maxBet === PRIVATE_BOUNDS.legacyDefaultMaxBet) {
+    return { ...limits, maxBet: defaultPrivateLimits().maxBet };
+  }
+  return limits;
 }
 
 /** Construit la config runtime de la Table Privée. */

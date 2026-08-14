@@ -9,6 +9,10 @@ export const ALL_CHIP_DENOMS = [
   5_000_00,
   10_000_00,
   25_000_00,
+  50_000_00,
+  100_000_00,
+  250_000_00,
+  500_000_00,
 ] as const;
 
 export type ChipDenom = (typeof ALL_CHIP_DENOMS)[number];

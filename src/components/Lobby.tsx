@@ -350,7 +350,7 @@ export function Lobby() {
         <div className="private-modal" role="dialog" aria-modal="true">
           <div className="private-panel">
             <h3>Table Privée</h3>
-            <p>Choisissez vos limites — bornées, pour garder un vrai salon VIP.</p>
+            <p>Choisissez vos limites — le plafond 25k est levé (jusqu’à 500k).</p>
             <label>
               Mise minimale
               <select
@@ -385,7 +385,7 @@ export function Lobby() {
                   .filter((v) => v >= draftLimits.minBet * 10)
                   .map((v) => (
                     <option key={v} value={v}>
-                      {fmt(v)}
+                      {v >= 500_000_00 ? `${fmt(v)} (sans plafond pratique)` : fmt(v)}
                     </option>
                   ))}
               </select>
