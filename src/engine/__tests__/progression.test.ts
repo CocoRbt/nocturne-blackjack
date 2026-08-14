@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   buildPrivateTable,
   canSitAtTable,
+  defaultPrivateLimits,
   isTableUnlocked,
+  migratePrivateLimits,
   PRIVATE_BOUNDS,
   PRIVATE_TABLE_ID,
   TABLES,
@@ -29,11 +31,18 @@ describe('progression des tables', () => {
   });
 
   it('Table Privée construit des limites cohérentes', () => {
-    const t = buildPrivateTable({ minBet: 500_00, maxBet: 25_000_00 });
+    const t = buildPrivateTable({ minBet: 500_00, maxBet: 100_000_00 });
     expect(t.id).toBe(PRIVATE_TABLE_ID);
     expect(t.rules.minBet).toBe(500_00);
-    expect(t.rules.maxBet).toBe(25_000_00);
+    expect(t.rules.maxBet).toBe(100_000_00);
     expect(t.rules.sideBetMax).toBeGreaterThanOrEqual(t.rules.sideBetMin);
+  });
+
+  it('migre l’ancien plafond 25k', () => {
+    expect(migratePrivateLimits({ minBet: 250_00, maxBet: 25_000_00 }).maxBet).toBe(
+      defaultPrivateLimits().maxBet,
+    );
+    expect(migratePrivateLimits({ minBet: 250_00, maxBet: 50_000_00 }).maxBet).toBe(50_000_00);
   });
 
   it('les trois tables thématiques exposent unlockPeak', () => {

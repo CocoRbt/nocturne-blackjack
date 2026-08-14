@@ -2222,6 +2222,22 @@ button:disabled {
   --chip-c1: #0f1a14;
   --chip-c2: #f0d9a0;
 }
+.chip[data-d='5000000'] {
+  --chip-c1: #1a0f28;
+  --chip-c2: #e8d4a8;
+}
+.chip[data-d='10000000'] {
+  --chip-c1: #102018;
+  --chip-c2: #f2e0b0;
+}
+.chip[data-d='25000000'] {
+  --chip-c1: #2a1208;
+  --chip-c2: #f6d89a;
+}
+.chip[data-d='50000000'] {
+  --chip-c1: #080c14;
+  --chip-c2: #ffe7b0;
+}
 
 .chip-stack {
   position: relative;
