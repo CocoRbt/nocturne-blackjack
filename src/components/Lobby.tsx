@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import {
   allLobbyTables,

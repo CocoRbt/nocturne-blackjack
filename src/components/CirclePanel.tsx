@@ -36,21 +36,6 @@ function parseCreditsInput(raw: string): number | null {
   return Math.round(n * 100);
 }
 
-function currentScoreSeed() {
-  const s = useGame.getState();
-  return {
-    balance: s.balance,
-    peakBalance: s.peakBalance,
-    vault: s.vault,
-    handsPlayed: s.stats.handsPlayed,
-    blackjacks: s.stats.blackjacks,
-    bestStreak: s.stats.longestWinStreak,
-    highestTable: s.tableId,
-    gamesBeforePeak: s.gamesBeforePeak,
-    gamesPlayed: s.gamesPlayed,
-  };
-}
-
 /** Pousse le score cloud uniquement après une action de jeu (dirty). */
 export function useCircleKeepalive() {
   useEffect(() => {
