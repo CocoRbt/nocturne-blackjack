@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   boardNumbers,
   canRoll,
+  crapsStakeOpen,
   createCrapsRound,
   cryptoUnit,
   currentMult,
@@ -159,6 +160,7 @@ export function CrapsScreen() {
   const leaveCraps = useGame((s) => s.leaveCraps);
   const crapsDebit = useGame((s) => s.crapsDebit);
   const crapsCredit = useGame((s) => s.crapsCredit);
+  const setSalonStakeOpen = useGame((s) => s.setSalonStakeOpen);
   const notice = useGame((s) => s.notice);
   const dismissNotice = useGame((s) => s.dismissNotice);
 
@@ -171,6 +173,10 @@ export function CrapsScreen() {
   const [flash, setFlash] = useState<'win' | 'lose' | 'push' | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
   const timers = useRef<number[]>([]);
+  const roundRef = useRef(round);
+  roundRef.current = round;
+  const rollingRef = useRef(rolling);
+  rollingRef.current = rolling;
 
   useEffect(() => {
     return () => {
@@ -183,12 +189,18 @@ export function CrapsScreen() {
     if (el instanceof HTMLElement) el.scrollTop = 0;
   }, []);
 
+  const stakeOpen = crapsStakeOpen(round) || rolling;
+  useEffect(() => {
+    setSalonStakeOpen(stakeOpen);
+    return () => setSalonStakeOpen(false);
+  }, [stakeOpen, setSalonStakeOpen]);
+
   const clearTimers = () => {
     for (const t of timers.current) window.clearTimeout(t);
     timers.current = [];
   };
 
-  const busy = rolling || round.phase === 'point';
+  const busy = rolling || round.phase === 'point' || crapsStakeOpen(round);
   const canBet = !rolling && round.phase === 'come_out';
   const rollReady = canRoll(round) && !rolling;
   const coach = coachCopy(round);
@@ -213,21 +225,25 @@ export function CrapsScreen() {
     );
 
   const onAddChip = () => {
-    if (!canBet) return;
-    const amount = Math.min(chip, balance);
+    if (rollingRef.current) return;
+    const current = roundRef.current;
+    if (current.phase !== 'come_out') return;
+    const amount = Math.min(chip, useGame.getState().balance);
     if (amount < 1_00) return;
-    const result = placeBet(round, amount);
+    const result = placeBet(current, amount);
     if (!result.ok) return;
     if (!crapsDebit(result.debitCents)) return;
+    roundRef.current = result.round;
     setRound(result.round);
     setFlash(null);
   };
 
   const onRoll = () => {
-    if (!rollReady) return;
+    if (!canRoll(roundRef.current) || rollingRef.current) return;
     clearTimers();
     const final = rollDice(cryptoUnit);
-    const snapshot = round;
+    const snapshot = roundRef.current;
+    rollingRef.current = true;
     setRolling(true);
     setFlash(null);
     setShowTotal(false);
@@ -248,6 +264,7 @@ export function CrapsScreen() {
         setShowTotal(true);
         const res = resolveRoll(snapshot, final);
         if (!res.ok) {
+          rollingRef.current = false;
           setRolling(false);
           return;
         }
@@ -266,6 +283,7 @@ export function CrapsScreen() {
             else if (res.creditCents > 0) crapsCredit(res.creditCents, false);
 
             setRound(res.round);
+            roundRef.current = res.round;
             if (kinds.some((k) => k === 'come_out_win' || k === 'point_win')) {
               notifyDefi({ type: 'craps_pass_win' });
               setFlash('win');
@@ -274,6 +292,7 @@ export function CrapsScreen() {
             } else if (kinds.some((k) => k === 'come_out_lose' || k === 'point_lose')) {
               setFlash('lose');
             }
+            rollingRef.current = false;
             setRolling(false);
           }, SETTLE_DELAY_MS),
         );
@@ -288,10 +307,14 @@ export function CrapsScreen() {
         title="Craps"
         eyebrow="Salon des jeux"
         onBack={() => {
-          if (!busy || round.bet === 0) leaveCraps();
+          if (!busy) leaveCraps();
         }}
-        backDisabled={busy && round.bet > 0}
-        backTitle={busy && round.bet > 0 ? 'Finis la manche d’abord' : 'Retour Lobby'}
+        backDisabled={busy}
+        backTitle={busy ? 'Finis la manche d’abord' : 'Retour Lobby'}
+        navLocked={busy}
+        navLockedReason="Finis la manche d’abord"
+        refillLocked={busy}
+        refillLockedReason="Attendez la fin de la manche avant de recharger."
         onRules={() => setRulesOpen(true)}
         rulesLabel="Comment jouer"
       />

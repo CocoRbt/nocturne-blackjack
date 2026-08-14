@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   createCrapsRound,
+  crapsStakeOpen,
   placeBet,
   resolveRoll,
   type DiceRoll,
@@ -131,5 +132,16 @@ describe('phase cible (×4)', () => {
     const r = withPoint(100, 6);
     const p = placeBet(r, 50);
     expect(p.ok).toBe(false);
+  });
+});
+
+describe('anti all-in + recharge', () => {
+  it('crapsStakeOpen dès qu’un jeton est posé', () => {
+    expect(crapsStakeOpen(createCrapsRound())).toBe(false);
+    expect(crapsStakeOpen(withBet(100))).toBe(true);
+    const afterWin = resolveRoll(withBet(100), roll(3, 4));
+    expect(afterWin.ok).toBe(true);
+    if (!afterWin.ok) return;
+    expect(crapsStakeOpen(afterWin.round)).toBe(false);
   });
 });
