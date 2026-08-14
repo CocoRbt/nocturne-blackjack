@@ -19,7 +19,6 @@ import { RulesGuide } from './RulesGuide';
 
 const BET_PRESETS = [1_00, 5_00, 25_00, 100_00, 500_00] as const;
 const HISTORY_MAX = 18;
-const MAX_LIVE_BALLS = 24;
 /**
  * Tempo IRL : ~300 ms par rangée de picots.
  * Le dernier segment (picot → case) est plus court — petit saut, pas une chute.
@@ -342,7 +341,7 @@ export function PlinkoScreen() {
   const busy = balls.length > 0;
   const canConfigure = !flying;
   const stakeReady = Math.min(bet, balance);
-  const canDrop = stakeReady >= 1_00 && liveCount < MAX_LIVE_BALLS;
+  const canDrop = stakeReady >= 1_00;
 
   useEffect(() => {
     ballsRef.current = balls;
@@ -476,7 +475,6 @@ export function PlinkoScreen() {
   const onDrop = () => {
     const stake = Math.min(bet, useGame.getState().balance);
     if (stake < 1_00) return;
-    if (ballsRef.current.filter((b) => !b.landed).length >= MAX_LIVE_BALLS) return;
     if (!plinkoDebit(stake)) return;
 
     const path = rollPath(rows);
@@ -667,9 +665,7 @@ export function PlinkoScreen() {
             {liveCount > 0 && (
               <div>
                 <span className="k">En vol</span>
-                <span className="v">
-                  {liveCount}/{MAX_LIVE_BALLS}
-                </span>
+                <span className="v">{liveCount}</span>
               </div>
             )}
           </div>
@@ -684,7 +680,7 @@ export function PlinkoScreen() {
             >
               Drop · {fmt(stakeReady)}
             </button>
-            <p className="plinko-cta-hint">Spam Drop — jusqu’à {MAX_LIVE_BALLS} billes en vol</p>
+            <p className="plinko-cta-hint">Spam Drop — autant de billes que vous voulez</p>
           </div>
           <p className="plinko-footnote">
             Distribution binomiale · RTP ~99&nbsp;% · jetons virtuels

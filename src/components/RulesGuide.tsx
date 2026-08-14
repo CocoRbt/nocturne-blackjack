@@ -389,7 +389,7 @@ function PlinkoRules() {
           <li>
             <span className="n">2</span>
             <span>
-              Drop — spampez le bouton : plusieurs billes peuvent chuter en même temps (jusqu’à 24).
+              Drop — spampez le bouton : plusieurs billes peuvent chuter en même temps, sans plafond.
             </span>
           </li>
           <li>

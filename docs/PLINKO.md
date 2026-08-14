@@ -26,7 +26,7 @@
 3. RTP cible **99 %** (aligné Mines/Crash), vérifié par tests EV.
 4. Une mise → un drop → un payout (pas de side bets).
 5. Animation : chemin réel (bounces), pas un résultat maquillé.
-6. **Multi-balles** : spam Drop jusqu’à 24 billes en vol (meilleure sensation que le 1×1 Stake pur).
+6. **Multi-balles** : spam Drop sans plafond de billes en vol (meilleure sensation que le 1×1 Stake pur).
 7. UI Stake-like : pyramide espacée, buckets rouge→vert, bille rose, labels compacts.
 8. Crédit partagé, GameShell, règles, défis, menu.
 
