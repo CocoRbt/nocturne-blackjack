@@ -12,6 +12,7 @@ import {
   peekIncomingVault,
   pushScore,
   refreshLeaderboards,
+  onCircleChanged,
   type LeaderboardRow,
   type Leaderboards,
   type LocalCircleState,
@@ -35,21 +36,6 @@ function parseCreditsInput(raw: string): number | null {
   return Math.round(n * 100);
 }
 
-function currentScoreSeed() {
-  const s = useGame.getState();
-  return {
-    balance: s.balance,
-    peakBalance: s.peakBalance,
-    vault: s.vault,
-    handsPlayed: s.stats.handsPlayed,
-    blackjacks: s.stats.blackjacks,
-    bestStreak: s.stats.longestWinStreak,
-    highestTable: s.tableId,
-    gamesBeforePeak: s.gamesBeforePeak,
-    gamesPlayed: s.gamesPlayed,
-  };
-}
-
 /** Pousse le score cloud uniquement après une action de jeu (dirty). */
 export function useCircleKeepalive() {
   useEffect(() => {
@@ -61,16 +47,24 @@ export function useCircleKeepalive() {
         const state = loadCircle();
         if (!state?.circleCode) return;
         void (async () => {
-          const seed = currentScoreSeed();
-          const incoming = await peekIncomingVault(seed.vault, seed.balance);
+          const incoming = await peekIncomingVault(
+            useGame.getState().vault,
+            useGame.getState().balance,
+          );
           if (incoming !== useGame.getState().vault) {
             useGame.getState().setVaultFromServer(incoming);
           }
           const g = useGame.getState();
           await pushScore(state, {
-            ...seed,
-            vault: g.vault,
             balance: g.balance,
+            peakBalance: g.peakBalance,
+            vault: g.vault,
+            handsPlayed: g.stats.handsPlayed,
+            blackjacks: g.stats.blackjacks,
+            bestStreak: g.stats.longestWinStreak,
+            highestTable: g.tableId,
+            gamesBeforePeak: g.gamesBeforePeak,
+            gamesPlayed: g.gamesPlayed,
           });
         })().catch(() => undefined);
       }, 450);
@@ -117,6 +111,18 @@ export function CirclePanel() {
   const [vaultInput, setVaultInput] = useState('');
   const [sendTo, setSendTo] = useState('');
   const [sendBusy, setSendBusy] = useState(false);
+
+  useEffect(() => {
+    return onCircleChanged(() => {
+      const next = loadCircle();
+      setCircle(next);
+      if (next) {
+        setNickname(next.nickname);
+        setJoinCode(next.circleCode ?? '');
+        setBoards(leaderboardsFromLocal(next));
+      }
+    });
+  }, []);
 
   const canVault = vaultableAmount(balance);
   const seed = {

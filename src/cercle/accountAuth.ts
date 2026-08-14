@@ -4,6 +4,7 @@
  */
 
 import { fetchMyScore, type MyScore } from './circleApi';
+import { bumpSyncEpoch, clearScoreDirty } from './scoreSync';
 import { getSupabase, isSupabaseConfigured } from './supabaseClient';
 
 const ACCOUNT_KEY = 'nocturne-account-email';
@@ -109,7 +110,7 @@ export async function registerAccount(email: string, password: string): Promise<
 }
 
 /** Connexion sur un autre appareil — remplace la session locale. */
-export async function loginAccount(email: string, password: string): Promise<MyScore | null> {
+export async function loginAccount(email: string, password: string): Promise<MyScore> {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase non configuré');
   const e = email.trim().toLowerCase();
@@ -122,10 +123,17 @@ export async function loginAccount(email: string, password: string): Promise<MyS
     throw new Error(error.message || 'Connexion impossible');
   }
   rememberEmail(e);
+  clearScoreDirty();
+  bumpSyncEpoch();
+  const { data: sessionData } = await sb.auth.getSession();
+  if (!sessionData.session) {
+    throw new Error('Session expirée — réessaie dans un instant.');
+  }
   try {
     return await fetchMyScore();
   } catch {
-    return null;
+    await new Promise((r) => setTimeout(r, 250));
+    return await fetchMyScore();
   }
 }
 

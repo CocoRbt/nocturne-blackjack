@@ -7,12 +7,15 @@ import {
   registerAccount,
   savedAccountEmail,
 } from '../cercle/accountAuth';
-import { restoreCircleFromCloud } from '../cercle/circleStore';
-import { useGame } from '../store/gameStore';
+import { applyCloudScore } from '../cercle/accountHydrate';
+import { fmt } from '../lib/format';
+
+function fmtCredits(cents: number | undefined): string {
+  return fmt(Math.max(0, Math.floor(Number(cents) || 0)));
+}
 
 /** Création / connexion compte pour sync crédit PC ↔ téléphone. */
 export function AccountPanel() {
-  const hydrateFromCloud = useGame((s) => s.hydrateFromCloud);
   const [email, setEmail] = useState(() => savedAccountEmail() ?? '');
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<'register' | 'login'>('register');
@@ -54,29 +57,18 @@ export function AccountPanel() {
         await refreshSession();
       } else {
         const score = await loginAccount(email, password);
-        if (score?.found && score.balance != null && score.peak_balance != null) {
-          hydrateFromCloud({
-            balance: score.balance,
-            peakBalance: score.peak_balance,
-            vault: score.vault,
-            gamesPlayed: score.games_played,
-            gamesBeforePeak: score.games_before_peak,
-            handsPlayed: score.hands_played,
-            blackjacks: score.blackjacks,
-            bestStreak: score.best_streak,
-            highestTable: score.highest_table,
-          });
-        }
-        if (score?.in_circle && score.circle_code) {
-          await restoreCircleFromCloud(score);
-          setInfo(`Connecté — cercle ${score.circle_code} restauré.`);
-        } else if (score?.found) {
-          setInfo(
-            'Connecté. Si votre cercle n’apparaît pas, rejoignez-le avec le même code et pseudo.',
-          );
+        const applied = await applyCloudScore(score);
+        if (applied) {
+          if (score.in_circle && score.circle_code) {
+            setInfo(`Connecté — crédit ${fmtCredits(score.balance)} · cercle ${score.circle_code}.`);
+          } else {
+            setInfo(
+              `Connecté — crédit ${fmtCredits(score.balance)} synchronisé. Rejoignez votre cercle si besoin.`,
+            );
+          }
         } else {
           setInfo(
-            'Connecté. Rejoignez votre cercle pour synchroniser le crédit cloud.',
+            'Connecté. Aucun solde cloud pour ce compte — le crédit de cet appareil reste affiché.',
           );
         }
         setPassword('');
