@@ -4,6 +4,7 @@ import {
   crapsStakeOpen,
   placeBet,
   resolveRoll,
+  takeBackBet,
   type DiceRoll,
 } from '../engine';
 import {
@@ -132,6 +133,31 @@ describe('phase cible (×4)', () => {
     const r = withPoint(100, 6);
     const p = placeBet(r, 50);
     expect(p.ok).toBe(false);
+  });
+});
+
+describe('reprendre la mise', () => {
+  it('rend le jeton avant le lancer', () => {
+    const tb = takeBackBet(withBet(500));
+    expect(tb.ok).toBe(true);
+    if (!tb.ok) return;
+    expect(tb.creditCents).toBe(500);
+    expect(tb.round.bet).toBe(0);
+    expect(crapsStakeOpen(tb.round)).toBe(false);
+  });
+
+  it('refuse pendant la cible', () => {
+    const r = resolveRoll(withBet(100), roll(2, 4));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const tb = takeBackBet(r.round);
+    expect(tb.ok).toBe(false);
+    expect(r.round.bet).toBe(100);
+  });
+
+  it('rien à reprendre si table vide', () => {
+    const tb = takeBackBet(createCrapsRound());
+    expect(tb.ok).toBe(false);
   });
 });
 

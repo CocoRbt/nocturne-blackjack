@@ -140,6 +140,32 @@ export function placeBet(round: CrapsRound, amountCents: number): PlaceBetResult
   }
 }
 
+export type TakeBackResult =
+  | { ok: true; round: CrapsRound; creditCents: number }
+  | { ok: false; error: string }
+
+/** Reprend la mise avant le 1er lancer (come-out uniquement). */
+export function takeBackBet(round: CrapsRound): TakeBackResult {
+  if (round.phase === 'point') {
+    return { ok: false, error: 'La cible est lancée — trop tard pour reprendre.' }
+  }
+  if (round.bet <= 0) {
+    return { ok: false, error: 'Rien à reprendre.' }
+  }
+  const creditCents = round.bet
+  return {
+    ok: true,
+    creditCents,
+    round: {
+      ...round,
+      bet: 0,
+      settlements: [],
+      lastNetCents: 0,
+      message: 'Mise reprise. Pose un jeton pour relancer.',
+    },
+  }
+}
+
 function fmtChip(cents: number): string {
   const n = cents / 100
   return Number.isInteger(n) ? String(n) : n.toFixed(2)
