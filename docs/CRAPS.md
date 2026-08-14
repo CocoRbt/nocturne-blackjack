@@ -13,7 +13,7 @@ Règles inspirées du **Street Craps** de *Gamble With Your Friends* (pas le cra
 
 ## Flow
 
-1. **Mise unique** — poser un jeton, puis lancer.
+1. **Mise unique** — poser un jeton, puis lancer. **Reprendre** rend le jeton tant que les dés n’ont pas volé.
 2. **Premier jet (×2)**  
    - 7 ou 11 → win (crédit = mise × 2)  
    - 2, 3 ou 12 → lose  

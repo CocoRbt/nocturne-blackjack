@@ -681,7 +681,7 @@ function CrapsRules() {
           <li>
             <span className="n">1</span>
             <span>
-              <strong>Mise</strong> — pose un jeton, puis lance.
+              <strong>Mise</strong> — pose un jeton. <strong>Reprendre</strong> le rend tant que tu n’as pas lancé.
             </span>
           </li>
           <li>

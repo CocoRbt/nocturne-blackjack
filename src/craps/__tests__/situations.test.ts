@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { crapsStakeOpen, createCrapsRound, placeBet, resolveRoll, type DiceRoll } from '../engine';
+import { crapsStakeOpen, createCrapsRound, placeBet, resolveRoll, takeBackBet, type DiceRoll } from '../engine';
 import { STARTING_BALANCE } from '../../store/persistence';
 
 function roll(d1: number, d2: number): DiceRoll {
@@ -48,6 +48,14 @@ function session() {
     return res;
   };
 
+  const takeBack = () => {
+    const tb = takeBackBet(round);
+    if (!tb.ok) return false;
+    balance += tb.creditCents;
+    round = tb.round;
+    return true;
+  };
+
   return {
     get balance() {
       return balance;
@@ -62,6 +70,7 @@ function session() {
     place,
     refill,
     resolve,
+    takeBack,
   };
 }
 
@@ -89,5 +98,19 @@ describe('craps — all-in + recharge', () => {
     expect(s.balance).toBe(STARTING_BALANCE);
     expect(s.place(STARTING_BALANCE)).toBe(true);
     expect(s.bet).toBe(STARTING_BALANCE);
+  });
+});
+
+describe('craps — reprendre sans jouer', () => {
+  it('recrédite exactement la mise posée', () => {
+    const s = session();
+    expect(s.place(25_00)).toBe(true);
+    expect(s.place(5_00)).toBe(true);
+    expect(s.bet).toBe(30_00);
+    expect(s.balance).toBe(STARTING_BALANCE - 30_00);
+    expect(s.takeBack()).toBe(true);
+    expect(s.bet).toBe(0);
+    expect(s.balance).toBe(STARTING_BALANCE);
+    expect(s.stakeOpen()).toBe(false);
   });
 });

@@ -10,6 +10,7 @@ import {
   placeBet,
   resolveRoll,
   rollDice,
+  takeBackBet,
   type CrapsRound,
   type DieFace,
 } from '../craps/engine';
@@ -181,6 +182,15 @@ export function CrapsScreen() {
   useEffect(() => {
     return () => {
       for (const t of timers.current) window.clearTimeout(t);
+      // Menu / autre salon : rendre la mise come-out non lancée.
+      const current = roundRef.current;
+      if (!rollingRef.current && current.phase === 'come_out' && current.bet > 0) {
+        const tb = takeBackBet(current);
+        if (tb.ok) {
+          useGame.getState().crapsCredit(tb.creditCents, false);
+          roundRef.current = tb.round;
+        }
+      }
     };
   }, []);
 
@@ -200,9 +210,10 @@ export function CrapsScreen() {
     timers.current = [];
   };
 
-  const busy = rolling || round.phase === 'point' || crapsStakeOpen(round);
+  const busy = rolling || round.phase === 'point';
   const canBet = !rolling && round.phase === 'come_out';
   const rollReady = canRoll(round) && !rolling;
+  const canTakeBack = canBet && round.bet > 0;
   const coach = coachCopy(round);
   const board = boardNumbers(round);
   const mult = currentMult(round);
@@ -236,6 +247,22 @@ export function CrapsScreen() {
     roundRef.current = result.round;
     setRound(result.round);
     setFlash(null);
+  };
+
+  const applyTakeBack = (): boolean => {
+    if (rollingRef.current) return false;
+    const current = roundRef.current;
+    const result = takeBackBet(current);
+    if (!result.ok) return false;
+    crapsCredit(result.creditCents, false);
+    roundRef.current = result.round;
+    setRound(result.round);
+    setFlash(null);
+    return true;
+  };
+
+  const onTakeBack = () => {
+    applyTakeBack();
   };
 
   const onRoll = () => {
@@ -307,14 +334,16 @@ export function CrapsScreen() {
         title="Craps"
         eyebrow="Salon des jeux"
         onBack={() => {
-          if (!busy) leaveCraps();
+          if (rollingRef.current || roundRef.current.phase === 'point') return;
+          if (roundRef.current.bet > 0) applyTakeBack();
+          leaveCraps();
         }}
         backDisabled={busy}
         backTitle={busy ? 'Finis la manche d’abord' : 'Retour Lobby'}
         navLocked={busy}
         navLockedReason="Finis la manche d’abord"
-        refillLocked={busy}
-        refillLockedReason="Attendez la fin de la manche avant de recharger."
+        refillLocked={stakeOpen}
+        refillLockedReason="Reprends ta mise ou termine la manche avant de recharger."
         onRules={() => setRulesOpen(true)}
         rulesLabel="Comment jouer"
       />
@@ -482,6 +511,11 @@ export function CrapsScreen() {
           </div>
 
           <div className="craps-actions craps-actions--panel">
+            {canTakeBack && (
+              <button type="button" className="btn ghost craps-takeback" onClick={onTakeBack}>
+                Reprendre {fmt(round.bet)}
+              </button>
+            )}
             <button
               type="button"
               className={`btn craps-add-bet ${!rollReady ? 'is-hero' : ''}`}
@@ -519,7 +553,12 @@ export function CrapsScreen() {
         </aside>
       </div>
 
-      <div className="craps-action-dock">
+      <div className={`craps-action-dock${canTakeBack ? ' has-takeback' : ''}`}>
+        {canTakeBack && (
+          <button type="button" className="btn ghost craps-takeback" onClick={onTakeBack}>
+            Reprendre {fmt(round.bet)}
+          </button>
+        )}
         <button
           type="button"
           className={`btn craps-add-bet ${!rollReady ? 'is-hero' : ''}`}
