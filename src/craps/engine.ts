@@ -277,3 +277,8 @@ export function rollAndResolve(
 export function canRoll(round: CrapsRound): boolean {
   return round.bet > 0
 }
+
+/** Mise encore sur le feutre — recharge / sortie interdites (anti all-in + refill). */
+export function crapsStakeOpen(round: CrapsRound): boolean {
+  return round.bet > 0
+}

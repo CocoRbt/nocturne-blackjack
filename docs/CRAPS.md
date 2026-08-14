@@ -33,3 +33,5 @@ Règles inspirées du **Street Craps** de *Gamble With Your Friends* (pas le cra
 ## Fairness
 
 Deux dés 1–6 via `crypto.getRandomValues`. Jetons virtuels, crédit partagé.
+
+Recharge lobby (+100) **interdite** tant qu’une mise est sur le feutre — évite l’all-in + refill infini.

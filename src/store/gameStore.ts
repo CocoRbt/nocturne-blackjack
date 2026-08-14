@@ -91,6 +91,8 @@ interface GameState {
   /** Parties jouées avant le record actuel. */
   gamesBeforePeak: number;
   refills: number;
+  /** Mise salon encore en jeu — bloque refill / hydrate. */
+  salonStakeOpen: boolean;
   screen: 'lobby' | 'table' | 'mines' | 'craps' | 'crash' | 'plinko' | 'slots';
   tableId: string;
   soundMuted: boolean;
@@ -130,6 +132,11 @@ interface GameState {
   crapsDebit(bet: number): boolean;
   /** Crédite les gains Craps. countGame pour une décision de ligne. */
   crapsCredit(payout: number, countGame?: boolean): void;
+  /**
+   * Verrouille recharge / hydrate tant qu’une mise salon est en jeu
+   * (Craps : jeton posé, pas encore résolu).
+   */
+  setSalonStakeOpen(open: boolean): void;
   enterCrash(): void;
   leaveCrash(): void;
   /** Débite une mise Crash. false si solde insuffisant. */
@@ -600,6 +607,7 @@ export const useGame = create<GameState>((set, get) => {
     gamesPlayed: initialGamesPlayed,
     gamesBeforePeak: initialGamesBeforePeak,
     refills: saved?.refills ?? 0,
+    salonStakeOpen: false,
     screen: 'lobby',
     tableId: saved?.tableId === PRIVATE_TABLE_ID ? PRIVATE_TABLE_ID : (saved?.tableId ?? 'emeraude'),
     soundMuted: saved?.soundMuted ?? false,
@@ -759,12 +767,18 @@ export const useGame = create<GameState>((set, get) => {
         display: idleDisplay(),
         session: null,
         notice: null,
+        salonStakeOpen: false,
       });
     },
 
     leaveCraps() {
       sounds.setAmbience('lobby');
-      set({ screen: 'lobby', notice: null });
+      set({ screen: 'lobby', notice: null, salonStakeOpen: false });
+    },
+
+    setSalonStakeOpen(open) {
+      if (get().salonStakeOpen === open) return;
+      set({ salonStakeOpen: open });
     },
 
     crapsDebit(bet) {
@@ -1424,6 +1438,7 @@ export const useGame = create<GameState>((set, get) => {
     refill() {
       const s = get();
       if (s.round) return;
+      if (s.salonStakeOpen) return;
       /** Seulement à crédit épuisé (< 1) — on remet à 100, on n’ajoute pas. */
       if (s.balance >= 1_00) return;
       sounds.play('chipStack');
@@ -1439,7 +1454,7 @@ export const useGame = create<GameState>((set, get) => {
 
     hydrateFromCloud(payload) {
       const s = get();
-      if (s.round) {
+      if (s.round || s.salonStakeOpen) {
         set({ notice: 'Terminez la manche avant de synchroniser le compte.' });
         return;
       }
@@ -1480,6 +1495,7 @@ export const useGame = create<GameState>((set, get) => {
         gamesPlayed: 0,
         gamesBeforePeak: 0,
         refills: 0,
+        salonStakeOpen: false,
         screen: 'lobby',
         tableId: 'emeraude',
         privateLimits,
