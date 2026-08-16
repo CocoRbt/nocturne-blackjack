@@ -1174,7 +1174,7 @@ export const useGame = create<GameState>((set, get) => {
       syncShoe();
       persist();
       bump();
-      markScoreDirty();
+      // Pas de sync mid-donne : le règlement (settle) poussera le solde final + games+1.
 
       // Chorégraphie : une pulsation par carte distribuée sur la table.
       for (let i = 0; i < dealCardCount; i++) {
