@@ -42,6 +42,16 @@ describe('withdrawFromVault', () => {
     const r = withdrawFromVault(100_00, 20_00, 50_00);
     expect(r.ok).toBe(false);
   });
+
+  it('retire 400k crédits du coffre sans erreur', () => {
+    const vault = 400_000_00;
+    const r = withdrawFromVault(STARTING_BALANCE, vault, vault);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.vault).toBe(0);
+      expect(r.balance).toBe(STARTING_BALANCE + 400_000_00);
+    }
+  });
 });
 
 describe('anti-farm refill + coffre', () => {

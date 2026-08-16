@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchCreditSeries, sendVaultCloud, withdrawVaultCloud, type CreditSeriesPoint } from '../cercle/circleApi';
+import { fetchCreditSeries, depositVaultCloud, sendVaultCloud, withdrawVaultCloud, fetchMyScore, type CreditSeriesPoint } from '../cercle/circleApi';
 import { consumeCircleSection } from '../cercle/circleNav';
 import { fmt } from '../lib/format';
 import {
@@ -159,6 +159,48 @@ export function CirclePanel() {
     }
     setError(null);
     if (mode === 'deposit') {
+      if (circle?.cloud && isSupabaseConfigured()) {
+        setBusy(true);
+        try {
+          const g0 = useGame.getState();
+          await pushScore(circle, {
+            balance: g0.balance,
+            peakBalance: g0.peakBalance,
+            vault: g0.vault,
+            handsPlayed: g0.stats.handsPlayed,
+            blackjacks: g0.stats.blackjacks,
+            bestStreak: g0.stats.longestWinStreak,
+            highestTable: g0.tableId,
+            gamesBeforePeak: g0.gamesBeforePeak,
+            gamesPlayed: g0.gamesPlayed,
+          });
+          const res = await depositVaultCloud(cents);
+          applyVaultServerState(
+            {
+              balance: res.balance,
+              vault: res.vault,
+              peakBalance: res.peak_balance,
+            },
+            `Coffré. Coffre : ${fmt(res.vault)}.`,
+            { dirty: false },
+          );
+          const refreshed = await refreshLeaderboards(circle);
+          setCircle(refreshed.state);
+          setBoards(refreshed.boards);
+          setVaultInput('');
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : '';
+          if (/deposit_my_vault|Could not find the function|schema cache/i.test(msg)) {
+            vaultDeposit(cents);
+            setVaultInput('');
+          } else {
+            setError(msg || 'Dépôt impossible');
+          }
+        } finally {
+          setBusy(false);
+        }
+        return;
+      }
       vaultDeposit(cents);
       return;
     }
@@ -187,6 +229,7 @@ export function CirclePanel() {
             peakBalance: res.peak_balance,
           },
           `Retiré du coffre. Crédit : ${fmt(res.balance)}.`,
+          { dirty: false },
         );
         const refreshed = await refreshLeaderboards(circle);
         setCircle(refreshed.state);
@@ -198,6 +241,25 @@ export function CirclePanel() {
         if (/withdraw_my_vault|Could not find the function|schema cache/i.test(msg)) {
           vaultWithdraw(cents);
           setVaultInput('');
+        } else if (/Pas assez dans le coffre/i.test(msg)) {
+          // Coffre fantôme local : réaligner sur le cloud.
+          try {
+            const mine = await fetchMyScore();
+            if (mine.balance != null && mine.vault != null) {
+              applyVaultServerState(
+                {
+                  balance: Math.floor(Number(mine.balance) || 0),
+                  vault: Math.floor(Number(mine.vault) || 0),
+                  peakBalance: Math.floor(Number(mine.peak_balance) || 0),
+                },
+                'Coffre cloud resynchronisé — réessaie le retrait.',
+                { dirty: false },
+              );
+            }
+          } catch {
+            /* ignore */
+          }
+          setError(msg);
         } else {
           setError(msg || 'Retrait impossible');
         }

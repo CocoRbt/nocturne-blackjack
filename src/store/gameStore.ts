@@ -188,6 +188,7 @@ interface GameState {
   applyVaultServerState(
     payload: { balance: number; vault: number; peakBalance?: number },
     notice?: string,
+    opts?: { dirty?: boolean },
   ): void;
   /** Fixe le coffre après un envoi serveur (source de vérité). */
   setVaultFromServer(vaultCents: number, notice?: string): void;
@@ -1412,7 +1413,7 @@ export const useGame = create<GameState>((set, get) => {
       void vaultCents;
     },
 
-    applyVaultServerState(payload, notice) {
+    applyVaultServerState(payload, notice, opts) {
       const balance = Math.max(0, Math.floor(payload.balance));
       const vault = Math.max(0, Math.floor(payload.vault));
       const peakBalance =
@@ -1426,7 +1427,11 @@ export const useGame = create<GameState>((set, get) => {
         ...(notice ? { notice } : {}),
       });
       persist();
-      markScoreDirty();
+      if (opts?.dirty === false) {
+        clearScoreDirty();
+      } else {
+        markScoreDirty();
+      }
     },
 
     setVaultFromServer(vaultCents, notice) {

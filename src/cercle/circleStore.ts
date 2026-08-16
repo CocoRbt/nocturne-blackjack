@@ -15,6 +15,7 @@ import {
   type Leaderboards,
 } from './circleApi';
 import { enqueueScorePush, getSyncEpoch } from './scoreSync';
+import { useGame } from '../store/gameStore';
 
 const CIRCLE_CHANGED = 'nocturne-circle-changed';
 
@@ -274,14 +275,13 @@ export async function pushScore(state: LocalCircleState, seed: Omit<CircleMember
       return;
     }
     const mergedSeed = { ...seed, vault };
-    const local = upsertSelfScore(state, { ...mergedSeed, nickname: state.nickname });
     if (state.cloud && isSupabaseConfigured()) {
       try {
         if (epoch !== getSyncEpoch()) {
           result = state;
           return;
         }
-        await syncScoreCloud({
+        const synced = await syncScoreCloud({
           balance: mergedSeed.balance,
           peakBalance: mergedSeed.peakBalance,
           handsPlayed: mergedSeed.handsPlayed,
@@ -296,21 +296,56 @@ export async function pushScore(state: LocalCircleState, seed: Omit<CircleMember
           result = state;
           return;
         }
+        let reconciledSeed = mergedSeed;
+        if (
+          typeof synced.balance === 'number' &&
+          typeof synced.vault === 'number' &&
+          (synced.balance !== mergedSeed.balance || synced.vault !== mergedSeed.vault)
+        ) {
+          // Coffre / solde fantômes refusés par le serveur → réaligner l’UI.
+          useGame.getState().applyVaultServerState(
+            {
+              balance: synced.balance,
+              vault: synced.vault,
+              peakBalance:
+                typeof synced.peak_balance === 'number'
+                  ? synced.peak_balance
+                  : mergedSeed.peakBalance,
+            },
+            'Coffre resynchronisé avec le cloud.',
+            { dirty: false },
+          );
+          reconciledSeed = {
+            ...mergedSeed,
+            balance: synced.balance,
+            vault: synced.vault,
+            peakBalance:
+              typeof synced.peak_balance === 'number'
+                ? synced.peak_balance
+                : mergedSeed.peakBalance,
+          };
+        }
         const boards = await fetchLeaderboards();
+        const localAfter = upsertSelfScore(state, {
+          ...reconciledSeed,
+          nickname: state.nickname,
+        });
         const next = {
-          ...local,
-          members: mergeBoardMembers(boards, state.nickname, local.members),
+          ...localAfter,
+          members: mergeBoardMembers(boards, state.nickname, localAfter.members),
           cloud: true,
         };
         saveCircle(next);
         result = next;
         return;
       } catch {
+        const local = upsertSelfScore(state, { ...mergedSeed, nickname: state.nickname });
         saveCircle(local);
         result = local;
         return;
       }
     }
+    const local = upsertSelfScore(state, { ...mergedSeed, nickname: state.nickname });
     saveCircle(local);
     result = local;
   });
