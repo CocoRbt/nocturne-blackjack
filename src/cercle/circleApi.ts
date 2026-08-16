@@ -216,6 +216,26 @@ export type WithdrawVaultResult = {
   peak_balance: number;
 };
 
+export type DepositVaultResult = {
+  ok: true;
+  amount: number;
+  balance: number;
+  vault: number;
+  peak_balance: number;
+};
+
+/** Dépôt solde → coffre atomique côté serveur. */
+export async function depositVaultCloud(amountCents: number): Promise<DepositVaultResult> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase non configuré');
+  await ensureAnonSession();
+  const { data, error } = await sb.rpc('deposit_my_vault', {
+    p_amount: Math.floor(amountCents),
+  });
+  if (error) throw new Error(rpcMessage(error));
+  return data as DepositVaultResult;
+}
+
 /** Retrait coffre → solde atomique côté serveur. */
 export async function withdrawVaultCloud(amountCents: number): Promise<WithdrawVaultResult> {
   const sb = getSupabase();

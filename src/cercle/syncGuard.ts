@@ -51,10 +51,16 @@ export function resolveSyncedScore(
   let balDelta = balance - prev.balance;
 
   if (vaultDelta > 0 && Math.abs(-balDelta - vaultDelta) > 1) {
-    vault = prev.vault;
-    balance = prev.balance;
-    vaultDelta = 0;
-    balDelta = 0;
+    const wealth = balance + vault;
+    const prevWealth = prev.balance + prev.vault;
+    if (Math.abs(wealth - prevWealth) <= 1) {
+      // Dépôt : richesse stable même si le découpage solde/coffre a bougé.
+    } else {
+      vault = prev.vault;
+      balance = prev.balance;
+      vaultDelta = 0;
+      balDelta = 0;
+    }
   }
 
   if (vaultDelta < 0 && Math.abs(balDelta - -vaultDelta) > 1) {

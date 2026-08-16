@@ -62,4 +62,21 @@ describe('resolveSyncedScore', () => {
     expect(next.balance).toBe(30_000);
     expect(next.vault).toBe(50_000);
   });
+
+  it('accepte un gros dépôt si la richesse totale est stable (400k fantôme)', () => {
+    const cloud = {
+      balance: 40_010_000,
+      vault: 0,
+      peakBalance: 40_010_000,
+      gamesPlayed: 200,
+    };
+    const next = resolveSyncedScore(cloud, {
+      balance: 10_000,
+      vault: 40_000_000,
+      peakBalance: 40_010_000,
+      gamesPlayed: 200,
+    });
+    expect(next.vault).toBe(40_000_000);
+    expect(next.balance).toBe(10_000);
+  });
 });
