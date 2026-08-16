@@ -355,6 +355,7 @@ export const useGame = create<GameState>((set, get) => {
       refills: s.refills,
       gameSpeed: s.gameSpeed,
       privateLimits: s.privateLimits,
+      screen: s.screen,
     };
     persistSave(data);
   };
@@ -616,7 +617,15 @@ export const useGame = create<GameState>((set, get) => {
     gamesBeforePeak: initialGamesBeforePeak,
     refills: saved?.refills ?? 0,
     salonStakeOpen: false,
-    screen: 'lobby',
+    // BJ table needs a sabot frais — on ne restaure que les salons.
+    screen:
+      saved?.screen === 'mines' ||
+      saved?.screen === 'craps' ||
+      saved?.screen === 'crash' ||
+      saved?.screen === 'plinko' ||
+      saved?.screen === 'slots'
+        ? saved.screen
+        : 'lobby',
     tableId: saved?.tableId === PRIVATE_TABLE_ID ? PRIVATE_TABLE_ID : (saved?.tableId ?? 'emeraude'),
     soundMuted: saved?.soundMuted ?? false,
     gameSpeed: saved?.gameSpeed === 'fast' ? 'fast' : 'classic',
@@ -706,6 +715,7 @@ export const useGame = create<GameState>((set, get) => {
         session: null,
       });
       refreshSeatCapacityState();
+      persist();
     },
 
     enterMines() {
@@ -722,11 +732,13 @@ export const useGame = create<GameState>((set, get) => {
         session: null,
         notice: null,
       });
+      persist();
     },
 
     leaveMines() {
       sounds.setAmbience('lobby');
       set({ screen: 'lobby', notice: null });
+      persist();
     },
 
     minesDebit(bet) {
@@ -737,8 +749,7 @@ export const useGame = create<GameState>((set, get) => {
         balance: s.balance - amount,
         notice: null,
       });
-      persist();
-      // Pas de sync mid-mise : le crédit (settle) poussera games+1 + solde final.
+      // Pas de persist mid-mise : un reload restaure le solde pré-mise.
       return true;
     },
 
@@ -777,11 +788,13 @@ export const useGame = create<GameState>((set, get) => {
         notice: null,
         salonStakeOpen: false,
       });
+      persist();
     },
 
     leaveCraps() {
       sounds.setAmbience('lobby');
       set({ screen: 'lobby', notice: null, salonStakeOpen: false });
+      persist();
     },
 
     setSalonStakeOpen(open) {
@@ -797,7 +810,6 @@ export const useGame = create<GameState>((set, get) => {
         balance: s.balance - amount,
         notice: null,
       });
-      persist();
       return true;
     },
 
@@ -835,11 +847,13 @@ export const useGame = create<GameState>((set, get) => {
         session: null,
         notice: null,
       });
+      persist();
     },
 
     leaveCrash() {
       sounds.setAmbience('lobby');
       set({ screen: 'lobby', notice: null });
+      persist();
     },
 
     enterPlinko() {
@@ -856,11 +870,13 @@ export const useGame = create<GameState>((set, get) => {
         session: null,
         notice: null,
       });
+      persist();
     },
 
     leavePlinko() {
       sounds.setAmbience('lobby');
       set({ screen: 'lobby', notice: null });
+      persist();
     },
 
     plinkoDebit(bet) {
@@ -871,7 +887,6 @@ export const useGame = create<GameState>((set, get) => {
         balance: s.balance - amount,
         notice: null,
       });
-      persist();
       return true;
     },
 
@@ -909,11 +924,13 @@ export const useGame = create<GameState>((set, get) => {
         session: null,
         notice: null,
       });
+      persist();
     },
 
     leaveSlots() {
       sounds.setAmbience('lobby');
       set({ screen: 'lobby', notice: null });
+      persist();
     },
 
     slotsDebit(bet) {
@@ -924,7 +941,6 @@ export const useGame = create<GameState>((set, get) => {
         balance: s.balance - amount,
         notice: null,
       });
-      persist();
       return true;
     },
 
@@ -956,7 +972,6 @@ export const useGame = create<GameState>((set, get) => {
         balance: s.balance - amount,
         notice: null,
       });
-      persist();
       return true;
     },
 
@@ -1173,9 +1188,9 @@ export const useGame = create<GameState>((set, get) => {
         },
       });
       syncShoe();
-      persist();
       bump();
-      // Pas de sync mid-donne : le règlement (settle) poussera le solde final + games+1.
+      // Pas de persist mid-donne : un reload restaure le solde avant la mise.
+      // Pas de sync mid-donne : le règlement poussera le solde final + games+1.
 
       // Chorégraphie : une pulsation par carte distribuée sur la table.
       for (let i = 0; i < dealCardCount; i++) {

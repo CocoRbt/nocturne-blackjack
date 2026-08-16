@@ -15,7 +15,6 @@ import { STARTING_BALANCE } from '../store/persistence';
 import { useGame } from '../store/gameStore';
 import { formatGamesBeforePeak } from '../store/peakMeta';
 import { AppMenu } from './AppMenu';
-import { useCircleKeepalive } from './CirclePanel';
 import { useDefiSync } from './DailyChallenges';
 import { exitCircle } from '../cercle/circleStore';
 import { pullAccountWallet } from '../cercle/accountHydrate';
@@ -43,7 +42,6 @@ export function Lobby() {
   const [showPrivateSetup, setShowPrivateSetup] = useState(false);
   const [draftLimits, setDraftLimits] = useState<PrivateLimits>(privateLimits);
 
-  useCircleKeepalive();
   useDefiSync();
 
   useEffect(() => {

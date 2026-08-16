@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchCreditSeries, depositVaultCloud, sendVaultCloud, withdrawVaultCloud, fetchMyScore, type CreditSeriesPoint } from '../cercle/circleApi';
+import { SEND_VAULT_MAX_CENTS } from '../cercle/vaultLimits';
 import { consumeCircleSection } from '../cercle/circleNav';
 import { fmt } from '../lib/format';
 import {
@@ -45,7 +46,6 @@ export function useCircleKeepalive() {
       if (flushing) return;
       flushing = true;
       try {
-        // pushScore est sérialisé : on rejoue tant qu’il reste du dirty (spam Drop…).
         while (consumeScoreDirty()) {
           const state = loadCircle();
           if (!state?.circleCode) return;
@@ -84,10 +84,20 @@ export function useCircleKeepalive() {
       }, 650);
     };
     const unsub = onScoreDirty(schedule);
+    const onHide = () => {
+      if (isScoreDirty()) void flush();
+    };
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') onHide();
+    };
+    window.addEventListener('pagehide', onHide);
+    document.addEventListener('visibilitychange', onVis);
     schedule();
     return () => {
       unsub();
       window.clearTimeout(timer);
+      window.removeEventListener('pagehide', onHide);
+      document.removeEventListener('visibilitychange', onVis);
     };
   }, []);
 }
@@ -290,14 +300,17 @@ export function CirclePanel() {
       setError('Indiquez un montant valide.');
       return;
     }
+    if (cents > SEND_VAULT_MAX_CENTS) {
+      setError(`Maximum ${fmt(SEND_VAULT_MAX_CENTS)} par envoi.`);
+      return;
+    }
     if (cents > vault) {
-      setError('Pas assez dans le coffre.');
+      setError('Pas assez dans le coffre — coffre d’abord, puis envoie.');
       return;
     }
     setSendBusy(true);
     setError(null);
     try {
-      // 1) Pousse l’état local (dépôts) puis 2) transfert atomique serveur.
       const gPeek = useGame.getState();
       const incoming = await peekIncomingVault(gPeek.vault, gPeek.balance);
       if (incoming !== useGame.getState().vault) {
@@ -315,8 +328,13 @@ export function CirclePanel() {
         gamesBeforePeak: g.gamesBeforePeak,
         gamesPlayed: g.gamesPlayed,
       });
-      if (cents > useGame.getState().vault) {
-        setError('Pas assez dans le coffre.');
+      const vaultNow = useGame.getState().vault;
+      if (cents > vaultNow) {
+        setError(
+          vaultNow <= 0
+            ? 'Coffre cloud vide — coffre d’abord (bouton Coffrer), puis réessaie.'
+            : `Coffre cloud : ${fmt(vaultNow)} seulement. Réduis le montant ou coffre plus.`,
+        );
         return;
       }
       const res = await sendVaultCloud(sendTo, cents);
@@ -329,7 +347,16 @@ export function CirclePanel() {
       setBoards(refreshed.boards);
       setVaultInput('');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Envoi impossible');
+      const raw = e instanceof Error ? e.message : 'Envoi impossible';
+      if (/Pas assez dans le coffre/i.test(raw)) {
+        setError('Pas assez dans le coffre cloud — synchronise / coffre d’abord.');
+      } else if (/Montant invalide/i.test(raw)) {
+        setError(`Montant invalide (max ${fmt(SEND_VAULT_MAX_CENTS)}).`);
+      } else if (/Pote introuvable/i.test(raw)) {
+        setError('Pote introuvable — qu’il ouvre le cercle une fois pour apparaître.');
+      } else {
+        setError(raw);
+      }
     } finally {
       setSendBusy(false);
     }
@@ -718,7 +745,8 @@ export function CirclePanel() {
             {circle!.cloud && isSupabaseConfigured() && (
               <div className="circle-vault-send">
                 <p className="circle-vault-hint">
-                  Envoyer à un pote — depuis ton coffre uniquement (pas le refill).
+                  Envoyer à un pote — depuis ton coffre uniquement (coffre d’abord). Max{' '}
+                  {fmt(SEND_VAULT_MAX_CENTS)} par envoi.
                 </p>
                 <label className="circle-vault-amount">
                   <span>Destinataire</span>
