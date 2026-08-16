@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { fetchCreditSeries, depositVaultCloud, sendVaultCloud, withdrawVaultCloud, fetchMyScore, type CreditSeriesPoint } from '../cercle/circleApi';
 import { SEND_VAULT_MAX_CENTS } from '../cercle/vaultLimits';
 import { peakWealthCents, wealthCents } from '../cercle/wealth';
+import { shouldApplyCloudWallet } from '../cercle/walletReconcile';
 import { consumeCircleSection } from '../cercle/circleNav';
 import { fmt } from '../lib/format';
 import {
@@ -169,23 +170,65 @@ export function CirclePanel() {
       return;
     }
     setError(null);
+
+    const syncThen = async () => {
+      const g0 = useGame.getState();
+      await pushScore(circle!, {
+        balance: g0.balance,
+        peakBalance: g0.peakBalance,
+        vault: g0.vault,
+        handsPlayed: g0.stats.handsPlayed,
+        blackjacks: g0.stats.blackjacks,
+        bestStreak: g0.stats.longestWinStreak,
+        highestTable: g0.tableId,
+        gamesBeforePeak: g0.gamesBeforePeak,
+        gamesPlayed: g0.gamesPlayed,
+      });
+    };
+
+    const applySafeCloudWallet = (
+      cloudBalance: number,
+      cloudVault: number,
+      cloudPeak: number,
+      notice: string,
+    ) => {
+      const g = useGame.getState();
+      if (
+        shouldApplyCloudWallet({
+          localBalance: g.balance,
+          localVault: g.vault,
+          cloudBalance,
+          cloudVault,
+        }) === 'apply'
+      ) {
+        applyVaultServerState(
+          { balance: cloudBalance, vault: cloudVault, peakBalance: cloudPeak },
+          notice,
+          { dirty: false },
+        );
+        return true;
+      }
+      return false;
+    };
+
     if (mode === 'deposit') {
       if (circle?.cloud && isSupabaseConfigured()) {
         setBusy(true);
         try {
-          const g0 = useGame.getState();
-          await pushScore(circle, {
-            balance: g0.balance,
-            peakBalance: g0.peakBalance,
-            vault: g0.vault,
-            handsPlayed: g0.stats.handsPlayed,
-            blackjacks: g0.stats.blackjacks,
-            bestStreak: g0.stats.longestWinStreak,
-            highestTable: g0.tableId,
-            gamesBeforePeak: g0.gamesBeforePeak,
-            gamesPlayed: g0.gamesPlayed,
-          });
-          const res = await depositVaultCloud(cents);
+          await syncThen();
+          const tryDeposit = async () => depositVaultCloud(cents);
+          let res;
+          try {
+            res = await tryDeposit();
+          } catch (e1) {
+            const msg1 = e1 instanceof Error ? e1.message : '';
+            if (/surplus|Pas assez/i.test(msg1)) {
+              await syncThen();
+              res = await tryDeposit();
+            } else {
+              throw e1;
+            }
+          }
           applyVaultServerState(
             {
               balance: res.balance,
@@ -204,6 +247,14 @@ export function CirclePanel() {
           if (/deposit_my_vault|Could not find the function|schema cache/i.test(msg)) {
             vaultDeposit(cents);
             setVaultInput('');
+            try {
+              await syncThen();
+            } catch {
+              /* sync best-effort */
+            }
+            setError(
+              'Dépôt local OK — colle la migration SQL deposit_my_vault (et sync vault) sur Supabase pour le cloud.',
+            );
           } else {
             setError(msg || 'Dépôt impossible');
           }
@@ -215,23 +266,72 @@ export function CirclePanel() {
       vaultDeposit(cents);
       return;
     }
-    // Cercle cloud : retrait atomique serveur (anti glitch argent infini).
+
+    // Retrait
     if (circle?.cloud && isSupabaseConfigured()) {
       setBusy(true);
       try {
-        // Sync dépôts locaux avant le retrait.
-        const g0 = useGame.getState();
-        await pushScore(circle, {
-          balance: g0.balance,
-          peakBalance: g0.peakBalance,
-          vault: g0.vault,
-          handsPlayed: g0.stats.handsPlayed,
-          blackjacks: g0.stats.blackjacks,
-          bestStreak: g0.stats.longestWinStreak,
-          highestTable: g0.tableId,
-          gamesBeforePeak: g0.gamesBeforePeak,
-          gamesPlayed: g0.gamesPlayed,
-        });
+        await syncThen();
+
+        // Diagnostic cloud avant le RPC.
+        try {
+          const mine = await fetchMyScore();
+          const cloudBal = Math.floor(Number(mine.balance) || 0);
+          const cloudVault = Math.floor(Number(mine.vault) || 0);
+          const cloudPeak = Math.floor(Number(mine.peak_balance) || 0);
+          if (cloudVault < cents) {
+            if (cloudVault <= 0) {
+              const applied = applySafeCloudWallet(
+                cloudBal,
+                cloudVault,
+                cloudPeak,
+                'Rien dans le coffre cloud — tes crédits sont déjà en solde jouable.',
+              );
+              if (applied) {
+                setVaultInput('');
+                setError(null);
+                return;
+              }
+              // Coffre fantôme + patrimoine local > cloud : liquider localement
+              // puis resync (sans écraser un vrai gain non poussé).
+              const g = useGame.getState();
+              if (g.vault > 0) {
+                vaultWithdraw(g.vault);
+                await syncThen();
+                try {
+                  const again = await fetchMyScore();
+                  applySafeCloudWallet(
+                    Math.floor(Number(again.balance) || 0),
+                    Math.floor(Number(again.vault) || 0),
+                    Math.floor(Number(again.peak_balance) || 0),
+                    'Coffre cloud vide — solde resynchronisé. Tu peux re-coffrer.',
+                  );
+                } catch {
+                  /* ignore */
+                }
+                setVaultInput('');
+                setError(
+                  'Coffre cloud vide. Crédits remis en jouable localement — colle les migrations SQL vault si ça bloque encore.',
+                );
+                return;
+              }
+              setError('Coffre cloud vide — rien à retirer.');
+              return;
+            }
+            applySafeCloudWallet(
+              cloudBal,
+              cloudVault,
+              cloudPeak,
+              'Coffre aligné avec le cloud.',
+            );
+            setVaultInput(String(cloudVault / 100));
+            setError(`Coffre cloud : seulement ${fmt(cloudVault)}. Montant ajusté — retente Retirer.`);
+            return;
+          }
+        } catch {
+          /* continue vers RPC */
+        }
+
         const res = await withdrawVaultCloud(cents);
         applyVaultServerState(
           {
@@ -248,29 +348,32 @@ export function CirclePanel() {
         setVaultInput('');
       } catch (e) {
         const msg = e instanceof Error ? e.message : '';
-        // Migration pas encore collée → retrait local (le merge anti-dupe protège déjà).
         if (/withdraw_my_vault|Could not find the function|schema cache/i.test(msg)) {
           vaultWithdraw(cents);
           setVaultInput('');
+          setError(
+            'Retrait local OK — colle la migration SQL withdraw_my_vault sur Supabase pour le cloud.',
+          );
         } else if (/Pas assez dans le coffre/i.test(msg)) {
-          // Coffre fantôme local : réaligner sur le cloud.
           try {
             const mine = await fetchMyScore();
-            if (mine.balance != null && mine.vault != null) {
-              applyVaultServerState(
-                {
-                  balance: Math.floor(Number(mine.balance) || 0),
-                  vault: Math.floor(Number(mine.vault) || 0),
-                  peakBalance: Math.floor(Number(mine.peak_balance) || 0),
-                },
-                'Coffre cloud resynchronisé — réessaie le retrait.',
-                { dirty: false },
+            const cloudBal = Math.floor(Number(mine.balance) || 0);
+            const cloudVault = Math.floor(Number(mine.vault) || 0);
+            const cloudPeak = Math.floor(Number(mine.peak_balance) || 0);
+            if (cloudVault <= 0) {
+              applySafeCloudWallet(
+                cloudBal,
+                cloudVault,
+                cloudPeak,
+                'Coffre cloud vide — crédits déjà jouables.',
               );
+            } else {
+              setVaultInput(String(cloudVault / 100));
+              setError(`Pas assez — coffre cloud ${fmt(cloudVault)}. Montant ajusté.`);
             }
           } catch {
-            /* ignore */
+            setError(msg);
           }
-          setError(msg);
         } else {
           setError(msg || 'Retrait impossible');
         }

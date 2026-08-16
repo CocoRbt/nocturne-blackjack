@@ -16,6 +16,7 @@ import {
 } from './circleApi';
 import { enqueueScorePush, getSyncEpoch } from './scoreSync';
 import { peakWealthCents, wealthCents } from './wealth';
+import { shouldApplyCloudWallet } from './walletReconcile';
 import { useGame } from '../store/gameStore';
 
 const CIRCLE_CHANGED = 'nocturne-circle-changed';
@@ -312,28 +313,41 @@ export async function pushScore(state: LocalCircleState, seed: Omit<CircleMember
           typeof synced.vault === 'number' &&
           (synced.balance !== mergedSeed.balance || synced.vault !== mergedSeed.vault)
         ) {
-          // Coffre / solde fantômes refusés par le serveur → réaligner l’UI.
-          useGame.getState().applyVaultServerState(
-            {
+          const decision = shouldApplyCloudWallet({
+            localBalance: mergedSeed.balance,
+            localVault: mergedSeed.vault,
+            cloudBalance: synced.balance,
+            cloudVault: synced.vault,
+          });
+          // Jamais écraser un patrimoine local plus riche (sync qui refuse un gain).
+          if (decision === 'apply') {
+            useGame.getState().applyVaultServerState(
+              {
+                balance: synced.balance,
+                vault: synced.vault,
+                peakBalance:
+                  typeof synced.peak_balance === 'number'
+                    ? synced.peak_balance
+                    : mergedSeed.peakBalance,
+              },
+              Math.abs(
+                wealthCents(synced.balance, synced.vault) -
+                  wealthCents(mergedSeed.balance, mergedSeed.vault),
+              ) <= 1
+                ? 'Coffre aligné avec le cloud.'
+                : 'Coffre mis à jour depuis le cloud.',
+              { dirty: false },
+            );
+            reconciledSeed = {
+              ...mergedSeed,
               balance: synced.balance,
               vault: synced.vault,
               peakBalance:
                 typeof synced.peak_balance === 'number'
                   ? synced.peak_balance
                   : mergedSeed.peakBalance,
-            },
-            'Coffre resynchronisé avec le cloud.',
-            { dirty: false },
-          );
-          reconciledSeed = {
-            ...mergedSeed,
-            balance: synced.balance,
-            vault: synced.vault,
-            peakBalance:
-              typeof synced.peak_balance === 'number'
-                ? synced.peak_balance
-                : mergedSeed.peakBalance,
-          };
+            };
+          }
         }
         const boards = await fetchLeaderboards();
         const localAfter = upsertSelfScore(state, {
