@@ -164,6 +164,7 @@ export function CirclePanel() {
   };
 
   const applyVaultAmount = async (mode: 'deposit' | 'withdraw') => {
+    if (busy) return;
     const cents = parseCreditsInput(vaultInput);
     if (cents == null) {
       setError('Indiquez un montant valide.');
@@ -267,69 +268,79 @@ export function CirclePanel() {
       return;
     }
 
-    // Retrait
+    // Retrait — le coffre cloud est la source de vérité (pas le fantôme local).
     if (circle?.cloud && isSupabaseConfigured()) {
       setBusy(true);
       try {
-        await syncThen();
-
-        // Diagnostic cloud avant le RPC.
+        let cloudBal = 0;
+        let cloudVault = 0;
+        let cloudPeak = 0;
+        let haveCloud = false;
         try {
           const mine = await fetchMyScore();
-          const cloudBal = Math.floor(Number(mine.balance) || 0);
-          const cloudVault = Math.floor(Number(mine.vault) || 0);
-          const cloudPeak = Math.floor(Number(mine.peak_balance) || 0);
-          if (cloudVault < cents) {
-            if (cloudVault <= 0) {
-              const applied = applySafeCloudWallet(
-                cloudBal,
-                cloudVault,
-                cloudPeak,
-                'Rien dans le coffre cloud — tes crédits sont déjà en solde jouable.',
-              );
-              if (applied) {
-                setVaultInput('');
-                setError(null);
-                return;
-              }
-              // Coffre fantôme + patrimoine local > cloud : liquider localement
-              // puis resync (sans écraser un vrai gain non poussé).
-              const g = useGame.getState();
-              if (g.vault > 0) {
-                vaultWithdraw(g.vault);
-                await syncThen();
-                try {
-                  const again = await fetchMyScore();
-                  applySafeCloudWallet(
-                    Math.floor(Number(again.balance) || 0),
-                    Math.floor(Number(again.vault) || 0),
-                    Math.floor(Number(again.peak_balance) || 0),
-                    'Coffre cloud vide — solde resynchronisé. Tu peux re-coffrer.',
-                  );
-                } catch {
-                  /* ignore */
-                }
-                setVaultInput('');
-                setError(
-                  'Coffre cloud vide. Crédits remis en jouable localement — colle les migrations SQL vault si ça bloque encore.',
-                );
-                return;
-              }
-              setError('Coffre cloud vide — rien à retirer.');
-              return;
+          cloudBal = Math.floor(Number(mine.balance) || 0);
+          cloudVault = Math.floor(Number(mine.vault) || 0);
+          cloudPeak = Math.floor(Number(mine.peak_balance) || 0);
+          haveCloud = true;
+        } catch {
+          /* RPC pourra encore marcher */
+        }
+
+        // Coffre local plein mais cloud vide : tenter une sync pour pousser le dépôt local.
+        if (haveCloud && cloudVault < cents) {
+          const g = useGame.getState();
+          if (cloudVault <= 0 && g.vault >= cents) {
+            await syncThen();
+            try {
+              const again = await fetchMyScore();
+              cloudBal = Math.floor(Number(again.balance) || 0);
+              cloudVault = Math.floor(Number(again.vault) || 0);
+              cloudPeak = Math.floor(Number(again.peak_balance) || 0);
+            } catch {
+              /* keep previous */
             }
-            applySafeCloudWallet(
+          }
+        }
+
+        if (haveCloud && cloudVault < cents) {
+          if (cloudVault <= 0) {
+            const applied = applySafeCloudWallet(
               cloudBal,
               cloudVault,
               cloudPeak,
-              'Coffre aligné avec le cloud.',
+              'Rien dans le coffre cloud — tes crédits sont déjà en solde jouable.',
             );
-            setVaultInput(String(cloudVault / 100));
-            setError(`Coffre cloud : seulement ${fmt(cloudVault)}. Montant ajusté — retente Retirer.`);
+            if (applied) {
+              setVaultInput('');
+              setError(
+                `Coffre cloud vide : ${fmt(cloudBal)} déjà jouables (plus de coffre à retirer).`,
+              );
+              return;
+            }
+            const g = useGame.getState();
+            if (g.vault > 0) {
+              vaultWithdraw(g.vault);
+              await syncThen();
+              setVaultInput('');
+              setError(
+                'Coffre cloud vide — crédits remis en jouable sur cet appareil. Si le solde cloud est faux, colle les migrations SQL vault.',
+              );
+              return;
+            }
+            setError('Coffre cloud vide — rien à retirer.');
             return;
           }
-        } catch {
-          /* continue vers RPC */
+          applySafeCloudWallet(
+            cloudBal,
+            cloudVault,
+            cloudPeak,
+            'Coffre aligné avec le cloud.',
+          );
+          setVaultInput(String(cloudVault / 100));
+          setError(
+            `Coffre cloud : seulement ${fmt(cloudVault)}. Montant ajusté — retente Retirer.`,
+          );
+          return;
         }
 
         const res = await withdrawVaultCloud(cents);
@@ -346,30 +357,32 @@ export function CirclePanel() {
         setCircle(refreshed.state);
         setBoards(refreshed.boards);
         setVaultInput('');
+        setError(null);
       } catch (e) {
         const msg = e instanceof Error ? e.message : '';
         if (/withdraw_my_vault|Could not find the function|schema cache/i.test(msg)) {
           vaultWithdraw(cents);
           setVaultInput('');
+          try {
+            await syncThen();
+          } catch {
+            /* best-effort */
+          }
           setError(
-            'Retrait local OK — colle la migration SQL withdraw_my_vault sur Supabase pour le cloud.',
+            'Retrait local fait — colle la migration SQL withdraw_my_vault sur Supabase pour que le cloud suive.',
           );
         } else if (/Pas assez dans le coffre/i.test(msg)) {
           try {
             const mine = await fetchMyScore();
-            const cloudBal = Math.floor(Number(mine.balance) || 0);
-            const cloudVault = Math.floor(Number(mine.vault) || 0);
-            const cloudPeak = Math.floor(Number(mine.peak_balance) || 0);
-            if (cloudVault <= 0) {
-              applySafeCloudWallet(
-                cloudBal,
-                cloudVault,
-                cloudPeak,
-                'Coffre cloud vide — crédits déjà jouables.',
-              );
+            const bal = Math.floor(Number(mine.balance) || 0);
+            const v = Math.floor(Number(mine.vault) || 0);
+            const peak = Math.floor(Number(mine.peak_balance) || 0);
+            if (v <= 0) {
+              applySafeCloudWallet(bal, v, peak, 'Coffre cloud vide — crédits déjà jouables.');
+              setError(`Coffre cloud vide : ${fmt(bal)} jouables.`);
             } else {
-              setVaultInput(String(cloudVault / 100));
-              setError(`Pas assez — coffre cloud ${fmt(cloudVault)}. Montant ajusté.`);
+              setVaultInput(String(v / 100));
+              setError(`Pas assez — coffre cloud ${fmt(v)}. Montant ajusté.`);
             }
           } catch {
             setError(msg);
@@ -806,13 +819,14 @@ export function CirclePanel() {
                   placeholder="ex. 250"
                   value={vaultInput}
                   onChange={(e) => setVaultInput(e.target.value)}
+                  disabled={busy}
                 />
               </label>
               <div className="circle-vault-quick">
                 <button
                   type="button"
                   className="btn ghost"
-                  disabled={canVault <= 0}
+                  disabled={busy || canVault <= 0}
                   onClick={() => setVaultInput(String(canVault / 100))}
                 >
                   Max surplus
@@ -820,7 +834,7 @@ export function CirclePanel() {
                 <button
                   type="button"
                   className="btn ghost"
-                  disabled={vault <= 0}
+                  disabled={busy || vault <= 0}
                   onClick={() => setVaultInput(String(vault / 100))}
                 >
                   Max coffre
@@ -830,18 +844,18 @@ export function CirclePanel() {
                 <button
                   type="button"
                   className="btn primary"
-                  disabled={canVault <= 0}
-                  onClick={() => applyVaultAmount('deposit')}
+                  disabled={busy || canVault <= 0}
+                  onClick={() => void applyVaultAmount('deposit')}
                 >
-                  Coffrer
+                  {busy ? '…' : 'Coffrer'}
                 </button>
                 <button
                   type="button"
                   className="btn ghost"
-                  disabled={vault <= 0}
-                  onClick={() => applyVaultAmount('withdraw')}
+                  disabled={busy || vault <= 0}
+                  onClick={() => void applyVaultAmount('withdraw')}
                 >
-                  Retirer
+                  {busy ? '…' : 'Retirer'}
                 </button>
               </div>
             </div>
@@ -879,6 +893,7 @@ export function CirclePanel() {
                 </button>
               </div>
             )}
+            {error && <p className="circle-error circle-vault-error">{error}</p>}
           </div>
 
           <div className="circle-tabs" role="tablist">
