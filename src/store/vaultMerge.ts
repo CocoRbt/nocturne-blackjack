@@ -4,6 +4,7 @@
  * (solde + coffre) n’a pas augmenté — sinon un retrait local est
  * écrasé par un pull stale et on duplique l’argent.
  */
+
 export function mergeIncomingVault(input: {
   localBalance: number;
   localVault: number;
@@ -15,10 +16,19 @@ export function mergeIncomingVault(input: {
   const cloudBal = Math.max(0, Math.floor(input.cloudBalance));
   const cloudVault = Math.max(0, Math.floor(input.cloudVault));
 
-  if (cloudVault <= localVault) return localVault;
-
   const localWealth = localBal + localVault;
   const cloudWealth = cloudBal + cloudVault;
+
+  // Envoi / retrait déjà appliqué cloud, UI locale pas à jour (crash mid-RPC).
+  if (cloudVault < localVault) {
+    const vaultDrop = localVault - cloudVault;
+    const wealthDrop = localWealth - cloudWealth;
+    if (Math.abs(wealthDrop - vaultDrop) <= 1) {
+      return cloudVault;
+    }
+  }
+
+  if (cloudVault <= localVault) return localVault;
 
   // Cadeau / sync serveur : richesse cloud > locale → accepter le coffre cloud.
   if (cloudWealth > localWealth + 1) return cloudVault;

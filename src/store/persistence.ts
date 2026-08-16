@@ -116,6 +116,8 @@ export interface SaveData {
   lastBets: Record<string, StoredSeatBet[]>;
   gameSpeed?: 'classic' | 'fast';
   privateLimits?: PrivateLimits;
+  /** Dernier écran (évite de perdre le salon après un reload mobile). */
+  screen?: 'lobby' | 'table' | 'mines' | 'craps' | 'crash' | 'plinko' | 'slots';
   /** Profil local du cercle (sync Supabase plus tard). */
   circle?: CircleProfileLocal | null;
 }
@@ -191,6 +193,16 @@ function migrate(raw: Record<string, unknown>): SaveData | null {
     lastBets: normalizeLastBets(raw.lastBets),
     gameSpeed: raw.gameSpeed === 'fast' ? 'fast' : 'classic',
     privateLimits: raw.privateLimits as PrivateLimits | undefined,
+    screen:
+      raw.screen === 'table' ||
+      raw.screen === 'mines' ||
+      raw.screen === 'craps' ||
+      raw.screen === 'crash' ||
+      raw.screen === 'plinko' ||
+      raw.screen === 'slots' ||
+      raw.screen === 'lobby'
+        ? raw.screen
+        : undefined,
     circle: (raw.circle as CircleProfileLocal | null | undefined) ?? null,
   };
 }

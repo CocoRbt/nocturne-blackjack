@@ -1,5 +1,6 @@
 import { Suspense, lazy } from 'react';
 import { Lobby } from './components/Lobby';
+import { useCircleKeepalive } from './components/CirclePanel';
 import { useGame } from './store/gameStore';
 
 const TableScreen = lazy(() =>
@@ -30,6 +31,7 @@ function ScreenFallback() {
 }
 
 export default function App() {
+  useCircleKeepalive();
   const screen = useGame((s) => s.screen);
   if (screen === 'lobby') return <Lobby />;
   return (
