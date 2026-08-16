@@ -59,6 +59,18 @@ describe('overlaySelfOnBoards', () => {
     expect(boards.live.find((r) => r.nickname === 'I2S')!.balance).toBe(10_000);
   });
 
+  it('classe au live sur le patrimoine (solde + coffre)', () => {
+    const boards = overlaySelfOnBoards(empty, 'ZaaariX', {
+      balance: 5_000,
+      peakBalance: 40_000,
+      gamesBeforePeak: 10,
+      vault: 100_000,
+    });
+    // 105k patrimoine > I2S 10k
+    expect(boards.live[0]!.nickname).toBe('ZaaariX');
+    expect(boards.live[0]!.rank).toBe(1);
+  });
+
   it('affiche mes parties avant le record sur l’onglet Record', () => {
     const boards = overlaySelfOnBoards(empty, 'ZaaariX', {
       balance: 172_700,
@@ -67,7 +79,7 @@ describe('overlaySelfOnBoards', () => {
       vault: 5_000,
     });
     const me = boards.peak.find((r) => r.nickname === 'ZaaariX')!;
-    expect(me.peak_balance).toBe(172_700);
+    expect(me.peak_balance).toBe(177_700); // record ≥ solde + coffre
     expect(me.games_before_peak).toBe(184);
     expect(me.vault).toBe(5_000);
     expect(me.rank).toBe(2); // sous Selmex 1_434_975
