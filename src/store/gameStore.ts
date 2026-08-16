@@ -737,7 +737,7 @@ export const useGame = create<GameState>((set, get) => {
         notice: null,
       });
       persist();
-      markScoreDirty();
+      // Pas de sync mid-mise : le crédit (settle) poussera games+1 + solde final.
       return true;
     },
 
@@ -797,7 +797,6 @@ export const useGame = create<GameState>((set, get) => {
         notice: null,
       });
       persist();
-      markScoreDirty();
       return true;
     },
 
@@ -872,7 +871,6 @@ export const useGame = create<GameState>((set, get) => {
         notice: null,
       });
       persist();
-      markScoreDirty();
       return true;
     },
 
@@ -926,7 +924,6 @@ export const useGame = create<GameState>((set, get) => {
         notice: null,
       });
       persist();
-      markScoreDirty();
       return true;
     },
 
@@ -959,7 +956,6 @@ export const useGame = create<GameState>((set, get) => {
         notice: null,
       });
       persist();
-      markScoreDirty();
       return true;
     },
 

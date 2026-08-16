@@ -17,7 +17,7 @@ import {
   type Leaderboards,
   type LocalCircleState,
 } from '../cercle/circleStore';
-import { consumeScoreDirty, onScoreDirty } from '../cercle/scoreSync';
+import { consumeScoreDirty, isScoreDirty, onScoreDirty } from '../cercle/scoreSync';
 import { STARTING_BALANCE } from '../store/persistence';
 import { useGame } from '../store/gameStore';
 import { formatGamesBeforePeak } from '../store/peakMeta';
@@ -40,13 +40,15 @@ function parseCreditsInput(raw: string): number | null {
 export function useCircleKeepalive() {
   useEffect(() => {
     let timer: number | undefined;
-    const schedule = () => {
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => {
-        if (!consumeScoreDirty()) return;
-        const state = loadCircle();
-        if (!state?.circleCode) return;
-        void (async () => {
+    let flushing = false;
+    const flush = async () => {
+      if (flushing) return;
+      flushing = true;
+      try {
+        // pushScore est sérialisé : on rejoue tant qu’il reste du dirty (spam Drop…).
+        while (consumeScoreDirty()) {
+          const state = loadCircle();
+          if (!state?.circleCode) return;
           const incoming = await peekIncomingVault(
             useGame.getState().vault,
             useGame.getState().balance,
@@ -66,8 +68,20 @@ export function useCircleKeepalive() {
             gamesBeforePeak: g.gamesBeforePeak,
             gamesPlayed: g.gamesPlayed,
           });
-        })().catch(() => undefined);
-      }, 450);
+        }
+      } catch {
+        /* réseau */
+      } finally {
+        flushing = false;
+        if (isScoreDirty()) schedule();
+      }
+    };
+
+    const schedule = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        void flush();
+      }, 650);
     };
     const unsub = onScoreDirty(schedule);
     schedule();
