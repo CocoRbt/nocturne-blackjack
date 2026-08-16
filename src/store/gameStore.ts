@@ -737,7 +737,7 @@ export const useGame = create<GameState>((set, get) => {
         notice: null,
       });
       persist();
-      markScoreDirty();
+      // Pas de sync mid-mise : le crédit (settle) poussera games+1 + solde final.
       return true;
     },
 
@@ -797,7 +797,6 @@ export const useGame = create<GameState>((set, get) => {
         notice: null,
       });
       persist();
-      markScoreDirty();
       return true;
     },
 
@@ -872,7 +871,6 @@ export const useGame = create<GameState>((set, get) => {
         notice: null,
       });
       persist();
-      markScoreDirty();
       return true;
     },
 
@@ -926,7 +924,6 @@ export const useGame = create<GameState>((set, get) => {
         notice: null,
       });
       persist();
-      markScoreDirty();
       return true;
     },
 
@@ -959,7 +956,6 @@ export const useGame = create<GameState>((set, get) => {
         notice: null,
       });
       persist();
-      markScoreDirty();
       return true;
     },
 
@@ -1178,7 +1174,7 @@ export const useGame = create<GameState>((set, get) => {
       syncShoe();
       persist();
       bump();
-      markScoreDirty();
+      // Pas de sync mid-donne : le règlement (settle) poussera le solde final + games+1.
 
       // Chorégraphie : une pulsation par carte distribuée sur la table.
       for (let i = 0; i < dealCardCount; i++) {

@@ -14,7 +14,7 @@ import {
   type LeaderboardRow,
   type Leaderboards,
 } from './circleApi';
-import { getSyncEpoch } from './scoreSync';
+import { enqueueScorePush, getSyncEpoch } from './scoreSync';
 
 const CIRCLE_CHANGED = 'nocturne-circle-changed';
 
@@ -262,44 +262,59 @@ export async function restoreCircleFromCloud(
 }
 
 export async function pushScore(state: LocalCircleState, seed: Omit<CircleMemberScore, 'nickname' | 'updatedAt'>): Promise<LocalCircleState> {
-  const epoch = getSyncEpoch();
-  let vault = seed.vault;
-  if (state.cloud && isSupabaseConfigured()) {
-    vault = await pullIncomingVault(seed.vault, seed.balance);
-  }
-  if (epoch !== getSyncEpoch()) return state;
-  const mergedSeed = { ...seed, vault };
-  const local = upsertSelfScore(state, { ...mergedSeed, nickname: state.nickname });
-  if (state.cloud && isSupabaseConfigured()) {
-    try {
-      if (epoch !== getSyncEpoch()) return state;
-      await syncScoreCloud({
-        balance: mergedSeed.balance,
-        peakBalance: mergedSeed.peakBalance,
-        handsPlayed: mergedSeed.handsPlayed,
-        blackjacks: mergedSeed.blackjacks,
-        bestStreak: mergedSeed.bestStreak,
-        highestTable: mergedSeed.highestTable,
-        gamesBeforePeak: mergedSeed.gamesBeforePeak,
-        gamesPlayed: mergedSeed.gamesPlayed,
-        vault: mergedSeed.vault,
-      });
-      if (epoch !== getSyncEpoch()) return state;
-      const boards = await fetchLeaderboards();
-      const next = {
-        ...local,
-        members: mergeBoardMembers(boards, state.nickname, local.members),
-        cloud: true,
-      };
-      saveCircle(next);
-      return next;
-    } catch {
-      saveCircle(local);
-      return local;
+  let result = state;
+  await enqueueScorePush(async () => {
+    const epoch = getSyncEpoch();
+    let vault = seed.vault;
+    if (state.cloud && isSupabaseConfigured()) {
+      vault = await pullIncomingVault(seed.vault, seed.balance);
     }
-  }
-  saveCircle(local);
-  return local;
+    if (epoch !== getSyncEpoch()) {
+      result = state;
+      return;
+    }
+    const mergedSeed = { ...seed, vault };
+    const local = upsertSelfScore(state, { ...mergedSeed, nickname: state.nickname });
+    if (state.cloud && isSupabaseConfigured()) {
+      try {
+        if (epoch !== getSyncEpoch()) {
+          result = state;
+          return;
+        }
+        await syncScoreCloud({
+          balance: mergedSeed.balance,
+          peakBalance: mergedSeed.peakBalance,
+          handsPlayed: mergedSeed.handsPlayed,
+          blackjacks: mergedSeed.blackjacks,
+          bestStreak: mergedSeed.bestStreak,
+          highestTable: mergedSeed.highestTable,
+          gamesBeforePeak: mergedSeed.gamesBeforePeak,
+          gamesPlayed: mergedSeed.gamesPlayed,
+          vault: mergedSeed.vault,
+        });
+        if (epoch !== getSyncEpoch()) {
+          result = state;
+          return;
+        }
+        const boards = await fetchLeaderboards();
+        const next = {
+          ...local,
+          members: mergeBoardMembers(boards, state.nickname, local.members),
+          cloud: true,
+        };
+        saveCircle(next);
+        result = next;
+        return;
+      } catch {
+        saveCircle(local);
+        result = local;
+        return;
+      }
+    }
+    saveCircle(local);
+    result = local;
+  });
+  return result;
 }
 
 /** Expose le coffre fusionné après pull (cadeaux reçus). */
@@ -330,13 +345,18 @@ function mergeBoardMembers(
 ): CircleMemberScore[] {
   const map = new Map<string, CircleMemberScore>();
   for (const m of previous) map.set(m.nickname, m);
-  for (const row of [...boards.live, ...boards.peak]) {
+
+  const applyRow = (row: LeaderboardRow, preferLiveBalance: boolean) => {
     const prev = map.get(row.nickname);
     const peakBalance = Math.max(row.peak_balance, prev?.peakBalance ?? 0);
     const fromPeakRow = row.peak_balance >= (prev?.peakBalance ?? 0);
+    // Live = crédit actuel ; le board peak ne doit pas écraser un live plus haut.
+    const balance = preferLiveBalance
+      ? row.balance
+      : Math.max(row.balance, prev?.balance ?? 0);
     map.set(row.nickname, {
       nickname: row.nickname,
-      balance: row.balance,
+      balance,
       peakBalance,
       vault: row.vault ?? prev?.vault ?? 0,
       handsPlayed: prev?.handsPlayed ?? 0,
@@ -349,7 +369,11 @@ function mergeBoardMembers(
       gamesPlayed: prev?.gamesPlayed ?? 0,
       updatedAt: Date.parse(row.updated_at) || Date.now(),
     });
-  }
+  };
+
+  for (const row of boards.live ?? []) applyRow(row, true);
+  for (const row of boards.peak ?? []) applyRow(row, false);
+
   if (!map.has(me) && previous.some((m) => m.nickname === me)) {
     const self = previous.find((m) => m.nickname === me);
     if (self) map.set(me, self);

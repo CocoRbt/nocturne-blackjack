@@ -9,6 +9,9 @@ let dirty = false;
 /** Invalide les push en vol (login compte / hydrate cloud). */
 let syncEpoch = 0;
 
+/** Sérialise les push cloud : un seul à la fois, rejoue si dirty à la fin. */
+let pushChain: Promise<void> = Promise.resolve();
+
 export function markScoreDirty(): void {
   dirty = true;
   try {
@@ -46,4 +49,19 @@ export function onScoreDirty(cb: () => void): () => void {
   const handler = () => cb();
   window.addEventListener(EVENT, handler);
   return () => window.removeEventListener(EVENT, handler);
+}
+
+/**
+ * Enfile un push score : évite deux RPC concurrentes où la plus lente
+ * (solde mid-mise) écraserait un sync plus récent déjà appliqué.
+ */
+export function enqueueScorePush(task: () => Promise<void>): Promise<void> {
+  const run = pushChain.then(async () => {
+    await task();
+  });
+  pushChain = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
 }
