@@ -39,6 +39,7 @@ import { clearScoreDirty, markScoreDirty } from '../cercle/scoreSync';
 import { creditWithoutGame, settleGamePeak } from './peakMeta';
 import { depositToVault, vaultableAmount, withdrawFromVault } from './vault';
 import { mergeIncomingVault } from './vaultMerge';
+import { peakWealthCents } from '../cercle/wealth';
 import { TIMING, type GameSpeed } from './timing';
 
 export type BetSpot = 'main' | SideBetId;
@@ -344,7 +345,7 @@ export const useGame = create<GameState>((set, get) => {
       version: 2,
       balance: s.balance,
       vault: s.vault,
-      peakBalance: s.peakBalance,
+      peakBalance: peakWealthCents(s.peakBalance, s.balance, s.vault),
       gamesPlayed: s.gamesPlayed,
       gamesBeforePeak: s.gamesBeforePeak,
       tableId: s.tableId,
@@ -359,6 +360,10 @@ export const useGame = create<GameState>((set, get) => {
     };
     persistSave(data);
   };
+
+  /** Record = max patrimoine (solde + coffre), pas seulement le solde jouable. */
+  const wealthPeak = (balance: number, vault: number, peak: number) =>
+    peakWealthCents(peak, balance, vault);
 
   const refreshSeatCapacityState = () => {
     const s = get();
@@ -498,7 +503,7 @@ export const useGame = create<GameState>((set, get) => {
 
     set({
       balance: settled.balance,
-      peakBalance: settled.peakBalance,
+      peakBalance: wealthPeak(settled.balance, s.vault, settled.peakBalance),
       gamesPlayed: settled.gamesPlayed,
       gamesBeforePeak: settled.gamesBeforePeak,
       stats,
@@ -765,7 +770,7 @@ export const useGame = create<GameState>((set, get) => {
         : creditWithoutGame(s.balance, payout, meta);
       set({
         balance: settled.balance,
-        peakBalance: settled.peakBalance,
+        peakBalance: wealthPeak(settled.balance, get().vault, settled.peakBalance),
         gamesPlayed: settled.gamesPlayed,
         gamesBeforePeak: settled.gamesBeforePeak,
       });
@@ -825,7 +830,7 @@ export const useGame = create<GameState>((set, get) => {
         : creditWithoutGame(s.balance, payout, meta);
       set({
         balance: settled.balance,
-        peakBalance: settled.peakBalance,
+        peakBalance: wealthPeak(settled.balance, get().vault, settled.peakBalance),
         gamesPlayed: settled.gamesPlayed,
         gamesBeforePeak: settled.gamesBeforePeak,
       });
@@ -902,7 +907,7 @@ export const useGame = create<GameState>((set, get) => {
         : creditWithoutGame(s.balance, payout, meta);
       set({
         balance: settled.balance,
-        peakBalance: settled.peakBalance,
+        peakBalance: wealthPeak(settled.balance, get().vault, settled.peakBalance),
         gamesPlayed: settled.gamesPlayed,
         gamesBeforePeak: settled.gamesBeforePeak,
       });
@@ -956,7 +961,7 @@ export const useGame = create<GameState>((set, get) => {
         : creditWithoutGame(s.balance, payout, meta);
       set({
         balance: settled.balance,
-        peakBalance: settled.peakBalance,
+        peakBalance: wealthPeak(settled.balance, get().vault, settled.peakBalance),
         gamesPlayed: settled.gamesPlayed,
         gamesBeforePeak: settled.gamesBeforePeak,
       });
@@ -987,7 +992,7 @@ export const useGame = create<GameState>((set, get) => {
         : creditWithoutGame(s.balance, payout, meta);
       set({
         balance: settled.balance,
-        peakBalance: settled.peakBalance,
+        peakBalance: wealthPeak(settled.balance, get().vault, settled.peakBalance),
         gamesPlayed: settled.gamesPlayed,
         gamesBeforePeak: settled.gamesBeforePeak,
       });
@@ -1343,7 +1348,7 @@ export const useGame = create<GameState>((set, get) => {
       });
       set({
         balance: settled.balance,
-        peakBalance: settled.peakBalance,
+        peakBalance: wealthPeak(settled.balance, get().vault, settled.peakBalance),
         gamesBeforePeak: settled.gamesBeforePeak,
         notice: `Défi accompli — ${label} · +${Math.floor(amount / 100)} crédit`,
       });
@@ -1366,6 +1371,7 @@ export const useGame = create<GameState>((set, get) => {
       set({
         balance: result.balance,
         vault: result.vault,
+        peakBalance: wealthPeak(result.balance, result.vault, s.peakBalance),
         notice:
           vaultableAmount(result.balance) <= 0
             ? `Coffré — ${fmt(result.vault)} à l’abri. Les ${STARTING_BALANCE / 100} de base restent jouables.`
@@ -1395,7 +1401,7 @@ export const useGame = create<GameState>((set, get) => {
       set({
         balance: settled.balance,
         vault: result.vault,
-        peakBalance: settled.peakBalance,
+        peakBalance: wealthPeak(settled.balance, result.vault, settled.peakBalance),
         gamesBeforePeak: settled.gamesBeforePeak,
         notice: `Retiré du coffre. Crédit : ${fmt(settled.balance)}.`,
       });
@@ -1412,8 +1418,12 @@ export const useGame = create<GameState>((set, get) => {
         cloudVault,
       });
       if (next === s.vault) return;
-      set({ vault: next });
+      set({
+        vault: next,
+        peakBalance: wealthPeak(s.balance, next, s.peakBalance),
+      });
       persist();
+      markScoreDirty();
     },
 
     applyVaultAtLeast(vaultCents, cloudBalance) {
@@ -1431,10 +1441,13 @@ export const useGame = create<GameState>((set, get) => {
     applyVaultServerState(payload, notice, opts) {
       const balance = Math.max(0, Math.floor(payload.balance));
       const vault = Math.max(0, Math.floor(payload.vault));
-      const peakBalance =
+      const peakBalance = wealthPeak(
+        balance,
+        vault,
         typeof payload.peakBalance === 'number'
-          ? Math.max(balance, Math.floor(payload.peakBalance))
-          : Math.max(get().peakBalance, balance);
+          ? Math.floor(payload.peakBalance)
+          : get().peakBalance,
+      );
       set({
         balance,
         vault,
@@ -1483,11 +1496,11 @@ export const useGame = create<GameState>((set, get) => {
       }
       clearScoreDirty();
       const balance = Math.max(0, Math.floor(payload.balance));
-      const peakBalance = Math.max(balance, Math.floor(payload.peakBalance));
       const vault =
         typeof payload.vault === 'number'
           ? Math.max(0, Math.floor(payload.vault))
           : s.vault;
+      const peakBalance = wealthPeak(balance, vault, Math.floor(payload.peakBalance));
       set({
         balance,
         vault,

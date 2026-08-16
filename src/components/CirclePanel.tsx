@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fetchCreditSeries, depositVaultCloud, sendVaultCloud, withdrawVaultCloud, fetchMyScore, type CreditSeriesPoint } from '../cercle/circleApi';
 import { SEND_VAULT_MAX_CENTS } from '../cercle/vaultLimits';
+import { peakWealthCents, wealthCents } from '../cercle/wealth';
 import { consumeCircleSection } from '../cercle/circleNav';
 import { fmt } from '../lib/format';
 import {
@@ -785,7 +786,7 @@ export function CirclePanel() {
               className={tab === 'live' ? 'on' : ''}
               onClick={() => setTab('live')}
             >
-              Crédit actuel
+              Patrimoine
             </button>
             <button
               type="button"
@@ -821,10 +822,15 @@ export function CirclePanel() {
                   <span className="nick">{m.nickname}</span>
                   <span className="score-cell">
                     <span className="peak">
-                      {fmt(tab === 'live' ? m.balance : m.peak_balance)}
+                      {fmt(
+                        tab === 'live'
+                          ? wealthCents(m.balance, m.vault ?? 0)
+                          : peakWealthCents(m.peak_balance, m.balance, m.vault ?? 0),
+                      )}
                     </span>
                     <span className="vault-line">
-                      Coffre {fmt(m.vault ?? 0)}
+                      dont coffre {fmt(m.vault ?? 0)}
+                      {tab === 'live' ? ` · jouable ${fmt(m.balance)}` : ''}
                     </span>
                     {tab === 'peak' && (
                       <span className="before-peak">

@@ -15,6 +15,7 @@ import {
   type Leaderboards,
 } from './circleApi';
 import { enqueueScorePush, getSyncEpoch } from './scoreSync';
+import { peakWealthCents, wealthCents } from './wealth';
 import { useGame } from '../store/gameStore';
 
 const CIRCLE_CHANGED = 'nocturne-circle-changed';
@@ -128,24 +129,33 @@ export function upsertSelfScore(
 
 export function leaderboardsFromLocal(state: LocalCircleState): Leaderboards {
   const live = [...state.members]
-    .sort((a, b) => b.balance - a.balance)
+    .sort(
+      (a, b) =>
+        wealthCents(b.balance, b.vault) - wealthCents(a.balance, a.vault) ||
+        a.nickname.localeCompare(b.nickname),
+    )
     .map((m, i) => ({
       rank: i + 1,
       nickname: m.nickname,
       balance: m.balance,
-      peak_balance: m.peakBalance,
+      peak_balance: peakWealthCents(m.peakBalance, m.balance, m.vault),
       vault: m.vault,
       games_before_peak: m.gamesBeforePeak,
       updated_at: new Date(m.updatedAt).toISOString(),
       is_me: m.nickname === state.nickname,
     }));
   const peak = [...state.members]
-    .sort((a, b) => b.peakBalance - a.peakBalance)
+    .sort(
+      (a, b) =>
+        peakWealthCents(b.peakBalance, b.balance, b.vault) -
+          peakWealthCents(a.peakBalance, a.balance, a.vault) ||
+        a.nickname.localeCompare(b.nickname),
+    )
     .map((m, i) => ({
       rank: i + 1,
       nickname: m.nickname,
       balance: m.balance,
-      peak_balance: m.peakBalance,
+      peak_balance: peakWealthCents(m.peakBalance, m.balance, m.vault),
       vault: m.vault,
       games_before_peak: m.gamesBeforePeak,
       updated_at: new Date(m.updatedAt).toISOString(),
@@ -426,6 +436,7 @@ export function overlaySelfOnBoards(
   me: string,
   self: { balance: number; peakBalance: number; gamesBeforePeak: number; vault: number },
 ): Leaderboards {
+  const selfPeak = peakWealthCents(self.peakBalance, self.balance, self.vault);
   const patchLive = (rows: LeaderboardRow[]): LeaderboardRow[] => {
     let seen = false;
     const next = rows.map((r) => {
@@ -434,7 +445,7 @@ export function overlaySelfOnBoards(
       return {
         ...r,
         balance: self.balance,
-        peak_balance: Math.max(r.peak_balance, self.peakBalance),
+        peak_balance: Math.max(r.peak_balance, selfPeak),
         vault: self.vault,
         games_before_peak: r.games_before_peak ?? self.gamesBeforePeak,
         is_me: true,
@@ -445,7 +456,7 @@ export function overlaySelfOnBoards(
         rank: next.length + 1,
         nickname: me,
         balance: self.balance,
-        peak_balance: self.peakBalance,
+        peak_balance: selfPeak,
         vault: self.vault,
         games_before_peak: self.gamesBeforePeak,
         updated_at: new Date().toISOString(),
@@ -453,7 +464,11 @@ export function overlaySelfOnBoards(
       });
     }
     return next
-      .sort((a, b) => b.balance - a.balance || a.nickname.localeCompare(b.nickname))
+      .sort(
+        (a, b) =>
+          wealthCents(b.balance, b.vault ?? 0) - wealthCents(a.balance, a.vault ?? 0) ||
+          a.nickname.localeCompare(b.nickname),
+      )
       .map((r, i) => ({ ...r, rank: i + 1 }));
   };
 
@@ -462,9 +477,9 @@ export function overlaySelfOnBoards(
     const next = rows.map((r) => {
       if (r.nickname !== me && !r.is_me) return r;
       seen = true;
-      const peak = Math.max(r.peak_balance, self.peakBalance);
+      const peak = Math.max(r.peak_balance, selfPeak);
       const gamesBefore =
-        self.peakBalance >= r.peak_balance
+        selfPeak >= r.peak_balance
           ? self.gamesBeforePeak
           : (r.games_before_peak ?? self.gamesBeforePeak);
       return {
@@ -481,7 +496,7 @@ export function overlaySelfOnBoards(
         rank: next.length + 1,
         nickname: me,
         balance: self.balance,
-        peak_balance: self.peakBalance,
+        peak_balance: selfPeak,
         vault: self.vault,
         games_before_peak: self.gamesBeforePeak,
         updated_at: new Date().toISOString(),
@@ -489,7 +504,12 @@ export function overlaySelfOnBoards(
       });
     }
     return next
-      .sort((a, b) => b.peak_balance - a.peak_balance || a.nickname.localeCompare(b.nickname))
+      .sort(
+        (a, b) =>
+          peakWealthCents(b.peak_balance, b.balance, b.vault ?? 0) -
+            peakWealthCents(a.peak_balance, a.balance, a.vault ?? 0) ||
+          a.nickname.localeCompare(b.nickname),
+      )
       .map((r, i) => ({ ...r, rank: i + 1 }));
   };
 
