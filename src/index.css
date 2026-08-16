@@ -5,6 +5,9 @@
    ============================================================ */
 
 :root {
+  /* App déjà sombre : dit à Android/Chrome de NE PAS forcer un auto-dark. */
+  color-scheme: dark;
+
   --bg-0: #0a0b0e;
   --bg-1: #12151a;
   --bg-2: #191d24;
@@ -101,6 +104,7 @@ body,
 }
 
 html {
+  color-scheme: dark;
   overflow: hidden;
   overflow-x: clip;
 }
@@ -116,6 +120,34 @@ body {
   overflow-x: clip;
   /* Évite le reflow / zoom parasite sur mobile. */
   overscroll-behavior: none;
+}
+
+/*
+ * Android Chrome « Dark theme for web contents » invertit les surfaces claires
+ * (faces de cartes, dés ivoire, inputs). On verrouille ces éléments.
+ */
+.craps-die-svg,
+.craps-die-face,
+.craps-die-pip,
+.craps-card-die,
+.card-face,
+.card-back,
+.chip,
+input:not([type='checkbox']):not([type='radio']):not([type='range']),
+select,
+textarea {
+  forced-color-adjust: none;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+input:not([type='checkbox']):not([type='radio']):not([type='range']),
+select,
+textarea {
+  background-color: #12151a;
+  color: #e9e4d8;
+  border-color: rgba(233, 228, 216, 0.16);
+  color-scheme: dark;
 }
 
 /* Titres Fraunces : Soft/Wonk neutres (glyphes plus stables, dont le 8). */
@@ -1904,14 +1936,15 @@ button:disabled {
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 .card-face {
-  background: linear-gradient(160deg, #fbf8ef 0%, var(--card-face) 55%, #eae4d3 100%);
+  background: linear-gradient(160deg, #fbf8ef 0%, #f6f2e7 55%, #eae4d3 100%) !important;
   display: flex;
   flex-direction: column;
   padding: 7px 8px;
-  color: var(--card-black);
+  color: #23262b !important;
+  forced-color-adjust: none;
 }
 .card-face.red {
-  color: var(--card-red);
+  color: #a63d3d !important;
 }
 .card-face .corner {
   font-family: var(--font-num);
@@ -4292,12 +4325,21 @@ button:disabled {
   height: 100%;
 }
 .craps-die-face {
-  fill: var(--craps-ivory);
-  stroke: rgba(40, 36, 30, 0.18);
+  /* Hex en dur : les variables CSS se font parfois réécrire par l’auto-dark Android. */
+  fill: #f2ebe0 !important;
+  stroke: rgba(40, 36, 30, 0.35) !important;
   stroke-width: 2;
 }
 .craps-die-pip {
-  fill: #1f1c18;
+  fill: #1a1714 !important;
+}
+.craps-card-die {
+  background: linear-gradient(160deg, #f7f1e4, #e4d8c0) !important;
+}
+.craps-card-die::before,
+.craps-card-die[data-pips='5']::before {
+  /* pips : ne pas laisser Android les blanchir */
+  filter: none !important;
 }
 .craps-total {
   display: flex;

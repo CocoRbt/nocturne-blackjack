@@ -65,10 +65,25 @@ function randFace(): DieFace {
 
 function DieFaceSvg({ face }: { face: DieFace }) {
   return (
-    <svg viewBox="0 0 100 100" className="craps-die-svg">
-      <rect x="6" y="6" width="88" height="88" rx="16" className="craps-die-face" />
+    <svg
+      viewBox="0 0 100 100"
+      className="craps-die-svg"
+      // Attributs fill : plus résistants que le CSS seul sous auto-dark Android.
+      style={{ colorScheme: 'dark' }}
+    >
+      <rect
+        x="6"
+        y="6"
+        width="88"
+        height="88"
+        rx="16"
+        className="craps-die-face"
+        fill="#f2ebe0"
+        stroke="rgba(40,36,30,0.35)"
+        strokeWidth="2"
+      />
       {PIP_MAP[face].map(([x, y], i) => (
-        <circle key={i} cx={x} cy={y} r="8.5" className="craps-die-pip" />
+        <circle key={i} cx={x} cy={y} r="8.5" className="craps-die-pip" fill="#1a1714" />
       ))}
     </svg>
   );
