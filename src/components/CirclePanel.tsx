@@ -22,7 +22,7 @@ import {
   type Leaderboards,
   type LocalCircleState,
 } from '../cercle/circleStore';
-import { consumeScoreDirty, isScoreDirty, markScoreDirty, onScoreDirty } from '../cercle/scoreSync';
+import { startCircleLiveSync } from '../cercle/circleLiveSync';
 import { STARTING_BALANCE } from '../store/persistence';
 import { useGame } from '../store/gameStore';
 import { formatGamesBeforePeak } from '../store/peakMeta';
@@ -41,72 +41,9 @@ function parseCreditsInput(raw: string): number | null {
   return Math.round(n * 100);
 }
 
-/** Pousse le score cloud uniquement après une action de jeu (dirty). */
+/** Sync cercle : le live tourne dans App (startCircleLiveSync). */
 export function useCircleKeepalive() {
-  useEffect(() => {
-    let timer: number | undefined;
-    let flushing = false;
-    const flush = async () => {
-      if (flushing) return;
-      flushing = true;
-      try {
-        while (consumeScoreDirty()) {
-          const state = loadCircle();
-          if (!state?.circleCode) {
-            markScoreDirty();
-            return;
-          }
-          const incoming = await peekIncomingVault(
-            useGame.getState().vault,
-            useGame.getState().balance,
-          );
-          if (incoming !== useGame.getState().vault) {
-            useGame.getState().setVaultFromServer(incoming);
-          }
-          const g = useGame.getState();
-          await pushScore(state, {
-            balance: g.balance,
-            peakBalance: g.peakBalance,
-            vault: g.vault,
-            handsPlayed: g.stats.handsPlayed,
-            blackjacks: g.stats.blackjacks,
-            bestStreak: g.stats.longestWinStreak,
-            highestTable: g.tableId,
-            gamesBeforePeak: g.gamesBeforePeak,
-            gamesPlayed: g.gamesPlayed,
-          });
-        }
-      } catch {
-        markScoreDirty();
-      } finally {
-        flushing = false;
-        if (isScoreDirty()) schedule();
-      }
-    };
-
-    const schedule = () => {
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => {
-        void flush();
-      }, 650);
-    };
-    const unsub = onScoreDirty(schedule);
-    const onHide = () => {
-      if (isScoreDirty()) void flush();
-    };
-    const onVis = () => {
-      if (document.visibilityState === 'hidden') onHide();
-    };
-    window.addEventListener('pagehide', onHide);
-    document.addEventListener('visibilitychange', onVis);
-    schedule();
-    return () => {
-      unsub();
-      window.clearTimeout(timer);
-      window.removeEventListener('pagehide', onHide);
-      document.removeEventListener('visibilitychange', onVis);
-    };
-  }, []);
+  useEffect(() => startCircleLiveSync(), []);
 }
 
 export function CirclePanel() {
@@ -497,76 +434,16 @@ export function CirclePanel() {
   };
 
   useEffect(() => {
-    if (!circle?.circleCode) return;
-    let cancelled = false;
-    const t = window.setTimeout(() => {
-      void (async () => {
-        try {
-          if (!consumeScoreDirty()) return;
-          const incoming = await peekIncomingVault(seed.vault, seed.balance);
-          if (incoming !== useGame.getState().vault) {
-            setVaultFromServer(incoming);
-          }
-          const g = useGame.getState();
-          const next = await pushScore(circle, {
-            ...seed,
-            vault: g.vault,
-            balance: g.balance,
-          });
-          if (cancelled) return;
-          setCircle(next);
-        } catch {
-          /* réseau */
-        }
-      })();
-    }, 400);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(t);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    balance,
-    vault,
-    peakBalance,
-    gamesPlayed,
-    gamesBeforePeak,
-    stats.handsPlayed,
-    stats.blackjacks,
-    stats.longestWinStreak,
-    tableId,
-    circle?.circleCode,
-    circle?.nickname,
-  ]);
-
-  useEffect(() => {
     if (!circle?.cloud || !circle.circleCode) return;
     let cancelled = false;
     const tick = () => {
       const state = loadCircle();
       if (!state?.circleCode) return;
-      void (async () => {
-        try {
-          const g = useGame.getState();
-          const pushed = await pushScore(state, {
-            balance: g.balance,
-            peakBalance: g.peakBalance,
-            vault: g.vault,
-            handsPlayed: g.stats.handsPlayed,
-            blackjacks: g.stats.blackjacks,
-            bestStreak: g.stats.longestWinStreak,
-            highestTable: g.tableId,
-            gamesBeforePeak: g.gamesBeforePeak,
-            gamesPlayed: g.gamesPlayed,
-          });
-          const r = await refreshLeaderboards(pushed);
-          if (cancelled) return;
-          setCircle(r.state);
-          setBoards(r.boards);
-        } catch {
-          /* réseau */
-        }
-      })();
+      void refreshLeaderboards(state).then((r) => {
+        if (cancelled) return;
+        setCircle(r.state);
+        setBoards(r.boards);
+      });
     };
     tick();
     const id = window.setInterval(tick, 5_000);
