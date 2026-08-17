@@ -17,7 +17,7 @@ import {
 } from './circleApi';
 import { isNicknameTakenError } from './circleMembership';
 import { mergeBoardMembers, boardsAreEmpty } from './boardMerge';
-import { enqueueScorePush, getSyncEpoch } from './scoreSync';
+import { enqueueScorePush, getSyncEpoch, markScoreDirty } from './scoreSync';
 import { peakWealthCents, wealthCents } from './wealth';
 import { shouldApplyCloudWallet } from './walletReconcile';
 import { useGame } from '../store/gameStore';
@@ -423,6 +423,9 @@ export async function pushScore(state: LocalCircleState, seed: Omit<CircleMember
         const local = upsertSelfScore(state, { ...mergedSeed, nickname: state.nickname });
         saveCircle(local);
         result = local;
+        // Push cloud raté (FK, hors cercle, réseau) : réessayer, ne pas
+        // consommer le dirty comme si c’était écrit.
+        markScoreDirty();
         return;
       }
     }

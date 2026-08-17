@@ -88,4 +88,23 @@ describe('resolveSyncedScore', () => {
     expect(next.peakBalance).toBe(1_000_000_00);
     expect(next.balance).toBe(70_000_00);
   });
+
+  it('catch-up : écrit le vrai solde du téléphone si le record a monté', () => {
+    const next = resolveSyncedScore(
+      { balance: 7_083_000, vault: 0, peakBalance: 7_083_000, gamesPlayed: 200 },
+      { balance: 130_000_000, vault: 0, peakBalance: 130_000_000, gamesPlayed: 200 },
+    );
+    expect(next.balance).toBe(130_000_000);
+    expect(next.peakBalance).toBe(130_000_000);
+  });
+
+  it('catch-up : un onglet stale (moins de parties) ne baisse pas le record', () => {
+    const next = resolveSyncedScore(
+      { balance: 130_000_000, vault: 0, peakBalance: 130_000_000, gamesPlayed: 8000 },
+      { balance: 7_083_000, vault: 0, peakBalance: 7_083_000, gamesPlayed: 200 },
+    );
+    expect(next.balance).toBe(130_000_000);
+    expect(next.peakBalance).toBe(130_000_000);
+    expect(next.gamesPlayed).toBe(8000);
+  });
 });
