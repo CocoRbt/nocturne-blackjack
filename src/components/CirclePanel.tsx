@@ -114,7 +114,6 @@ export function CirclePanel() {
   const tableId = useGame((s) => s.tableId);
   const vaultDeposit = useGame((s) => s.vaultDeposit);
   const vaultWithdraw = useGame((s) => s.vaultWithdraw);
-  const applyIncomingVault = useGame((s) => s.applyIncomingVault);
   const applyVaultServerState = useGame((s) => s.applyVaultServerState);
   const setVaultFromServer = useGame((s) => s.setVaultFromServer);
 
@@ -145,7 +144,10 @@ export function CirclePanel() {
       if (next) {
         setNickname(next.nickname);
         setJoinCode(next.circleCode ?? '');
-        setBoards(leaderboardsFromLocal(next));
+        void refreshLeaderboards(next).then((r) => {
+          setCircle(r.state);
+          setBoards(r.boards);
+        });
       }
     });
   }, []);
@@ -200,6 +202,7 @@ export function CirclePanel() {
           localVault: g.vault,
           cloudBalance,
           cloudVault,
+          intent: 'align',
         }) === 'apply'
       ) {
         applyVaultServerState(
@@ -216,7 +219,8 @@ export function CirclePanel() {
       if (circle?.cloud && isSupabaseConfigured()) {
         setBusy(true);
         try {
-          await syncThen();
+          // RPC atomique d’abord — un coffrage local + sync est souvent
+          // refusé puis réécrit, ce qui donne l’impression que « ça coffre plus ».
           const tryDeposit = async () => depositVaultCloud(cents);
           let res;
           try {
@@ -243,19 +247,25 @@ export function CirclePanel() {
           setCircle(refreshed.state);
           setBoards(refreshed.boards);
           setVaultInput('');
+          setError(null);
         } catch (e) {
           const msg = e instanceof Error ? e.message : '';
           if (/deposit_my_vault|Could not find the function|schema cache/i.test(msg)) {
             vaultDeposit(cents);
-            setVaultInput('');
             try {
               await syncThen();
             } catch {
               /* sync best-effort */
             }
-            setError(
-              'Dépôt local OK — colle la migration SQL deposit_my_vault (et sync vault) sur Supabase pour le cloud.',
-            );
+            const g = useGame.getState();
+            if (g.vault < cents) {
+              setError(
+                'Coffrage refusé par le cloud. Colle les migrations SQL vault (deposit_my_vault).',
+              );
+            } else {
+              setVaultInput('');
+              setError(null);
+            }
           } else {
             setError(msg || 'Dépôt impossible');
           }
@@ -485,32 +495,21 @@ export function CirclePanel() {
     const t = window.setTimeout(() => {
       void (async () => {
         try {
-          const dirty = consumeScoreDirty();
-          let next = circle;
-          if (dirty) {
-            const incoming = await peekIncomingVault(seed.vault, seed.balance);
-            if (incoming !== useGame.getState().vault) {
-              setVaultFromServer(incoming);
-            }
-            const g = useGame.getState();
-            next = await pushScore(circle, {
-              ...seed,
-              vault: g.vault,
-              balance: g.balance,
-            });
-            if (cancelled) return;
-            setCircle(next);
+          if (!consumeScoreDirty()) return;
+          const incoming = await peekIncomingVault(seed.vault, seed.balance);
+          if (incoming !== useGame.getState().vault) {
+            setVaultFromServer(incoming);
           }
-          const refreshed = await refreshLeaderboards(next);
+          const g = useGame.getState();
+          const next = await pushScore(circle, {
+            ...seed,
+            vault: g.vault,
+            balance: g.balance,
+          });
           if (cancelled) return;
-          setCircle(refreshed.state);
-          setBoards(refreshed.boards);
-          const me = refreshed.boards.live.find((r) => r.is_me) ?? refreshed.boards.peak.find((r) => r.is_me);
-          if (me?.vault != null && me.balance != null) {
-            applyIncomingVault(me.vault, me.balance);
-          }
+          setCircle(next);
         } catch {
-          if (circle) setBoards(leaderboardsFromLocal(circle));
+          /* réseau */
         }
       })();
     }, 400);
@@ -534,16 +533,28 @@ export function CirclePanel() {
   ]);
 
   useEffect(() => {
-    if (!circle?.cloud) return;
+    if (!circle?.cloud || !circle.circleCode) return;
+    let cancelled = false;
     const tick = () => {
-      void refreshLeaderboards(circle).then((r) => {
+      const state = loadCircle();
+      if (!state?.circleCode) return;
+      void refreshLeaderboards(state).then((r) => {
+        if (cancelled) return;
         setCircle(r.state);
         setBoards(r.boards);
       });
     };
     tick();
-    const id = window.setInterval(tick, 8_000);
-    return () => window.clearInterval(id);
+    const id = window.setInterval(tick, 5_000);
+    const onVis = () => {
+      if (document.visibilityState === 'visible') tick();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [circle?.circleCode, circle?.nickname, circle?.cloud]);
 

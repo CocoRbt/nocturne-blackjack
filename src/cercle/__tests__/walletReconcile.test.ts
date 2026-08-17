@@ -13,13 +13,25 @@ describe('shouldApplyCloudWallet', () => {
     ).toBe('keep_local');
   });
 
-  it('accepte un coffre fantôme → solde cloud (même patrimoine)', () => {
+  it('ne défait pas un coffrage local tant que le cloud n’a pas le coffre (sync)', () => {
     expect(
       shouldApplyCloudWallet({
         localBalance: 10_000,
         localVault: 400_000_00,
         cloudBalance: 400_100_00,
         cloudVault: 0,
+      }),
+    ).toBe('keep_local');
+  });
+
+  it('aligne un coffre fantôme quand on le demande (retrait)', () => {
+    expect(
+      shouldApplyCloudWallet({
+        localBalance: 10_000,
+        localVault: 400_000_00,
+        cloudBalance: 400_100_00,
+        cloudVault: 0,
+        intent: 'align',
       }),
     ).toBe('apply');
   });
@@ -35,11 +47,19 @@ describe('shouldApplyCloudWallet', () => {
     ).toBe('apply');
   });
 
-  it('accepte une égalité de patrimoine (tolérance 1)', () => {
+  it('accepte une égalité de patrimoine (tolérance 1) si le split n’est pas un dépôt local', () => {
     expect(
       shouldApplyCloudWallet({
         localBalance: 100,
         localVault: 50,
+        cloudBalance: 151,
+        cloudVault: 0,
+      }),
+    ).toBe('keep_local');
+    expect(
+      shouldApplyCloudWallet({
+        localBalance: 151,
+        localVault: 0,
         cloudBalance: 151,
         cloudVault: 0,
       }),
