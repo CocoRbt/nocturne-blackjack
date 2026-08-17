@@ -14,6 +14,7 @@ import {
   type LeaderboardRow,
   type Leaderboards,
 } from './circleApi';
+import { mergeBoardMembers, boardsAreEmpty } from './boardMerge';
 import { enqueueScorePush, getSyncEpoch } from './scoreSync';
 import { peakWealthCents, wealthCents } from './wealth';
 import { shouldApplyCloudWallet } from './walletReconcile';
@@ -210,8 +211,7 @@ export async function refreshLeaderboards(state: LocalCircleState): Promise<{ st
       const boards = await fetchLeaderboards();
       const merged = mergeBoardMembers(boards, state.nickname, state.members);
       // Session cassée / nouveau anon → boards vides : ne pas écraser le cache local.
-      const boardEmpty = (boards.live?.length ?? 0) === 0 && (boards.peak?.length ?? 0) === 0;
-      if (boardEmpty && state.members.length > 0) {
+      if (boardsAreEmpty(boards) && state.members.length > 0) {
         return { state, boards: leaderboardsFromLocal(state) };
       }
       const next: LocalCircleState = {
@@ -256,19 +256,23 @@ export async function restoreCircleFromCloud(
     gamesBeforePeak: score.games_before_peak ?? 0,
     gamesPlayed: score.games_played ?? 0,
   };
+  const existing = loadCircle();
+  const keepMembers =
+    existing?.circleCode === score.circle_code ? existing.members : [];
   const base: LocalCircleState = {
     nickname: score.nickname,
     circleCode: score.circle_code,
-    members: [],
+    members: keepMembers,
     cloud: true,
   };
-  let state = upsertSelfScore(base, { ...seed, nickname: score.nickname });
+  const state = upsertSelfScore(base, { ...seed, nickname: score.nickname });
   saveCircle(state);
-  notifyCircleChanged();
   try {
     const refreshed = await refreshLeaderboards(state);
+    notifyCircleChanged();
     return refreshed.state;
   } catch {
+    notifyCircleChanged();
     return state;
   }
 }
@@ -397,48 +401,7 @@ export async function exitCircle(): Promise<void> {
   }
 }
 
-function mergeBoardMembers(
-  boards: Leaderboards,
-  me: string,
-  previous: CircleMemberScore[] = [],
-): CircleMemberScore[] {
-  const map = new Map<string, CircleMemberScore>();
-  for (const m of previous) map.set(m.nickname, m);
-
-  const applyRow = (row: LeaderboardRow, preferLiveBalance: boolean) => {
-    const prev = map.get(row.nickname);
-    const peakBalance = Math.max(row.peak_balance, prev?.peakBalance ?? 0);
-    const fromPeakRow = row.peak_balance >= (prev?.peakBalance ?? 0);
-    // Live = crédit actuel ; le board peak ne doit pas écraser un live plus haut.
-    const balance = preferLiveBalance
-      ? row.balance
-      : Math.max(row.balance, prev?.balance ?? 0);
-    map.set(row.nickname, {
-      nickname: row.nickname,
-      balance,
-      peakBalance,
-      vault: row.vault ?? prev?.vault ?? 0,
-      handsPlayed: prev?.handsPlayed ?? 0,
-      blackjacks: prev?.blackjacks ?? 0,
-      bestStreak: prev?.bestStreak ?? 0,
-      highestTable: prev?.highestTable ?? 'emeraude',
-      gamesBeforePeak: fromPeakRow
-        ? (row.games_before_peak ?? prev?.gamesBeforePeak ?? 0)
-        : (prev?.gamesBeforePeak ?? row.games_before_peak ?? 0),
-      gamesPlayed: prev?.gamesPlayed ?? 0,
-      updatedAt: Date.parse(row.updated_at) || Date.now(),
-    });
-  };
-
-  for (const row of boards.live ?? []) applyRow(row, true);
-  for (const row of boards.peak ?? []) applyRow(row, false);
-
-  if (!map.has(me) && previous.some((m) => m.nickname === me)) {
-    const self = previous.find((m) => m.nickname === me);
-    if (self) map.set(me, self);
-  }
-  return [...map.values()].sort((a, b) => b.peakBalance - a.peakBalance);
-}
+export { mergeBoardMembers };
 
 /**
  * Superpose mon score local sur les classements cloud.
@@ -454,7 +417,7 @@ export function overlaySelfOnBoards(
   const patchLive = (rows: LeaderboardRow[]): LeaderboardRow[] => {
     let seen = false;
     const next = rows.map((r) => {
-      if (r.nickname !== me && !r.is_me) return r;
+      if (r.nickname !== me) return r;
       seen = true;
       return {
         ...r,
@@ -489,7 +452,7 @@ export function overlaySelfOnBoards(
   const patchPeak = (rows: LeaderboardRow[]): LeaderboardRow[] => {
     let seen = false;
     const next = rows.map((r) => {
-      if (r.nickname !== me && !r.is_me) return r;
+      if (r.nickname !== me) return r;
       seen = true;
       const peak = Math.max(r.peak_balance, selfPeak);
       const gamesBefore =

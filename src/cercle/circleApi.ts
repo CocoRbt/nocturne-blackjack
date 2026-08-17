@@ -150,11 +150,28 @@ export async function fetchLeaderboards(): Promise<Leaderboards> {
   await ensureAnonSession();
   const { data, error } = await sb.rpc('get_leaderboards');
   if (error) throw new Error(rpcMessage(error));
-  const raw = data as { live: LeaderboardRow[]; peak: LeaderboardRow[] };
+  return normalizeLeaderboards(data);
+}
+
+export function normalizeLeaderboards(data: unknown): Leaderboards {
+  const raw = data as { live?: unknown; peak?: unknown } | null;
   return {
-    live: raw?.live ?? [],
-    peak: raw?.peak ?? [],
+    live: asLeaderboardRows(raw?.live),
+    peak: asLeaderboardRows(raw?.peak),
   };
+}
+
+function asLeaderboardRows(value: unknown): LeaderboardRow[] {
+  if (Array.isArray(value)) return value as LeaderboardRow[];
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return Array.isArray(parsed) ? (parsed as LeaderboardRow[]) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
 }
 
 export type MyScore = {
