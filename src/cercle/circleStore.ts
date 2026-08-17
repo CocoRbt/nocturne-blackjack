@@ -342,17 +342,6 @@ export async function pushScore(state: LocalCircleState, seed: Omit<CircleMember
       return;
     }
     const mergedSeed = sanitizeScoreForPush({ ...seed, vault });
-    if (mergedSeed.balance !== seed.balance) {
-      useGame.getState().applyVaultServerState(
-        {
-          balance: mergedSeed.balance,
-          vault: mergedSeed.vault,
-          peakBalance: mergedSeed.peakBalance,
-        },
-        undefined,
-        { dirty: false },
-      );
-    }
     if (state.cloud && isSupabaseConfigured()) {
       try {
         await ensureCircleMembership(state);

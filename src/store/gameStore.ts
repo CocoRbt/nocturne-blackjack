@@ -30,6 +30,7 @@ import {
   loadSave,
   persistSave,
   STARTING_BALANCE,
+  MAX_BALANCE_CENTS,
   type HistoryEntry,
   type SaveData,
   type Stats,
@@ -1514,10 +1515,14 @@ export const useGame = create<GameState>((set, get) => {
       });
       const keepLocal = decision === 'keep_local';
       const nextVault = keepLocal ? s.vault : vault;
-      const nextBalance = restoreWipedPlayable(
-        keepLocal ? s.balance : balance,
-        nextVault,
-        peakBalance,
+      const nextBalance = Math.min(
+        MAX_BALANCE_CENTS,
+        restoreWipedPlayable(
+          keepLocal ? s.balance : balance,
+          nextVault,
+          peakBalance,
+          payload.gamesPlayed ?? s.gamesPlayed ?? 0,
+        ),
       );
       if (nextBalance !== s.balance || nextVault !== s.vault) {
         markScoreDirty();

@@ -38,14 +38,13 @@ async function syncOnce(opts?: { push?: boolean }): Promise<void> {
   const shouldPush = opts?.push !== false;
   let next = state;
   if (shouldPush) {
-    const seed = scoreSeedFromGame();
-    if (seed.balance !== useGame.getState().balance) {
-      useGame.getState().applyVaultServerState(
-        { balance: seed.balance, vault: seed.vault, peakBalance: seed.peakBalance },
-        undefined,
-        { dirty: false },
-      );
+    const g = useGame.getState();
+    if (g.round || g.salonStakeOpen) {
+      await refreshLeaderboards(state);
+      notifyCircleChanged();
+      return;
     }
+    const seed = scoreSeedFromGame();
     next = await pushScore(state, seed);
   }
   await refreshLeaderboards(next);

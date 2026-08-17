@@ -89,31 +89,21 @@ describe('resolveSyncedScore', () => {
     expect(next.balance).toBe(70_000_00);
   });
 
-  it('catch-up : écrit le vrai solde du téléphone si le record a monté', () => {
+  it('n’accorde pas un solde 1,3 M sans nouvelle partie', () => {
     const next = resolveSyncedScore(
       { balance: 7_083_000, vault: 0, peakBalance: 7_083_000, gamesPlayed: 200 },
       { balance: 130_000_000, vault: 0, peakBalance: 130_000_000, gamesPlayed: 200 },
     );
-    expect(next.balance).toBe(130_000_000);
+    expect(next.balance).toBe(7_083_000);
     expect(next.peakBalance).toBe(130_000_000);
   });
 
-  it('catch-up : un onglet stale (moins de parties) ne baisse pas le record', () => {
+  it('une all-in perdue (games + 1) reste à 0', () => {
     const next = resolveSyncedScore(
-      { balance: 130_000_000, vault: 0, peakBalance: 130_000_000, gamesPlayed: 8000 },
-      { balance: 7_083_000, vault: 0, peakBalance: 7_083_000, gamesPlayed: 200 },
+      { balance: 80_000, vault: 0, peakBalance: 120_000, gamesPlayed: 40 },
+      { balance: 0, vault: 0, peakBalance: 120_000, gamesPlayed: 41 },
     );
-    expect(next.balance).toBe(130_000_000);
-    expect(next.peakBalance).toBe(130_000_000);
-    expect(next.gamesPlayed).toBe(8000);
-  });
-
-  it('ne laisse pas un millionnaire à 0 crédits (wipe)', () => {
-    const next = resolveSyncedScore(
-      { balance: 0, vault: 0, peakBalance: 121_100_000, gamesPlayed: 0 },
-      { balance: 0, vault: 0, peakBalance: 121_100_000, gamesPlayed: 8000 },
-    );
-    expect(next.balance).toBe(121_100_000);
-    expect(next.peakBalance).toBe(121_100_000);
+    expect(next.balance).toBe(0);
+    expect(next.peakBalance).toBe(120_000);
   });
 });
