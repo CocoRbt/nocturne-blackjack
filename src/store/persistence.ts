@@ -1,5 +1,6 @@
 import type { BetLayout, HandOutcome, SideBetId } from '../engine/types';
 import type { PrivateLimits } from '../engine/rules';
+import { restoreWipedPlayable } from '../cercle/wealth';
 
 /** Solde de départ : assez pour Émeraude, sous le seuil Onyx (500). */
 export const STARTING_BALANCE = 100_00;
@@ -180,7 +181,7 @@ function migrate(raw: Record<string, unknown>): SaveData | null {
 
   return {
     version: 2,
-    balance,
+    balance: restoreWipedPlayable(balance, vault, peakBalance),
     vault,
     peakBalance,
     gamesPlayed,

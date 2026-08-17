@@ -39,7 +39,8 @@ import { clearScoreDirty, markScoreDirty } from '../cercle/scoreSync';
 import { creditWithoutGame, settleGamePeak } from './peakMeta';
 import { depositToVault, vaultableAmount, withdrawFromVault } from './vault';
 import { mergeIncomingVault } from './vaultMerge';
-import { mergeRecordPeak, peakWealthCents } from '../cercle/wealth';
+import { mergeRecordPeak, peakWealthCents, restoreWipedPlayable } from '../cercle/wealth';
+import { shouldApplyCloudWallet } from '../cercle/walletReconcile';
 import { TIMING, type GameSpeed } from './timing';
 
 export type BetSpot = 'main' | SideBetId;
@@ -1505,9 +1506,25 @@ export const useGame = create<GameState>((set, get) => {
         balance,
         vault,
       );
+      const decision = shouldApplyCloudWallet({
+        localBalance: s.balance,
+        localVault: s.vault,
+        cloudBalance: balance,
+        cloudVault: vault,
+      });
+      const keepLocal = decision === 'keep_local';
+      const nextVault = keepLocal ? s.vault : vault;
+      const nextBalance = restoreWipedPlayable(
+        keepLocal ? s.balance : balance,
+        nextVault,
+        peakBalance,
+      );
+      if (nextBalance !== s.balance || nextVault !== s.vault) {
+        markScoreDirty();
+      }
       set({
-        balance,
-        vault,
+        balance: nextBalance,
+        vault: nextVault,
         peakBalance,
         gamesPlayed: payload.gamesPlayed ?? s.gamesPlayed,
         gamesBeforePeak: payload.gamesBeforePeak ?? s.gamesBeforePeak,
