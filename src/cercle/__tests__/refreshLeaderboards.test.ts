@@ -6,6 +6,14 @@ vi.mock('../circleApi', async () => {
     ...actual,
     isSupabaseConfigured: () => true,
     fetchLeaderboards: vi.fn(async () => ({ live: [], peak: [] })),
+    ensureCircleMembershipCloud: vi.fn(async () => ({
+      ok: true as const,
+      profile_id: 'p',
+      nickname: 'Minuit',
+      circle_id: 'c',
+      circle_code: 'NOC-TEST',
+      reclaimed: false,
+    })),
   };
 });
 
