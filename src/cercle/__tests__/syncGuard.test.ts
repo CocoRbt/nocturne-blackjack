@@ -79,4 +79,13 @@ describe('resolveSyncedScore', () => {
     expect(next.vault).toBe(40_000_000);
     expect(next.balance).toBe(10_000);
   });
+
+  it('ne descend jamais un record 1M même sans nouvelle partie', () => {
+    const next = resolveSyncedScore(
+      { balance: 70_000_00, vault: 0, peakBalance: 70_000_00, gamesPlayed: 200 },
+      { balance: 70_000_00, vault: 0, peakBalance: 1_000_000_00, gamesPlayed: 200 },
+    );
+    expect(next.peakBalance).toBe(1_000_000_00);
+    expect(next.balance).toBe(70_000_00);
+  });
 });

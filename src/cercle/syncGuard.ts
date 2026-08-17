@@ -39,14 +39,6 @@ export function resolveSyncedScore(
     return { ...prev };
   }
 
-  if (peakBalance > prev.peakBalance
-    && gamesPlayed <= prev.gamesPlayed
-    && prev.gamesPlayed > 0
-    && peakBalance > prev.peakBalance + 50_000
-  ) {
-    peakBalance = prev.peakBalance;
-  }
-
   let vaultDelta = vault - prev.vault;
   let balDelta = balance - prev.balance;
 
@@ -92,7 +84,7 @@ export function resolveSyncedScore(
     vault = prev.vault;
   }
 
-  peakBalance = Math.max(peakBalance, balance, prev.peakBalance);
+  peakBalance = Math.max(peakBalance, balance + vault, prev.peakBalance);
   gamesPlayed = Math.max(gamesPlayed, prev.gamesPlayed);
 
   return { balance, vault, peakBalance, gamesPlayed };
