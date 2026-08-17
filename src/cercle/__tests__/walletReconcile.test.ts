@@ -47,22 +47,14 @@ describe('shouldApplyCloudWallet', () => {
     ).toBe('apply');
   });
 
-  it('accepte une égalité de patrimoine (tolérance 1) si le split n’est pas un dépôt local', () => {
+  it('n’annule pas une perte locale avec un solde cloud plus haut', () => {
     expect(
       shouldApplyCloudWallet({
-        localBalance: 100,
-        localVault: 50,
-        cloudBalance: 151,
+        localBalance: 5_000,
+        localVault: 0,
+        cloudBalance: 80_000,
         cloudVault: 0,
       }),
     ).toBe('keep_local');
-    expect(
-      shouldApplyCloudWallet({
-        localBalance: 151,
-        localVault: 0,
-        cloudBalance: 151,
-        cloudVault: 0,
-      }),
-    ).toBe('apply');
   });
 });

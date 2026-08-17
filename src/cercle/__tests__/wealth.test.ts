@@ -37,24 +37,24 @@ describe('restoreWipedPlayable', () => {
     expect(restoreWipedPlayable(50_000_00, 0, 121_100_000)).toBe(50_000_00);
   });
 
-  it('ignore un tout petit record (sous le solde de départ)', () => {
-    expect(restoreWipedPlayable(0, 0, 5_000)).toBe(0);
+  it('ignore un record sous le million (vraie ruine)', () => {
+    expect(restoreWipedPlayable(0, 0, 80_000)).toBe(0);
   });
 
-  it('recolle 800 crédits si le solde a été mis à 0', () => {
-    expect(restoreWipedPlayable(0, 0, 80_000)).toBe(80_000);
+  it('ne recolle pas si des parties ont déjà été jouées', () => {
+    expect(restoreWipedPlayable(0, 0, 121_100_000, 40)).toBe(0);
   });
 });
 
 describe('sanitizeScoreForPush', () => {
-  it('envoie le pic et refuse un wipe à 0', () => {
+  it('ne recolle pas une all-in perdue sur le pic', () => {
     const next = sanitizeScoreForPush({
       balance: 0,
       vault: 0,
       peakBalance: 121_100_000,
       gamesPlayed: 10,
     });
-    expect(next.balance).toBe(121_100_000);
+    expect(next.balance).toBe(0);
     expect(next.peakBalance).toBe(121_100_000);
     expect(next.gamesPlayed).toBe(10);
   });

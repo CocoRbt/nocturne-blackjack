@@ -24,6 +24,11 @@ export function shouldApplyCloudWallet(input: {
 
   if (cloudW + 1 < localW) return 'keep_local';
 
+  // Ne jamais annuler une perte locale en réappliquant un solde cloud plus haut.
+  if ((input.intent ?? 'sync') === 'sync' && cloudBal > localBal + 1) {
+    return 'keep_local';
+  }
+
   if (
     (input.intent ?? 'sync') !== 'align' &&
     localVault > cloudVault + 1 &&

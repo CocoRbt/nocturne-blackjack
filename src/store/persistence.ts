@@ -4,6 +4,8 @@ import { restoreWipedPlayable } from '../cercle/wealth';
 
 /** Solde de départ : assez pour Émeraude, sous le seuil Onyx (500). */
 export const STARTING_BALANCE = 100_00;
+/** Plafond (centimes) — au-delà c’est un glitch de sync. */
+export const MAX_BALANCE_CENTS = 2_000_000_000;
 
 export interface HistoryHand {
   seatIndex?: number;
@@ -181,7 +183,10 @@ function migrate(raw: Record<string, unknown>): SaveData | null {
 
   return {
     version: 2,
-    balance: restoreWipedPlayable(balance, vault, peakBalance),
+    balance: Math.min(
+      MAX_BALANCE_CENTS,
+      restoreWipedPlayable(balance, vault, peakBalance, gamesPlayed),
+    ),
     vault,
     peakBalance,
     gamesPlayed,
