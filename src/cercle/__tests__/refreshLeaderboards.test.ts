@@ -20,6 +20,7 @@ vi.mock('../circleApi', async () => {
 import { fetchLeaderboards } from '../circleApi';
 import {
   clearCircleLocal,
+  loadCircle,
   refreshLeaderboards,
   restoreCircleFromCloud,
   saveCircle,
@@ -150,5 +151,31 @@ describe('refreshLeaderboards', () => {
     expect(restored?.members.find((m) => m.nickname === 'Kikiloki')?.peakBalance).toBe(
       9_000_000,
     );
+  });
+
+  it('migre le cache cercle v1 vers v2', () => {
+    const mem = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => mem.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        mem.set(k, v);
+      },
+      removeItem: (k: string) => {
+        mem.delete(k);
+      },
+    });
+    const legacy: LocalCircleState = {
+      nickname: 'Minuit',
+      circleCode: 'NOC-TEST',
+      cloud: true,
+      members: [member('Minuit', 50_000)],
+    };
+    localStorage.setItem('nocturne-cercle', JSON.stringify(legacy));
+    const loaded = loadCircle();
+    expect(loaded?.nickname).toBe('Minuit');
+    expect(loaded?.members[0]?.peakBalance).toBe(50_000);
+    expect(localStorage.getItem('nocturne-cercle-v2')).toBeTruthy();
+    expect(localStorage.getItem('nocturne-cercle')).toBeNull();
+    vi.unstubAllGlobals();
   });
 });

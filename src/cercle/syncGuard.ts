@@ -36,11 +36,16 @@ export function resolveSyncedScore(
   }
 
   if (gamesPlayed < prev.gamesPlayed) {
-    return { ...prev };
+    return {
+      ...prev,
+      peakBalance: Math.max(peakBalance, prev.peakBalance, prev.balance + prev.vault),
+    };
   }
 
   let vaultDelta = vault - prev.vault;
   let balDelta = balance - prev.balance;
+  const clientPeak = Math.max(peakBalance, balance + vault);
+  const peakCatchup = clientPeak > prev.peakBalance && balance + vault <= clientPeak + 1;
 
   if (vaultDelta > 0 && Math.abs(-balDelta - vaultDelta) > 1) {
     const wealth = balance + vault;
@@ -67,7 +72,7 @@ export function resolveSyncedScore(
     balDelta = 0;
   }
 
-  if (balDelta > 0 && vaultDelta >= 0 && gamesPlayed <= prev.gamesPlayed) {
+  if (balDelta > 0 && vaultDelta >= 0 && gamesPlayed <= prev.gamesPlayed && !peakCatchup) {
     if (prev.balance < 100 && balance <= STARTING && vaultDelta === 0) {
       // refill ok
     } else if (balDelta <= 3000 && vaultDelta === 0) {
@@ -79,7 +84,7 @@ export function resolveSyncedScore(
 
   const wealth = balance + vault;
   const prevWealth = prev.balance + prev.vault;
-  if (wealth > prevWealth + 100_000 && gamesPlayed <= prev.gamesPlayed) {
+  if (wealth > prevWealth + 100_000 && gamesPlayed <= prev.gamesPlayed && !peakCatchup) {
     balance = prev.balance;
     vault = prev.vault;
   }

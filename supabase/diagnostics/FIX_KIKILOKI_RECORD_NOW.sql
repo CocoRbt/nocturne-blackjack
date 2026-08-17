@@ -1,0 +1,9 @@
+-- NE PAS écrire un record en dur (pas de 1 211 695, pas de 1,3 M).
+--
+-- Coller dans le SQL Editor le fichier :
+--   supabase/migrations/20260817190000_force_kikiloki_circle_peak.sql
+-- puis Run.
+--
+-- Ensuite : ouvrir blackjack.vercel.app sur le téléphone qui a le vrai
+-- crédit (Kikiloki, toi, etc.). Le cercle prend ce solde / ce record.
+-- Si demain c’est 1,3 M, le classement suivra tout seul.

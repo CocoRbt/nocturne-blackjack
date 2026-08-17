@@ -22,7 +22,7 @@ import {
   type Leaderboards,
   type LocalCircleState,
 } from '../cercle/circleStore';
-import { consumeScoreDirty, isScoreDirty, onScoreDirty } from '../cercle/scoreSync';
+import { consumeScoreDirty, isScoreDirty, markScoreDirty, onScoreDirty } from '../cercle/scoreSync';
 import { STARTING_BALANCE } from '../store/persistence';
 import { useGame } from '../store/gameStore';
 import { formatGamesBeforePeak } from '../store/peakMeta';
@@ -52,7 +52,10 @@ export function useCircleKeepalive() {
       try {
         while (consumeScoreDirty()) {
           const state = loadCircle();
-          if (!state?.circleCode) return;
+          if (!state?.circleCode) {
+            markScoreDirty();
+            return;
+          }
           const incoming = await peekIncomingVault(
             useGame.getState().vault,
             useGame.getState().balance,
@@ -74,7 +77,7 @@ export function useCircleKeepalive() {
           });
         }
       } catch {
-        /* réseau */
+        markScoreDirty();
       } finally {
         flushing = false;
         if (isScoreDirty()) schedule();
@@ -542,11 +545,28 @@ export function CirclePanel() {
     const tick = () => {
       const state = loadCircle();
       if (!state?.circleCode) return;
-      void refreshLeaderboards(state).then((r) => {
-        if (cancelled) return;
-        setCircle(r.state);
-        setBoards(r.boards);
-      });
+      void (async () => {
+        try {
+          const g = useGame.getState();
+          const pushed = await pushScore(state, {
+            balance: g.balance,
+            peakBalance: g.peakBalance,
+            vault: g.vault,
+            handsPlayed: g.stats.handsPlayed,
+            blackjacks: g.stats.blackjacks,
+            bestStreak: g.stats.longestWinStreak,
+            highestTable: g.tableId,
+            gamesBeforePeak: g.gamesBeforePeak,
+            gamesPlayed: g.gamesPlayed,
+          });
+          const r = await refreshLeaderboards(pushed);
+          if (cancelled) return;
+          setCircle(r.state);
+          setBoards(r.boards);
+        } catch {
+          /* réseau */
+        }
+      })();
     };
     tick();
     const id = window.setInterval(tick, 5_000);

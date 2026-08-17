@@ -17,7 +17,7 @@ import {
 } from './circleApi';
 import { isNicknameTakenError } from './circleMembership';
 import { mergeBoardMembers, boardsAreEmpty } from './boardMerge';
-import { enqueueScorePush, getSyncEpoch } from './scoreSync';
+import { enqueueScorePush, getSyncEpoch, markScoreDirty } from './scoreSync';
 import { peakWealthCents, wealthCents } from './wealth';
 import { shouldApplyCloudWallet } from './walletReconcile';
 import { useGame } from '../store/gameStore';
@@ -59,12 +59,11 @@ export interface LocalCircleState {
   cloud?: boolean;
 }
 
-const KEY = 'nocturne-cercle';
+const KEY = 'nocturne-cercle-v2';
+const LEGACY_KEYS = ['nocturne-cercle'];
 
-export function loadCircle(): LocalCircleState | null {
+function parseCircle(raw: string): LocalCircleState | null {
   try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return null;
     const parsed = JSON.parse(raw) as LocalCircleState;
     return {
       ...parsed,
@@ -75,6 +74,30 @@ export function loadCircle(): LocalCircleState | null {
         gamesPlayed: m.gamesPlayed ?? 0,
       })),
     };
+  } catch {
+    return null;
+  }
+}
+
+export function loadCircle(): LocalCircleState | null {
+  try {
+    const current = localStorage.getItem(KEY);
+    if (current) return parseCircle(current);
+    for (const legacy of LEGACY_KEYS) {
+      const raw = localStorage.getItem(legacy);
+      if (!raw) continue;
+      const parsed = parseCircle(raw);
+      if (parsed) {
+        saveCircle(parsed);
+        try {
+          localStorage.removeItem(legacy);
+        } catch {
+          /* ignore */
+        }
+        return parsed;
+      }
+    }
+    return null;
   } catch {
     return null;
   }
@@ -91,6 +114,7 @@ export function saveCircle(state: LocalCircleState): void {
 export function clearCircleLocal(): void {
   try {
     localStorage.removeItem(KEY);
+    for (const legacy of LEGACY_KEYS) localStorage.removeItem(legacy);
   } catch {
     // ignore
   }
@@ -399,6 +423,9 @@ export async function pushScore(state: LocalCircleState, seed: Omit<CircleMember
         const local = upsertSelfScore(state, { ...mergedSeed, nickname: state.nickname });
         saveCircle(local);
         result = local;
+        // Push cloud raté (FK, hors cercle, réseau) : réessayer, ne pas
+        // consommer le dirty comme si c’était écrit.
+        markScoreDirty();
         return;
       }
     }
