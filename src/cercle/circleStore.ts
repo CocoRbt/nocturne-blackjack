@@ -18,7 +18,7 @@ import {
 import { isNicknameTakenError } from './circleMembership';
 import { mergeBoardMembers, boardsAreEmpty } from './boardMerge';
 import { enqueueScorePush, getSyncEpoch, markScoreDirty } from './scoreSync';
-import { peakWealthCents, wealthCents } from './wealth';
+import { peakWealthCents, sanitizeScoreForPush, wealthCents } from './wealth';
 import { shouldApplyCloudWallet } from './walletReconcile';
 import { useGame } from '../store/gameStore';
 
@@ -341,7 +341,18 @@ export async function pushScore(state: LocalCircleState, seed: Omit<CircleMember
       result = state;
       return;
     }
-    const mergedSeed = { ...seed, vault };
+    const mergedSeed = sanitizeScoreForPush({ ...seed, vault });
+    if (mergedSeed.balance !== seed.balance) {
+      useGame.getState().applyVaultServerState(
+        {
+          balance: mergedSeed.balance,
+          vault: mergedSeed.vault,
+          peakBalance: mergedSeed.peakBalance,
+        },
+        undefined,
+        { dirty: false },
+      );
+    }
     if (state.cloud && isSupabaseConfigured()) {
       try {
         await ensureCircleMembership(state);

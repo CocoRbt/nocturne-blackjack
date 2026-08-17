@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeRecordPeak, peakWealthCents, restoreWipedPlayable, wealthCents } from '../wealth';
+import { mergeRecordPeak, peakWealthCents, restoreWipedPlayable, sanitizeScoreForPush, wealthCents } from '../wealth';
 
 describe('wealthCents', () => {
   it('additionne solde + coffre', () => {
@@ -37,7 +37,35 @@ describe('restoreWipedPlayable', () => {
     expect(restoreWipedPlayable(50_000_00, 0, 121_100_000)).toBe(50_000_00);
   });
 
-  it('ignore un petit record (vraie ruine possible)', () => {
-    expect(restoreWipedPlayable(0, 0, 80_000)).toBe(0);
+  it('ignore un tout petit record (sous le solde de départ)', () => {
+    expect(restoreWipedPlayable(0, 0, 5_000)).toBe(0);
+  });
+
+  it('recolle 800 crédits si le solde a été mis à 0', () => {
+    expect(restoreWipedPlayable(0, 0, 80_000)).toBe(80_000);
+  });
+});
+
+describe('sanitizeScoreForPush', () => {
+  it('envoie le pic et refuse un wipe à 0', () => {
+    const next = sanitizeScoreForPush({
+      balance: 0,
+      vault: 0,
+      peakBalance: 121_100_000,
+      gamesPlayed: 10,
+    });
+    expect(next.balance).toBe(121_100_000);
+    expect(next.peakBalance).toBe(121_100_000);
+    expect(next.gamesPlayed).toBe(10);
+  });
+
+  it('garde 50 crédits live tels quels', () => {
+    const next = sanitizeScoreForPush({
+      balance: 50_00,
+      vault: 0,
+      peakBalance: 50_00,
+    });
+    expect(next.balance).toBe(50_00);
+    expect(next.peakBalance).toBe(50_00);
   });
 });

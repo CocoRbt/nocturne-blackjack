@@ -21,7 +21,7 @@ Sans allowlist, Supabase retombe sur Site URL → localhost cassé.
 1. **Crédit actuel** — solde live (`balance`)
 2. **Record** — plus haut crédit atteint (`peak_balance`) + parties avant ce record (`games_before_peak`)
 
-Le classement n’est **pas** un chiffre tamponné : `sync_my_score` pousse le portefeuille du téléphone. Coller `supabase/migrations/20260817190000_force_kikiloki_circle_peak.sql` si la sync cloud refuse encore un gros pic.
+Le classement n’est **pas** un chiffre tamponné : `sync_my_score` pousse le portefeuille du téléphone toutes les ~4 s (et en temps réel si Realtime est actif). Coller `supabase/migrations/20260817194000_circle_live_sync_invariants.sql` pour le verrou anti-wipe + publication realtime.
 ## Setup dashboard
 1. Projet Supabase `Nocturne_Blackjack`
 2. **Authentication → Providers → Anonymous** : activer
