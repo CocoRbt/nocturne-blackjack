@@ -39,7 +39,7 @@ import { clearScoreDirty, markScoreDirty } from '../cercle/scoreSync';
 import { creditWithoutGame, settleGamePeak } from './peakMeta';
 import { depositToVault, vaultableAmount, withdrawFromVault } from './vault';
 import { mergeIncomingVault } from './vaultMerge';
-import { peakWealthCents } from '../cercle/wealth';
+import { mergeRecordPeak, peakWealthCents } from '../cercle/wealth';
 import { TIMING, type GameSpeed } from './timing';
 
 export type BetSpot = 'main' | SideBetId;
@@ -1441,12 +1441,11 @@ export const useGame = create<GameState>((set, get) => {
     applyVaultServerState(payload, notice, opts) {
       const balance = Math.max(0, Math.floor(payload.balance));
       const vault = Math.max(0, Math.floor(payload.vault));
-      const peakBalance = wealthPeak(
+      const peakBalance = mergeRecordPeak(
+        get().peakBalance,
+        typeof payload.peakBalance === 'number' ? payload.peakBalance : 0,
         balance,
         vault,
-        typeof payload.peakBalance === 'number'
-          ? Math.floor(payload.peakBalance)
-          : get().peakBalance,
       );
       set({
         balance,
@@ -1500,7 +1499,12 @@ export const useGame = create<GameState>((set, get) => {
         typeof payload.vault === 'number'
           ? Math.max(0, Math.floor(payload.vault))
           : s.vault;
-      const peakBalance = wealthPeak(balance, vault, Math.floor(payload.peakBalance));
+      const peakBalance = mergeRecordPeak(
+        s.peakBalance,
+        Math.floor(payload.peakBalance),
+        balance,
+        vault,
+      );
       set({
         balance,
         vault,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { peakWealthCents, wealthCents } from '../wealth';
+import { mergeRecordPeak, peakWealthCents, wealthCents } from '../wealth';
 
 describe('wealthCents', () => {
   it('additionne solde + coffre', () => {
@@ -15,5 +15,15 @@ describe('peakWealthCents', () => {
   it('prend le max entre record et patrimoine actuel', () => {
     expect(peakWealthCents(50_000, 10_000, 80_000)).toBe(90_000);
     expect(peakWealthCents(200_000, 10_000, 5_000)).toBe(200_000);
+  });
+});
+
+describe('mergeRecordPeak', () => {
+  it('ne descend pas un record local 1M si le cloud est à 70k', () => {
+    expect(mergeRecordPeak(1_000_000_00, 70_000_00, 50_000_00, 0)).toBe(1_000_000_00);
+  });
+
+  it('prend le cloud s’il est plus haut', () => {
+    expect(mergeRecordPeak(70_000_00, 1_000_000_00, 10_000, 0)).toBe(1_000_000_00);
   });
 });
