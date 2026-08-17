@@ -53,6 +53,9 @@ function rpcMessage(error: { message?: string; details?: string; hint?: string }
   if (/Montant invalide/i.test(raw)) {
     return 'Montant invalide.';
   }
+  if (/Rejoins un cercle/i.test(raw)) {
+    return 'Rejoins un cercle d’abord';
+  }
   return raw || 'Impossible de rejoindre le cercle';
 }
 
@@ -60,11 +63,55 @@ async function ensureAnonSession() {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase non configuré');
   const { data: sessionData } = await sb.auth.getSession();
-  if (sessionData.session) return sessionData.session;
+  if (sessionData.session) {
+    const exp = sessionData.session.expires_at;
+    if (exp && exp * 1000 < Date.now() + 15_000) {
+      const refreshed = await sb.auth.refreshSession();
+      if (refreshed.data.session) return refreshed.data.session;
+    } else {
+      return sessionData.session;
+    }
+  }
   const { data, error } = await sb.auth.signInAnonymously();
   if (error) throw error;
   if (!data.session) throw new Error('Session anonyme impossible');
   return data.session;
+}
+
+export type EnsureCircleResult = {
+  ok: true;
+  profile_id: string;
+  nickname: string;
+  circle_id: string;
+  circle_code: string;
+  reclaimed?: boolean;
+};
+
+/** Rattache la session au cercle local (idempotent). */
+export async function ensureCircleMembershipCloud(
+  nickname: string,
+  code: string,
+): Promise<EnsureCircleResult> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase non configuré');
+  await ensureAnonSession();
+  const { data, error } = await sb.rpc('ensure_circle_membership', {
+    p_nickname: nickname.trim(),
+    p_code: code.trim().toUpperCase(),
+  });
+  if (!error) return data as EnsureCircleResult;
+  if (/ensure_circle_membership|Could not find the function|schema cache/i.test(error.message)) {
+    const joined = await joinCircleCloud(nickname, code);
+    return {
+      ok: true,
+      profile_id: joined.profile_id,
+      nickname: joined.nickname,
+      circle_id: joined.circle_id,
+      circle_code: joined.circle_code,
+      reclaimed: false,
+    };
+  }
+  throw new Error(rpcMessage(error));
 }
 
 export async function joinCircleCloud(nickname: string, code?: string): Promise<JoinResult> {

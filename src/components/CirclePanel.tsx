@@ -3,11 +3,13 @@ import { fetchCreditSeries, depositVaultCloud, sendVaultCloud, withdrawVaultClou
 import { SEND_VAULT_MAX_CENTS } from '../cercle/vaultLimits';
 import { peakWealthCents, wealthCents } from '../cercle/wealth';
 import { shouldApplyCloudWallet } from '../cercle/walletReconcile';
+import { isCircleMembershipError } from '../cercle/circleMembership';
 import { consumeCircleSection } from '../cercle/circleNav';
 import { fmt } from '../lib/format';
 import {
   enterCircle,
   exitCircle,
+  ensureCircleMembership,
   isSupabaseConfigured,
   leaderboardsFromLocal,
   loadCircle,
@@ -219,6 +221,7 @@ export function CirclePanel() {
       if (circle?.cloud && isSupabaseConfigured()) {
         setBusy(true);
         try {
+          await ensureCircleMembership(circle, { force: true });
           // RPC atomique d’abord — un coffrage local + sync est souvent
           // refusé puis réécrit, ce qui donne l’impression que « ça coffre plus ».
           const tryDeposit = async () => depositVaultCloud(cents);
@@ -227,7 +230,10 @@ export function CirclePanel() {
             res = await tryDeposit();
           } catch (e1) {
             const msg1 = e1 instanceof Error ? e1.message : '';
-            if (/surplus|Pas assez/i.test(msg1)) {
+            if (isCircleMembershipError(msg1)) {
+              await ensureCircleMembership(circle, { force: true });
+              res = await tryDeposit();
+            } else if (/surplus|Pas assez/i.test(msg1)) {
               await syncThen();
               res = await tryDeposit();
             } else {
@@ -282,6 +288,7 @@ export function CirclePanel() {
     if (circle?.cloud && isSupabaseConfigured()) {
       setBusy(true);
       try {
+        await ensureCircleMembership(circle, { force: true });
         let cloudBal = 0;
         let cloudVault = 0;
         let cloudPeak = 0;

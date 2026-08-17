@@ -11,9 +11,11 @@ import {
   leaveCircleCloud,
   pullIncomingVault,
   syncScoreCloud,
+  ensureCircleMembershipCloud,
   type LeaderboardRow,
   type Leaderboards,
 } from './circleApi';
+import { isNicknameTakenError } from './circleMembership';
 import { mergeBoardMembers, boardsAreEmpty } from './boardMerge';
 import { enqueueScorePush, getSyncEpoch } from './scoreSync';
 import { peakWealthCents, wealthCents } from './wealth';
@@ -101,6 +103,31 @@ export function generateCircleCode(): string {
     out += alphabet[Math.floor(Math.random() * alphabet.length)];
   }
   return out;
+}
+
+let membershipKey = '';
+
+/** Rattache la session cloud au cercle encore affiché en local. */
+export async function ensureCircleMembership(
+  state: LocalCircleState,
+  opts?: { force?: boolean },
+): Promise<void> {
+  if (!state.cloud || !state.circleCode || !state.nickname) return;
+  if (!isSupabaseConfigured()) return;
+  const key = `${state.nickname}::${state.circleCode}`;
+  if (!opts?.force && membershipKey === key) return;
+  try {
+    await ensureCircleMembershipCloud(state.nickname, state.circleCode);
+    membershipKey = key;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : '';
+    if (isNicknameTakenError(msg)) {
+      throw new Error(
+        `Pseudo « ${state.nickname} » déjà pris sur une autre session. Connecte le compte email, ou quitte puis re-rejoins.`,
+      );
+    }
+    throw e;
+  }
 }
 
 export function upsertSelfScore(
@@ -208,6 +235,7 @@ export async function enterCircle(nickname: string, code: string | undefined, se
 export async function refreshLeaderboards(state: LocalCircleState): Promise<{ state: LocalCircleState; boards: Leaderboards }> {
   if (state.cloud && isSupabaseConfigured()) {
     try {
+      await ensureCircleMembership(state);
       const boards = await fetchLeaderboards();
       const merged = mergeBoardMembers(boards, state.nickname, state.members);
       // Session cassée / nouveau anon → boards vides : ne pas écraser le cache local.
@@ -292,6 +320,7 @@ export async function pushScore(state: LocalCircleState, seed: Omit<CircleMember
     const mergedSeed = { ...seed, vault };
     if (state.cloud && isSupabaseConfigured()) {
       try {
+        await ensureCircleMembership(state);
         if (epoch !== getSyncEpoch()) {
           result = state;
           return;
