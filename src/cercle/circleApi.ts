@@ -56,6 +56,9 @@ function rpcMessage(error: { message?: string; details?: string; hint?: string }
   if (/Rejoins un cercle/i.test(raw)) {
     return 'Rejoins un cercle d’abord';
   }
+  if (/player_scores_profile_id_fkey|is not present in table "profiles"/i.test(raw)) {
+    return 'Session hors cercle — reconnexion en cours. Réessaie Coffrer.';
+  }
   return raw || 'Impossible de rejoindre le cercle';
 }
 

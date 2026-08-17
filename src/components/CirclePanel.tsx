@@ -3,7 +3,7 @@ import { fetchCreditSeries, depositVaultCloud, sendVaultCloud, withdrawVaultClou
 import { SEND_VAULT_MAX_CENTS } from '../cercle/vaultLimits';
 import { peakWealthCents, wealthCents } from '../cercle/wealth';
 import { shouldApplyCloudWallet } from '../cercle/walletReconcile';
-import { isCircleMembershipError } from '../cercle/circleMembership';
+import { isVaultNeedsSyncError } from '../cercle/circleMembership';
 import { consumeCircleSection } from '../cercle/circleNav';
 import { fmt } from '../lib/format';
 import {
@@ -222,18 +222,15 @@ export function CirclePanel() {
         setBusy(true);
         try {
           await ensureCircleMembership(circle, { force: true });
-          // RPC atomique d’abord — un coffrage local + sync est souvent
-          // refusé puis réécrit, ce qui donne l’impression que « ça coffre plus ».
+          await syncThen();
           const tryDeposit = async () => depositVaultCloud(cents);
           let res;
           try {
             res = await tryDeposit();
           } catch (e1) {
             const msg1 = e1 instanceof Error ? e1.message : '';
-            if (isCircleMembershipError(msg1)) {
+            if (isVaultNeedsSyncError(msg1) || /surplus|Pas assez/i.test(msg1)) {
               await ensureCircleMembership(circle, { force: true });
-              res = await tryDeposit();
-            } else if (/surplus|Pas assez/i.test(msg1)) {
               await syncThen();
               res = await tryDeposit();
             } else {
