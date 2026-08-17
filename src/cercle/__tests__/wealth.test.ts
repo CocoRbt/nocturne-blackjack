@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeRecordPeak, peakWealthCents, wealthCents } from '../wealth';
+import { mergeRecordPeak, peakWealthCents, restoreWipedPlayable, wealthCents } from '../wealth';
 
 describe('wealthCents', () => {
   it('additionne solde + coffre', () => {
@@ -25,5 +25,19 @@ describe('mergeRecordPeak', () => {
 
   it('prend le cloud s’il est plus haut', () => {
     expect(mergeRecordPeak(70_000_00, 1_000_000_00, 10_000, 0)).toBe(1_000_000_00);
+  });
+});
+
+describe('restoreWipedPlayable', () => {
+  it('recolle 1,2 M si le solde a été mis à 0', () => {
+    expect(restoreWipedPlayable(0, 0, 121_100_000)).toBe(121_100_000);
+  });
+
+  it('ne touche pas un solde déjà là', () => {
+    expect(restoreWipedPlayable(50_000_00, 0, 121_100_000)).toBe(50_000_00);
+  });
+
+  it('ignore un petit record (vraie ruine possible)', () => {
+    expect(restoreWipedPlayable(0, 0, 80_000)).toBe(0);
   });
 });

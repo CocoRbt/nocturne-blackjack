@@ -3,6 +3,8 @@
  * Utilisé côté client pour tests / doc — la source de vérité reste le SQL.
  */
 
+import { restoreWipedPlayable } from './wealth';
+
 export type SyncScoreSnapshot = {
   balance: number;
   vault: number;
@@ -32,20 +34,31 @@ export function resolveSyncedScore(
   let gamesPlayed = Math.max(0, Math.floor(input.gamesPlayed));
 
   if (!prev) {
-    return { balance, vault, peakBalance, gamesPlayed };
+    peakBalance = Math.max(peakBalance, balance + vault);
+    return {
+      balance: restoreWipedPlayable(balance, vault, peakBalance),
+      vault,
+      peakBalance,
+      gamesPlayed,
+    };
   }
 
   if (gamesPlayed < prev.gamesPlayed) {
+    const peakBalanceKept = Math.max(peakBalance, prev.peakBalance, prev.balance + prev.vault);
     return {
       ...prev,
-      peakBalance: Math.max(peakBalance, prev.peakBalance, prev.balance + prev.vault),
+      peakBalance: peakBalanceKept,
+      balance: restoreWipedPlayable(prev.balance, prev.vault, peakBalanceKept),
     };
   }
 
   let vaultDelta = vault - prev.vault;
   let balDelta = balance - prev.balance;
   const clientPeak = Math.max(peakBalance, balance + vault);
-  const peakCatchup = clientPeak > prev.peakBalance && balance + vault <= clientPeak + 1;
+  const peakCatchup =
+    clientPeak > prev.peakBalance &&
+    balance + vault <= clientPeak + 1 &&
+    balance + vault > prev.balance + prev.vault;
 
   if (vaultDelta > 0 && Math.abs(-balDelta - vaultDelta) > 1) {
     const wealth = balance + vault;
@@ -91,6 +104,7 @@ export function resolveSyncedScore(
 
   peakBalance = Math.max(peakBalance, balance + vault, prev.peakBalance);
   gamesPlayed = Math.max(gamesPlayed, prev.gamesPlayed);
+  balance = restoreWipedPlayable(balance, vault, peakBalance);
 
   return { balance, vault, peakBalance, gamesPlayed };
 }

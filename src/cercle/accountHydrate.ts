@@ -6,7 +6,7 @@
 import { fetchMyScore, type MyScore } from './circleApi';
 import { getAccountSession } from './accountAuth';
 import { restoreCircleFromCloud } from './circleStore';
-import { bumpSyncEpoch, clearScoreDirty } from './scoreSync';
+import { bumpSyncEpoch, clearScoreDirty, markScoreDirty } from './scoreSync';
 import { useGame } from '../store/gameStore';
 
 export function scoreToHydratePayload(score: MyScore) {
@@ -25,7 +25,6 @@ export function scoreToHydratePayload(score: MyScore) {
 
 /** Applique get_my_score au store + cercle local. */
 export async function applyCloudScore(score: MyScore, opts?: { silent?: boolean }): Promise<boolean> {
-  clearScoreDirty();
   bumpSyncEpoch();
   if (!score.found || score.balance == null || score.peak_balance == null) {
     return false;
@@ -37,7 +36,13 @@ export async function applyCloudScore(score: MyScore, opts?: { silent?: boolean 
   if (score.in_circle && score.circle_code) {
     await restoreCircleFromCloud(score);
   }
-  clearScoreDirty();
+  const g = useGame.getState();
+  const cloudWealth = Math.floor(Number(score.balance) || 0) + Math.floor(Number(score.vault) || 0);
+  if (g.balance + g.vault > cloudWealth + 1) {
+    markScoreDirty();
+  } else {
+    clearScoreDirty();
+  }
   return true;
 }
 
