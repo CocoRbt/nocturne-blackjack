@@ -21,6 +21,10 @@ Sans allowlist, Supabase retombe sur Site URL → localhost cassé.
 1. **Crédit actuel** — solde live (`balance`)
 2. **Record** — plus haut crédit atteint (`peak_balance`) + parties avant ce record (`games_before_peak`)
 
+### Record Kikiloki bloqué à 70 830
+Les SQL `peak = max(peak, solde+coffre)` ne changent rien si le cloud a encore 70k.
+Coller **une fois** `supabase/diagnostics/FIX_KIKILOKI_RECORD_NOW.sql` dans le SQL Editor, Run, puis recharger le téléphone (onglet Record, attendre ~5 s).
+
 ## Setup dashboard
 1. Projet Supabase `Nocturne_Blackjack`
 2. **Authentication → Providers → Anonymous** : activer
