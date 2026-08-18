@@ -20,14 +20,15 @@ describe('resolveSyncedScore', () => {
     expect(next.gamesPlayed).toBe(40);
   });
 
-  it('ignore une baisse mid-mise (même games_played, pas de dépôt coffre)', () => {
+  it('accepte une baisse réelle à games_played inchangé (mise en cours)', () => {
     const next = resolveSyncedScore(base, {
       balance: 50_000,
       vault: 0,
       peakBalance: 120_000,
       gamesPlayed: 40,
     });
-    expect(next.balance).toBe(80_000);
+    expect(next.balance).toBe(50_000);
+    expect(next.peakBalance).toBe(120_000);
   });
 
   it('accepte une perte après une vraie partie (games + 1)', () => {
@@ -96,6 +97,15 @@ describe('resolveSyncedScore', () => {
     );
     expect(next.balance).toBe(7_083_000);
     expect(next.peakBalance).toBe(130_000_000);
+  });
+
+  it('une all-in perdue à games_played inchangé reste à 0 (heartbeat mid-mise)', () => {
+    const next = resolveSyncedScore(
+      { balance: 80_000, vault: 0, peakBalance: 120_000, gamesPlayed: 40 },
+      { balance: 0, vault: 0, peakBalance: 120_000, gamesPlayed: 40 },
+    );
+    expect(next.balance).toBe(0);
+    expect(next.peakBalance).toBe(120_000);
   });
 
   it('une all-in perdue (games + 1) reste à 0', () => {

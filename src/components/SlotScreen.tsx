@@ -463,6 +463,12 @@ export function SlotScreen() {
   const autoActive = autoLeft !== 0;
   const busy = spinning || inBonus || celebrating || settleLocked;
   const controlsLocked = busy || autoActive;
+  const setGameSessionActive = useGame((s) => s.setGameSessionActive);
+
+  useEffect(() => {
+    setGameSessionActive(busy);
+    return () => setGameSessionActive(false);
+  }, [busy, setGameSessionActive]);
 
   const stopAuto = useCallback(() => {
     autoLeftRef.current = 0;

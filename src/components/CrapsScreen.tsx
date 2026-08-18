@@ -177,6 +177,7 @@ export function CrapsScreen() {
   const crapsDebit = useGame((s) => s.crapsDebit);
   const crapsCredit = useGame((s) => s.crapsCredit);
   const setSalonStakeOpen = useGame((s) => s.setSalonStakeOpen);
+  const setGameSessionActive = useGame((s) => s.setGameSessionActive);
   const notice = useGame((s) => s.notice);
   const dismissNotice = useGame((s) => s.dismissNotice);
 
@@ -217,8 +218,12 @@ export function CrapsScreen() {
   const stakeOpen = crapsStakeOpen(round) || rolling;
   useEffect(() => {
     setSalonStakeOpen(stakeOpen);
-    return () => setSalonStakeOpen(false);
-  }, [stakeOpen, setSalonStakeOpen]);
+    setGameSessionActive(stakeOpen);
+    return () => {
+      setSalonStakeOpen(false);
+      setGameSessionActive(false);
+    };
+  }, [stakeOpen, setSalonStakeOpen, setGameSessionActive]);
 
   const clearTimers = () => {
     for (const t of timers.current) window.clearTimeout(t);

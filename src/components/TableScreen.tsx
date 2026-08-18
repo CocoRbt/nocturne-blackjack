@@ -47,6 +47,12 @@ export function TableScreen() {
   const betting = !round;
   const settled = !!round && display.resultsShown;
   const isInitialDeal = display.dealing;
+  const setGameSessionActive = useGame((s) => s.setGameSessionActive);
+
+  useEffect(() => {
+    setGameSessionActive(!!round && !display.resultsShown);
+    return () => setGameSessionActive(false);
+  }, [round, display.resultsShown, setGameSessionActive]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

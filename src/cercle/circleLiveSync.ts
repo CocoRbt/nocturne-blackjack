@@ -12,6 +12,7 @@ import {
 } from './circleStore';
 import { isScoreDirty, markScoreDirty, onScoreDirty } from './scoreSync';
 import { sanitizeScoreForPush } from './wealth';
+import { shouldPushWalletSnapshot } from './gameSession';
 import { useGame } from '../store/gameStore';
 
 const HEARTBEAT_MS = 4_000;
@@ -39,7 +40,7 @@ async function syncOnce(opts?: { push?: boolean }): Promise<void> {
   let next = state;
   if (shouldPush) {
     const g = useGame.getState();
-    if (g.round || g.salonStakeOpen) {
+    if (!shouldPushWalletSnapshot(g)) {
       await refreshLeaderboards(state);
       notifyCircleChanged();
       return;

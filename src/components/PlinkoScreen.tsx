@@ -342,6 +342,12 @@ export function PlinkoScreen() {
   const canConfigure = !flying;
   const stakeReady = Math.min(bet, balance);
   const canDrop = stakeReady >= 1_00;
+  const setGameSessionActive = useGame((s) => s.setGameSessionActive);
+
+  useEffect(() => {
+    setGameSessionActive(flying);
+    return () => setGameSessionActive(false);
+  }, [flying, setGameSessionActive]);
 
   useEffect(() => {
     ballsRef.current = balls;

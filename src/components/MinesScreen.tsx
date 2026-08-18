@@ -102,6 +102,12 @@ export function MinesScreen() {
   const finished = round.phase === 'busted' || round.phase === 'cashed';
   /** Entre deux manches : on peut régler mise / mines et relancer d’un clic. */
   const canConfigure = idle || finished;
+  const setGameSessionActive = useGame((s) => s.setGameSessionActive);
+
+  useEffect(() => {
+    setGameSessionActive(playing);
+    return () => setGameSessionActive(false);
+  }, [playing, setGameSessionActive]);
 
   const commitBet = (nextCents: number) => {
     const clamped = Math.max(1_00, Math.min(balance, Math.floor(nextCents)));

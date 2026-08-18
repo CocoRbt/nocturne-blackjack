@@ -17,7 +17,8 @@ const MAX_BALANCE = 2_000_000_000;
 
 /**
  * Décide le solde/coffre à écrire si le serveur a déjà `prev`.
- * Rejette les pushs stale (moins de parties) et les baisses mid-mise.
+ * Rejette les pushs stale (moins de parties) et les gros gains sans partie.
+ * Phase 2a : une baisse de solde à games_played inchangé n’est plus annulée.
  */
 export function resolveSyncedScore(
   prev: SyncScoreSnapshot | null,
@@ -63,12 +64,6 @@ export function resolveSyncedScore(
     vault = prev.vault;
     vaultDelta = 0;
     balDelta = balance - prev.balance;
-  }
-
-  // Mid-mise : même games_played, solde ↓ sans dépôt coffre.
-  if (gamesPlayed === prev.gamesPlayed && balance < prev.balance && vaultDelta === 0) {
-    balance = prev.balance;
-    balDelta = 0;
   }
 
   if (balDelta > 0 && vaultDelta >= 0 && gamesPlayed <= prev.gamesPlayed) {
