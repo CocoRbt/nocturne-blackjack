@@ -18,6 +18,7 @@ import { AppMenu } from './AppMenu';
 import { useDefiSync } from './DailyChallenges';
 import { exitCircle } from '../cercle/circleStore';
 import { pullAccountWallet } from '../cercle/accountHydrate';
+import { loadCircle } from '../cercle/circleStore';
 
 type LobbyView = 'hub' | 'tables';
 
@@ -37,6 +38,7 @@ export function Lobby() {
   const refill = useGame((s) => s.refill);
   const notice = useGame((s) => s.notice);
   const dismissNotice = useGame((s) => s.dismissNotice);
+  const ledgerAuthoritative = useGame((s) => s.ledgerAuthoritative);
 
   const [view, setView] = useState<LobbyView>('hub');
   const [showPrivateSetup, setShowPrivateSetup] = useState(false);
@@ -57,6 +59,14 @@ export function Lobby() {
   const defis = completedCount({ handsPlayed, wins, blackjacks, balance });
 
   const onEnter = (t: TableConfig) => {
+    const ledgerBlackjackBlocked = ledgerAuthoritative || Boolean(loadCircle()?.cloud);
+    if (ledgerBlackjackBlocked) {
+      useGame.setState({
+        notice:
+          'Blackjack ledger reste fermé : split, resplit, split As, DAS et side bets ne sont pas encore portés serveur.',
+      });
+      return;
+    }
     if (t.id === PRIVATE_TABLE_ID) {
       if (!isTableUnlocked(PRIVATE_TABLE_ID, peakBalance)) return;
       setDraftLimits(privateLimits);
@@ -148,7 +158,17 @@ export function Lobby() {
             <motion.button
               type="button"
               className="blackjack-card"
-              onClick={() => setView('tables')}
+              onClick={() => {
+                const ledgerBlackjackBlocked = ledgerAuthoritative || Boolean(loadCircle()?.cloud);
+                if (ledgerBlackjackBlocked) {
+                  useGame.setState({
+                    notice:
+                      'Blackjack ledger reste fermé : split, resplit, split As, DAS et side bets ne sont pas encore portés serveur.',
+                  });
+                  return;
+                }
+                setView('tables');
+              }}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
@@ -166,7 +186,11 @@ export function Lobby() {
                 <p>
                   Tables thématiques · Émeraude à Impériale · table privée · progression par pic.
                 </p>
-                <span className="enter">Choisir une table →</span>
+                <span className="enter">
+                  {ledgerAuthoritative || Boolean(loadCircle()?.cloud)
+                    ? 'Fermé pour wallets ledger →'
+                    : 'Choisir une table →'}
+                </span>
               </div>
             </motion.button>
 
@@ -301,7 +325,7 @@ export function Lobby() {
                     firstRun && t.id === 'emeraude' && unlocked ? 'first-run' : ''
                   } ${firstRun && t.id !== 'emeraude' ? 'first-run-dim' : ''}`}
                   data-felt={t.felt}
-                  disabled={locked}
+                  disabled={locked || ledgerAuthoritative || Boolean(loadCircle()?.cloud)}
                   onClick={() => onEnter(t)}
                   initial={{ opacity: 0, y: 24 }}
                   animate={{ opacity: 1, y: 0 }}

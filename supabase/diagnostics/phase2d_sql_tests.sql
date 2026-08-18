@@ -16,12 +16,14 @@ declare
   v_dice_total integer := 0;
   v_stop_counts integer[] := array_fill(0, array[40]);
   v_plinko_rights integer := 0;
+  v_mines_counts integer[] := array_fill(0, array[25]);
   v_seed bytea;
   v_dice integer[];
   v_i integer;
   v_j integer;
   v_face integer;
   v_stop integer;
+  v_mines integer[];
 begin
   insert into auth.users (id) values (v_a) on conflict do nothing;
   insert into public.circles (code, name) values ('NOC-2D', 'Phase2d') on conflict (code) do nothing;
@@ -145,6 +147,29 @@ begin
     if v_min_stop < 400 or v_max_stop > 850 then
       raise exception 'TEST FAIL slots stop distribution bias: min=% max=%', v_min_stop, v_max_stop;
     end if;
+  end;
+
+  -- Stats RNG Mines positions (uniformité grossière après rejection sampling)
+  v_mines_counts := array_fill(0, array[25]);
+  for v_i in 1..10000 loop
+    v_seed := gen_random_bytes(32);
+    v_mines := private.mines_place(1, v_seed);
+    v_mines_counts[v_mines[1] + 1] := v_mines_counts[v_mines[1] + 1] + 1;
+  end loop;
+  declare v_min_m integer; v_max_m integer; begin
+    select min(s), max(s) into v_min_m, v_max_m from unnest(v_mines_counts) s;
+    if v_min_m < 300 or v_max_m > 500 then
+      raise exception 'TEST FAIL mines distribution bias: min=% max=%', v_min_m, v_max_m;
+    end if;
+  end;
+
+  -- Jackpot legacy guard : profil ledger doit être refusé
+  begin
+    perform public.claim_stampede_jackpot('mini', 100);
+    raise exception 'TEST FAIL jackpot legacy aurait dû refuser profil ledger';
+  exception
+    when others then
+      if sqlerrm not like '%Profil ledger%' then raise; end if;
   end;
 
   raise notice 'PHASE2D SQL TESTS PASSED';

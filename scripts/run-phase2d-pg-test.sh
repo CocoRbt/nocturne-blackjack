@@ -25,6 +25,8 @@ for f in $(ls -1 "$MIG_DIR"/*.sql | sort); do
 done
 echo "==> Phase 2d tests"
 run_sql "$ROOT/supabase/diagnostics/phase2d_sql_tests.sql"
+echo "==> Slots parity TS vs SQL"
+PARITY_DB="$DB_NAME" npx vitest run "$ROOT/src/slots/__tests__/sqlParity.test.ts"
 echo "==> Phase 2c tests (régression)"
 PHASE2C_TEST_DB="$DB_NAME" bash "$ROOT/scripts/run-phase2c-pg-test.sh" 2>&1 | \
   grep -E 'PASS|FAIL|ERROR|OK —|NOTICE'
