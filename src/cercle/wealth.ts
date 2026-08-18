@@ -21,29 +21,17 @@ export function mergeRecordPeak(
   );
 }
 
-/** Pic ≥ 1 000 000 crédits : un 0 au boot = wipe de session, pas une all-in perdue. */
-export const WIPE_PEAK_FLOOR_CENTS = 100_000_000;
-/** Patrimoine < 1 crédit = considéré comme zéro. */
-export const WIPE_WEALTH_CENTS = 100;
-
 /**
- * Uniquement un wipe de session (pic millionnaire + solde vide).
- * Une vraie ruine (all-in perdue) doit rester à 0.
+ * Phase 2a : identity — ne jamais reconstruire un solde depuis le record.
+ * Conservé pour ne pas casser d’imports tests ; plus aucun chemin runtime.
  */
 export function restoreWipedPlayable(
   balance: number,
-  vault: number,
-  peak: number,
-  gamesPlayed = 0,
+  _vault?: number,
+  _peak?: number,
+  _gamesPlayed?: number,
 ): number {
-  const b = Math.max(0, Math.floor(balance));
-  const v = Math.max(0, Math.floor(vault));
-  const p = Math.max(0, Math.floor(peak));
-  if (Math.max(0, Math.floor(gamesPlayed)) > 0) return b;
-  if (b + v < WIPE_WEALTH_CENTS && p >= WIPE_PEAK_FLOOR_CENTS) {
-    return Math.max(b, p - v);
-  }
-  return b;
+  return Math.max(0, Math.floor(balance));
 }
 
 /** Normalise un score avant push : pic monotone, sans recoller une perte. */

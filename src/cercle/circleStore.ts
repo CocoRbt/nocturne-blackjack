@@ -20,6 +20,7 @@ import { mergeBoardMembers, boardsAreEmpty } from './boardMerge';
 import { enqueueScorePush, getSyncEpoch, markScoreDirty } from './scoreSync';
 import { peakWealthCents, sanitizeScoreForPush, wealthCents } from './wealth';
 import { shouldApplyCloudWallet } from './walletReconcile';
+import { shouldPushWalletSnapshot } from './gameSession';
 import { useGame } from '../store/gameStore';
 
 const CIRCLE_CHANGED = 'nocturne-circle-changed';
@@ -329,7 +330,19 @@ export async function restoreCircleFromCloud(
   }
 }
 
-export async function pushScore(state: LocalCircleState, seed: Omit<CircleMemberScore, 'nickname' | 'updatedAt'>): Promise<LocalCircleState> {
+export async function pushScore(
+  state: LocalCircleState,
+  seed: Omit<CircleMemberScore, 'nickname' | 'updatedAt'>,
+  opts?: { force?: boolean },
+): Promise<LocalCircleState> {
+  const live = useGame.getState();
+  // force = bypass hold d’écran / salonStakeOpen uniquement, jamais un débit non réglé.
+  if (live.financialSessionDepth > 0) {
+    return state;
+  }
+  if (!opts?.force && !shouldPushWalletSnapshot(live)) {
+    return state;
+  }
   let result = state;
   await enqueueScorePush(async () => {
     const epoch = getSyncEpoch();
@@ -370,40 +383,43 @@ export async function pushScore(state: LocalCircleState, seed: Omit<CircleMember
           typeof synced.vault === 'number' &&
           (synced.balance !== mergedSeed.balance || synced.vault !== mergedSeed.vault)
         ) {
-          const decision = shouldApplyCloudWallet({
-            localBalance: mergedSeed.balance,
-            localVault: mergedSeed.vault,
-            cloudBalance: synced.balance,
-            cloudVault: synced.vault,
-          });
-          // Jamais écraser un patrimoine local plus riche (sync qui refuse un gain).
-          if (decision === 'apply') {
-            useGame.getState().applyVaultServerState(
-              {
+          const live = useGame.getState();
+          if (!live.gameSessionActive && !live.round) {
+            const decision = shouldApplyCloudWallet({
+              localBalance: live.balance,
+              localVault: live.vault,
+              cloudBalance: synced.balance,
+              cloudVault: synced.vault,
+            });
+            // Jamais écraser un patrimoine local plus riche (sync qui refuse un gain).
+            if (decision === 'apply') {
+              useGame.getState().applyVaultServerState(
+                {
+                  balance: synced.balance,
+                  vault: synced.vault,
+                  peakBalance:
+                    typeof synced.peak_balance === 'number'
+                      ? synced.peak_balance
+                      : mergedSeed.peakBalance,
+                },
+                Math.abs(
+                  wealthCents(synced.balance, synced.vault) -
+                    wealthCents(live.balance, live.vault),
+                ) <= 1
+                  ? 'Coffre aligné avec le cloud.'
+                  : 'Coffre mis à jour depuis le cloud.',
+                { dirty: false },
+              );
+              reconciledSeed = {
+                ...mergedSeed,
                 balance: synced.balance,
                 vault: synced.vault,
                 peakBalance:
                   typeof synced.peak_balance === 'number'
                     ? synced.peak_balance
                     : mergedSeed.peakBalance,
-              },
-              Math.abs(
-                wealthCents(synced.balance, synced.vault) -
-                  wealthCents(mergedSeed.balance, mergedSeed.vault),
-              ) <= 1
-                ? 'Coffre aligné avec le cloud.'
-                : 'Coffre mis à jour depuis le cloud.',
-              { dirty: false },
-            );
-            reconciledSeed = {
-              ...mergedSeed,
-              balance: synced.balance,
-              vault: synced.vault,
-              peakBalance:
-                typeof synced.peak_balance === 'number'
-                  ? synced.peak_balance
-                  : mergedSeed.peakBalance,
-            };
+              };
+            }
           }
         }
         const boards = await fetchLeaderboards();

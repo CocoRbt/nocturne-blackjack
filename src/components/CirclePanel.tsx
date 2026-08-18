@@ -58,6 +58,7 @@ export function CirclePanel() {
   const vaultWithdraw = useGame((s) => s.vaultWithdraw);
   const applyVaultServerState = useGame((s) => s.applyVaultServerState);
   const setVaultFromServer = useGame((s) => s.setVaultFromServer);
+  const gameSessionActive = useGame((s) => s.gameSessionActive);
 
   const [circle, setCircle] = useState<LocalCircleState | null>(() => loadCircle());
   const [nickname, setNickname] = useState(circle?.nickname ?? '');
@@ -109,6 +110,10 @@ export function CirclePanel() {
 
   const applyVaultAmount = async (mode: 'deposit' | 'withdraw') => {
     if (busy) return;
+    if (gameSessionActive) {
+      setError('Terminez la manche avant de toucher au coffre.');
+      return;
+    }
     const cents = parseCreditsInput(vaultInput);
     if (cents == null) {
       setError('Indiquez un montant valide.');
@@ -358,6 +363,10 @@ export function CirclePanel() {
     .sort((a, b) => a.localeCompare(b, 'fr'));
 
   const sendToMate = async () => {
+    if (gameSessionActive) {
+      setError('Terminez la manche avant d’envoyer du coffre.');
+      return;
+    }
     if (!circle?.cloud || !isSupabaseConfigured()) {
       setError('Envoi réservé au cercle cloud.');
       return;

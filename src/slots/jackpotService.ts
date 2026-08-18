@@ -95,8 +95,9 @@ export async function contributeJackpot(betCents: number): Promise<JackpotView> 
 
 /**
  * Claim atomique. Crédite le solde local une seule fois.
- * Cloud : push score → claim RPC → applique balance serveur.
- * Local / fallback : localClaim + slotsCredit.
+ * Cloud : sync post-settlement (si depth=0) → claim RPC → applique balance serveur.
+ * Le claim RPC crédite côté serveur ; le push optionnel aligne la mise du spin avant +jp.
+ * Jamais de push si financialSessionDepth > 0 (voir pushScore).
  */
 export async function claimJackpot(
   tier: JackpotTier,
@@ -106,7 +107,10 @@ export async function claimJackpot(
   const circle = loadCircle()
   if (circle?.cloud && isSupabaseConfigured()) {
     try {
-      await pushScore(circle, scoreSeed())
+      const before = useGame.getState()
+      if (before.financialSessionDepth === 0) {
+        await pushScore(circle, scoreSeed(), { force: true })
+      }
       const res = await claimStampedeJackpot(tier, betCents)
       const g = useGame.getState()
       g.applyVaultServerState(
@@ -116,6 +120,7 @@ export async function claimJackpot(
           peakBalance: res.peak_balance,
         },
         `Jackpot ${label} · +${Math.floor(res.amount / 100)} crédits`,
+        { dirty: false, force: true },
       )
       return {
         amountCents: res.amount,

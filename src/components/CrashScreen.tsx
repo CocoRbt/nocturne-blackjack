@@ -179,6 +179,12 @@ export function CrashScreen() {
   const inFlight = round.flightActive;
   const canBet = !inFlight;
   const canCash = round.phase === 'flying' && inFlight;
+  const setGameSessionActive = useGame((s) => s.setGameSessionActive);
+
+  useEffect(() => {
+    setGameSessionActive(inFlight);
+    return () => setGameSessionActive(false);
+  }, [inFlight, setGameSessionActive]);
 
   const onStart = () => {
     if (inFlight) return;

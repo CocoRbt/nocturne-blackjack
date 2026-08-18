@@ -40,8 +40,9 @@ import { clearScoreDirty, markScoreDirty } from '../cercle/scoreSync';
 import { creditWithoutGame, settleGamePeak } from './peakMeta';
 import { depositToVault, vaultableAmount, withdrawFromVault } from './vault';
 import { mergeIncomingVault } from './vaultMerge';
-import { mergeRecordPeak, peakWealthCents, restoreWipedPlayable } from '../cercle/wealth';
+import { mergeRecordPeak, peakWealthCents } from '../cercle/wealth';
 import { shouldApplyCloudWallet } from '../cercle/walletReconcile';
+import { beginFinancialSession, endFinancialSession, IDLE_GAME_SESSION, sessionPatch } from '../cercle/gameSession';
 import { TIMING, type GameSpeed } from './timing';
 
 export type BetSpot = 'main' | SideBetId;
@@ -98,6 +99,15 @@ interface GameState {
   refills: number;
   /** Mise salon encore en jeu — bloque refill / hydrate. */
   salonStakeOpen: boolean;
+  /**
+   * Compteur de mises non réglées (debit sans credit).
+   * Plinko multi-balles : une unité par bille en l’air.
+   */
+  financialSessionDepth: number;
+  /** Hold explicite posé par l’écran (spin, vol crash, mines, etc.). */
+  gameSessionHold: boolean;
+  /** Session financière active : aucun push wallet heartbeat. */
+  gameSessionActive: boolean;
   screen: 'lobby' | 'table' | 'mines' | 'craps' | 'crash' | 'plinko' | 'slots';
   tableId: string;
   soundMuted: boolean;
@@ -142,6 +152,8 @@ interface GameState {
    * (Craps : jeton posé, pas encore résolu).
    */
   setSalonStakeOpen(open: boolean): void;
+  /** Hold d’écran : partie financière en cours (indépendant de screen). */
+  setGameSessionActive(active: boolean): void;
   enterCrash(): void;
   leaveCrash(): void;
   /** Débite une mise Crash. false si solde insuffisant. */
@@ -191,7 +203,7 @@ interface GameState {
   applyVaultServerState(
     payload: { balance: number; vault: number; peakBalance?: number },
     notice?: string,
-    opts?: { dirty?: boolean },
+    opts?: { dirty?: boolean; force?: boolean },
   ): void;
   /** Fixe le coffre après un envoi serveur (source de vérité). */
   setVaultFromServer(vaultCents: number, notice?: string): void;
@@ -363,6 +375,10 @@ export const useGame = create<GameState>((set, get) => {
     persistSave(data);
   };
 
+  const patchSession = (
+    overrides: Parameters<typeof sessionPatch>[1] = {},
+  ) => sessionPatch(get(), overrides);
+
   /** Record = max patrimoine (solde + coffre), pas seulement le solde jouable. */
   const wealthPeak = (balance: number, vault: number, peak: number) =>
     peakWealthCents(peak, balance, vault);
@@ -507,18 +523,19 @@ export const useGame = create<GameState>((set, get) => {
       balance: settled.balance,
       peakBalance: wealthPeak(settled.balance, s.vault, settled.peakBalance),
       gamesPlayed: settled.gamesPlayed,
-      gamesBeforePeak: settled.gamesBeforePeak,
-      stats,
-      history: [entry, ...s.history].slice(0, 60),
-      session,
-      notice,
-      display: {
-        ...get().display,
-        resultsShown: true,
-        payoutPhase: 'done',
-        animatedNet: summary.totalNet,
-      },
-    });
+        gamesBeforePeak: settled.gamesBeforePeak,
+        stats,
+        history: [entry, ...s.history].slice(0, 60),
+        session,
+        notice,
+        display: {
+          ...get().display,
+          resultsShown: true,
+          payoutPhase: 'done',
+          animatedNet: summary.totalNet,
+        },
+        ...patchSession({ financialSessionDepth: endFinancialSession(s.financialSessionDepth) }),
+      });
 
     persist();
     bump();
@@ -623,7 +640,7 @@ export const useGame = create<GameState>((set, get) => {
     gamesPlayed: initialGamesPlayed,
     gamesBeforePeak: initialGamesBeforePeak,
     refills: saved?.refills ?? 0,
-    salonStakeOpen: false,
+    ...IDLE_GAME_SESSION,
     // BJ table needs a sabot frais — on ne restaure que les salons.
     screen:
       saved?.screen === 'mines' ||
@@ -695,6 +712,7 @@ export const useGame = create<GameState>((set, get) => {
         shoeSize: shoe.size(),
         shoeDealt: 0,
         session: freshSession(s.balance, goalId),
+        ...IDLE_GAME_SESSION,
       });
       refreshSeatCapacityState();
       persist();
@@ -720,6 +738,7 @@ export const useGame = create<GameState>((set, get) => {
         placementOrder: [],
         display: idleDisplay(),
         session: null,
+        ...IDLE_GAME_SESSION,
       });
       refreshSeatCapacityState();
       persist();
@@ -738,13 +757,14 @@ export const useGame = create<GameState>((set, get) => {
         display: idleDisplay(),
         session: null,
         notice: null,
+        ...IDLE_GAME_SESSION,
       });
       persist();
     },
 
     leaveMines() {
       sounds.setAmbience('lobby');
-      set({ screen: 'lobby', notice: null });
+      set({ screen: 'lobby', notice: null, ...IDLE_GAME_SESSION });
       persist();
     },
 
@@ -755,6 +775,7 @@ export const useGame = create<GameState>((set, get) => {
       set({
         balance: s.balance - amount,
         notice: null,
+        ...patchSession({ financialSessionDepth: beginFinancialSession(s.financialSessionDepth) }),
       });
       // Pas de persist mid-mise : un reload restaure le solde pré-mise.
       return true;
@@ -775,6 +796,7 @@ export const useGame = create<GameState>((set, get) => {
         peakBalance: wealthPeak(settled.balance, get().vault, settled.peakBalance),
         gamesPlayed: settled.gamesPlayed,
         gamesBeforePeak: settled.gamesBeforePeak,
+        ...patchSession({ financialSessionDepth: endFinancialSession(s.financialSessionDepth) }),
       });
       persist();
       markScoreDirty();
@@ -793,20 +815,24 @@ export const useGame = create<GameState>((set, get) => {
         display: idleDisplay(),
         session: null,
         notice: null,
-        salonStakeOpen: false,
+        ...IDLE_GAME_SESSION,
       });
       persist();
     },
 
     leaveCraps() {
       sounds.setAmbience('lobby');
-      set({ screen: 'lobby', notice: null, salonStakeOpen: false });
+      set({ screen: 'lobby', notice: null, ...IDLE_GAME_SESSION });
       persist();
     },
 
     setSalonStakeOpen(open) {
-      if (get().salonStakeOpen === open) return;
-      set({ salonStakeOpen: open });
+      set(patchSession({ salonStakeOpen: open }));
+    },
+
+    setGameSessionActive(active) {
+      if (get().gameSessionHold === active) return;
+      set(patchSession({ gameSessionHold: active }));
     },
 
     crapsDebit(bet) {
@@ -816,6 +842,7 @@ export const useGame = create<GameState>((set, get) => {
       set({
         balance: s.balance - amount,
         notice: null,
+        ...patchSession({ financialSessionDepth: beginFinancialSession(s.financialSessionDepth) }),
       });
       return true;
     },
@@ -835,6 +862,7 @@ export const useGame = create<GameState>((set, get) => {
         peakBalance: wealthPeak(settled.balance, get().vault, settled.peakBalance),
         gamesPlayed: settled.gamesPlayed,
         gamesBeforePeak: settled.gamesBeforePeak,
+        ...patchSession({ financialSessionDepth: endFinancialSession(s.financialSessionDepth) }),
       });
       persist();
       markScoreDirty();
@@ -853,13 +881,14 @@ export const useGame = create<GameState>((set, get) => {
         display: idleDisplay(),
         session: null,
         notice: null,
+        ...IDLE_GAME_SESSION,
       });
       persist();
     },
 
     leaveCrash() {
       sounds.setAmbience('lobby');
-      set({ screen: 'lobby', notice: null });
+      set({ screen: 'lobby', notice: null, ...IDLE_GAME_SESSION });
       persist();
     },
 
@@ -876,13 +905,14 @@ export const useGame = create<GameState>((set, get) => {
         display: idleDisplay(),
         session: null,
         notice: null,
+        ...IDLE_GAME_SESSION,
       });
       persist();
     },
 
     leavePlinko() {
       sounds.setAmbience('lobby');
-      set({ screen: 'lobby', notice: null });
+      set({ screen: 'lobby', notice: null, ...IDLE_GAME_SESSION });
       persist();
     },
 
@@ -893,6 +923,7 @@ export const useGame = create<GameState>((set, get) => {
       set({
         balance: s.balance - amount,
         notice: null,
+        ...patchSession({ financialSessionDepth: beginFinancialSession(s.financialSessionDepth) }),
       });
       return true;
     },
@@ -912,6 +943,7 @@ export const useGame = create<GameState>((set, get) => {
         peakBalance: wealthPeak(settled.balance, get().vault, settled.peakBalance),
         gamesPlayed: settled.gamesPlayed,
         gamesBeforePeak: settled.gamesBeforePeak,
+        ...patchSession({ financialSessionDepth: endFinancialSession(s.financialSessionDepth) }),
       });
       persist();
       markScoreDirty();
@@ -930,13 +962,14 @@ export const useGame = create<GameState>((set, get) => {
         display: idleDisplay(),
         session: null,
         notice: null,
+        ...IDLE_GAME_SESSION,
       });
       persist();
     },
 
     leaveSlots() {
       sounds.setAmbience('lobby');
-      set({ screen: 'lobby', notice: null });
+      set({ screen: 'lobby', notice: null, ...IDLE_GAME_SESSION });
       persist();
     },
 
@@ -947,6 +980,7 @@ export const useGame = create<GameState>((set, get) => {
       set({
         balance: s.balance - amount,
         notice: null,
+        ...patchSession({ financialSessionDepth: beginFinancialSession(s.financialSessionDepth) }),
       });
       return true;
     },
@@ -966,6 +1000,11 @@ export const useGame = create<GameState>((set, get) => {
         peakBalance: wealthPeak(settled.balance, get().vault, settled.peakBalance),
         gamesPlayed: settled.gamesPlayed,
         gamesBeforePeak: settled.gamesBeforePeak,
+        ...patchSession({
+          financialSessionDepth: countGame
+            ? endFinancialSession(s.financialSessionDepth)
+            : s.financialSessionDepth,
+        }),
       });
       persist();
       markScoreDirty();
@@ -978,6 +1017,7 @@ export const useGame = create<GameState>((set, get) => {
       set({
         balance: s.balance - amount,
         notice: null,
+        ...patchSession({ financialSessionDepth: beginFinancialSession(s.financialSessionDepth) }),
       });
       return true;
     },
@@ -997,6 +1037,7 @@ export const useGame = create<GameState>((set, get) => {
         peakBalance: wealthPeak(settled.balance, get().vault, settled.peakBalance),
         gamesPlayed: settled.gamesPlayed,
         gamesBeforePeak: settled.gamesBeforePeak,
+        ...patchSession({ financialSessionDepth: endFinancialSession(s.financialSessionDepth) }),
       });
       persist();
       markScoreDirty();
@@ -1193,6 +1234,7 @@ export const useGame = create<GameState>((set, get) => {
           dealFlashIds: [],
           animatedNet: 0,
         },
+        ...patchSession({ financialSessionDepth: beginFinancialSession(s.financialSessionDepth) }),
       });
       syncShoe();
       bump();
@@ -1360,7 +1402,7 @@ export const useGame = create<GameState>((set, get) => {
 
     vaultDeposit(amountCents) {
       const s = get();
-      if (s.round) {
+      if (s.round || s.gameSessionActive) {
         set({ notice: 'Terminez la manche avant d’utiliser le coffre.' });
         return;
       }
@@ -1385,7 +1427,7 @@ export const useGame = create<GameState>((set, get) => {
 
     vaultWithdraw(amountCents) {
       const s = get();
-      if (s.round) {
+      if (s.round || s.gameSessionActive) {
         set({ notice: 'Terminez la manche avant d’utiliser le coffre.' });
         return;
       }
@@ -1441,6 +1483,10 @@ export const useGame = create<GameState>((set, get) => {
     },
 
     applyVaultServerState(payload, notice, opts) {
+      const s = get();
+      if (!opts?.force && (s.gameSessionActive || s.round)) {
+        return;
+      }
       const balance = Math.max(0, Math.floor(payload.balance));
       const vault = Math.max(0, Math.floor(payload.vault));
       const peakBalance = mergeRecordPeak(
@@ -1475,7 +1521,7 @@ export const useGame = create<GameState>((set, get) => {
     refill() {
       const s = get();
       if (s.round) return;
-      if (s.salonStakeOpen) return;
+      if (s.gameSessionActive) return;
       /** Seulement à crédit épuisé (< 1) — on remet à 100, on n’ajoute pas. */
       if (s.balance >= 1_00) return;
       sounds.play('chipStack');
@@ -1491,7 +1537,7 @@ export const useGame = create<GameState>((set, get) => {
 
     hydrateFromCloud(payload, opts) {
       const s = get();
-      if (!opts?.force && (s.round || s.salonStakeOpen)) {
+      if (!opts?.force && (s.gameSessionActive || s.round)) {
         set({ notice: 'Terminez la manche avant de synchroniser le compte.' });
         return;
       }
@@ -1517,12 +1563,7 @@ export const useGame = create<GameState>((set, get) => {
       const nextVault = keepLocal ? s.vault : vault;
       const nextBalance = Math.min(
         MAX_BALANCE_CENTS,
-        restoreWipedPlayable(
-          keepLocal ? s.balance : balance,
-          nextVault,
-          peakBalance,
-          payload.gamesPlayed ?? s.gamesPlayed ?? 0,
-        ),
+        Math.max(0, keepLocal ? s.balance : balance),
       );
       if (nextBalance !== s.balance || nextVault !== s.vault) {
         markScoreDirty();
@@ -1558,7 +1599,7 @@ export const useGame = create<GameState>((set, get) => {
         gamesPlayed: 0,
         gamesBeforePeak: 0,
         refills: 0,
-        salonStakeOpen: false,
+        ...IDLE_GAME_SESSION,
         screen: 'lobby',
         tableId: 'emeraude',
         privateLimits,
