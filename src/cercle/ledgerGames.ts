@@ -6,10 +6,10 @@
 export const LEDGER_GAMES = {
   plinko: true,
   mines: true,
-  crash: false,
-  slots: false,
-  craps: false,
-  blackjack: false,
+  crash: true,
+  slots: true,
+  craps: true,
+  blackjack: true,
 } as const;
 
 export type LedgerGame = keyof typeof LEDGER_GAMES;
