@@ -335,7 +335,12 @@ export async function pushScore(
   seed: Omit<CircleMemberScore, 'nickname' | 'updatedAt'>,
   opts?: { force?: boolean },
 ): Promise<LocalCircleState> {
-  if (!opts?.force && !shouldPushWalletSnapshot(useGame.getState())) {
+  const live = useGame.getState();
+  // force = bypass hold d’écran / salonStakeOpen uniquement, jamais un débit non réglé.
+  if (live.financialSessionDepth > 0) {
+    return state;
+  }
+  if (!opts?.force && !shouldPushWalletSnapshot(live)) {
     return state;
   }
   let result = state;
