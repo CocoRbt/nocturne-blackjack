@@ -2,6 +2,7 @@ import { getSupabase, isSupabaseConfigured } from './supabaseClient';
 import { loadCircle } from './circleStore';
 import { isGameOnLedger, type LedgerGame } from './ledgerGames';
 
+
 function rpcMessage(error: { message?: string; details?: string; hint?: string }): string {
   const raw = [error.message, error.details, error.hint].filter(Boolean).join(' — ');
   if (/Solde insuffisant/i.test(raw)) return 'Solde insuffisant.';
@@ -40,7 +41,9 @@ export function walletFromLedger(res: LedgerWallet): {
 export function shouldUseLedger(game: LedgerGame): boolean {
   if (!isGameOnLedger(game)) return false;
   if (!isSupabaseConfigured()) return false;
-  return Boolean(loadCircle()?.cloud);
+  const circle = loadCircle();
+  if (circle?.cloud) return true;
+  return false;
 }
 
 export interface LedgerWallet {
@@ -81,6 +84,66 @@ export interface MinesRoundDto {
 
 export type LedgerPlinkoDrop = LedgerWallet & { round: PlinkoRoundDto };
 export type LedgerMinesOp = LedgerWallet & { round: MinesRoundDto };
+
+export interface CrashRoundDto {
+  round_id: string;
+  game: 'crash';
+  state: string;
+  stake: number;
+  payout: number;
+  crash_at: number | null;
+  cashout_at: number | null;
+  auto_cashout: number | null;
+}
+
+export interface SlotsRoundDto {
+  round_id: string;
+  game: 'slots';
+  state: string;
+  stake: number;
+  payout: number;
+  stops: number[];
+  mode: 'base' | 'free';
+  free_spins_left: number;
+  herd_heads: number;
+  jackpot_tier: 'mini' | 'major' | 'grand' | null;
+  free_spins_granted?: number;
+}
+
+export interface CrapsRoundDto {
+  round_id: string;
+  game: 'craps';
+  state: string;
+  stake: number;
+  payout: number;
+  phase: string;
+  point: number | null;
+  point_rolls: number;
+  last_roll: { d1: number; d2: number; total: number } | null;
+  settlements: Array<{ kind: string; amount_cents: number; net: number }>;
+  ended?: boolean;
+}
+
+export interface BjCard { rank: string; suit: string; id: string }
+
+export interface BjRoundDto {
+  round_id: string;
+  game: 'blackjack';
+  state: string;
+  stake: number;
+  payout: number;
+  phase: string;
+  player_cards: BjCard[];
+  dealer_up: BjCard | null;
+  dealer_cards: BjCard[] | null;
+  player_total: number;
+  dealer_total: number | null;
+}
+
+export type LedgerCrashOp = LedgerWallet & { round: CrashRoundDto };
+export type LedgerSlotsOp = LedgerWallet & { round: SlotsRoundDto; free_spins_granted?: number; jackpot_tier?: string | null };
+export type LedgerCrapsOp = LedgerWallet & { round: CrapsRoundDto; ended?: boolean };
+export type LedgerBjOp = LedgerWallet & { round: BjRoundDto };
 
 export async function plinkoDrop(input: {
   roundId: string;
@@ -126,6 +189,78 @@ export async function recoverMyRounds(): Promise<
   return rpc('recover_my_rounds', {});
 }
 
-export async function getMyOpenRounds(): Promise<{ rounds: Array<PlinkoRoundDto | MinesRoundDto> }> {
+export async function getMyOpenRounds(): Promise<{
+  rounds: Array<PlinkoRoundDto | MinesRoundDto | CrashRoundDto | SlotsRoundDto | CrapsRoundDto | BjRoundDto>;
+}> {
   return rpc('get_my_open_rounds', {});
+}
+
+// Crash
+export async function crashStart(input: {
+  roundId: string; stake: number; autoCashout?: number | null;
+}): Promise<LedgerCrashOp> {
+  return rpc('crash_start', {
+    p_round_id: input.roundId, p_stake: input.stake,
+    p_auto_cashout: input.autoCashout ?? null,
+  });
+}
+export async function crashCashout(roundId: string, requestedMult: number): Promise<LedgerCrashOp> {
+  return rpc('crash_cashout', { p_round_id: roundId, p_requested_mult: requestedMult });
+}
+export async function crashResolveLoss(roundId: string): Promise<LedgerCrashOp> {
+  return rpc('crash_resolve_loss', { p_round_id: roundId });
+}
+
+// Slots
+export async function slotsSpin(input: {
+  roundId: string; stake: number;
+  freeSpinsLeft?: number; herdHeads?: number; mode?: string;
+}): Promise<LedgerSlotsOp> {
+  return rpc('slots_spin', {
+    p_round_id: input.roundId,
+    p_stake: input.stake,
+    p_free_spins_left: input.freeSpinsLeft ?? 0,
+    p_herd_heads: input.herdHeads ?? 0,
+    p_mode: input.mode ?? 'base',
+  });
+}
+export async function slotsSettle(roundId: string, totalMult: number): Promise<LedgerSlotsOp> {
+  return rpc('slots_settle', { p_round_id: roundId, p_total_mult: totalMult });
+}
+
+// Craps
+export async function crapsPlaceBet(roundId: string, stake: number): Promise<LedgerCrapsOp> {
+  return rpc('craps_place_bet', { p_round_id: roundId, p_stake: stake });
+}
+export async function crapsTakeBack(roundId: string): Promise<LedgerCrapsOp> {
+  return rpc('craps_take_back', { p_round_id: roundId });
+}
+export async function crapsRoll(roundId: string): Promise<LedgerCrapsOp & { ended?: boolean }> {
+  return rpc('craps_roll', { p_round_id: roundId });
+}
+
+// Blackjack
+export async function bjDeal(roundId: string, stake: number): Promise<LedgerBjOp> {
+  return rpc('bj_deal', { p_round_id: roundId, p_stake: stake });
+}
+export async function bjAction(roundId: string, action: string): Promise<LedgerBjOp> {
+  return rpc('bj_action', { p_round_id: roundId, p_action: action });
+}
+export async function bjSettle(roundId: string): Promise<LedgerBjOp> {
+  return rpc('bj_settle', { p_round_id: roundId });
+}
+
+// Coffre / transfert ledger
+export async function ledgerDepositVault(amount: number, idempotencyKey: string): Promise<LedgerWallet> {
+  return rpc('ledger_deposit_vault', { p_amount: amount, p_idempotency_key: idempotencyKey });
+}
+export async function ledgerWithdrawVault(amount: number, idempotencyKey: string): Promise<LedgerWallet> {
+  return rpc('ledger_withdraw_vault', { p_amount: amount, p_idempotency_key: idempotencyKey });
+}
+export async function ledgerSendVault(
+  toNickname: string, amount: number, transferId: string,
+): Promise<LedgerWallet & { status: string; transfer_id: string }> {
+  return rpc('ledger_send_circle_vault', {
+    p_to_nickname: toNickname, p_amount: amount, p_transfer_id: transferId,
+  });
 }

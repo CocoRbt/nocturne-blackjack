@@ -1,5 +1,18 @@
 import { useEffect, useState } from 'react';
-import { fetchCreditSeries, depositVaultCloud, sendVaultCloud, withdrawVaultCloud, fetchMyScore, type CreditSeriesPoint } from '../cercle/circleApi';
+import {
+  fetchCreditSeries,
+  depositVaultCloud,
+  sendVaultCloud,
+  withdrawVaultCloud,
+  fetchMyScore,
+  type CreditSeriesPoint,
+} from '../cercle/circleApi';
+import {
+  ledgerDepositVault,
+  ledgerWithdrawVault,
+  ledgerSendVault,
+  walletFromLedger,
+} from '../cercle/ledgerApi';
 import { SEND_VAULT_MAX_CENTS } from '../cercle/vaultLimits';
 import { peakWealthCents, wealthCents } from '../cercle/wealth';
 import { shouldApplyCloudWallet } from '../cercle/walletReconcile';
@@ -57,6 +70,8 @@ export function CirclePanel() {
   const vaultDeposit = useGame((s) => s.vaultDeposit);
   const vaultWithdraw = useGame((s) => s.vaultWithdraw);
   const applyVaultServerState = useGame((s) => s.applyVaultServerState);
+  const applyCanonicalWallet = useGame((s) => s.applyCanonicalWallet);
+  const ledgerAuthoritative = useGame((s) => s.ledgerAuthoritative);
   const setVaultFromServer = useGame((s) => s.setVaultFromServer);
   const gameSessionActive = useGame((s) => s.gameSessionActive);
 
@@ -166,6 +181,15 @@ export function CirclePanel() {
       if (circle?.cloud && isSupabaseConfigured()) {
         setBusy(true);
         try {
+          if (ledgerAuthoritative) {
+            const key = `vault:deposit:${crypto.randomUUID()}`;
+            const res = await ledgerDepositVault(cents, key);
+            applyCanonicalWallet(walletFromLedger(res), { notice: `Coffré. Coffre : ${fmt(res.vault)}.` });
+            setVaultInput(''); setError(null);
+            const refreshed = await refreshLeaderboards(circle!);
+            setCircle(refreshed.state); setBoards(refreshed.boards);
+            return;
+          }
           await ensureCircleMembership(circle, { force: true });
           await syncThen();
           const tryDeposit = async () => depositVaultCloud(cents);
@@ -183,43 +207,23 @@ export function CirclePanel() {
             }
           }
           applyVaultServerState(
-            {
-              balance: res.balance,
-              vault: res.vault,
-              peakBalance: res.peak_balance,
-            },
-            `Coffré. Coffre : ${fmt(res.vault)}.`,
-            { dirty: false },
+            { balance: res.balance, vault: res.vault, peakBalance: res.peak_balance },
+            `Coffré. Coffre : ${fmt(res.vault)}.`, { dirty: false },
           );
           const refreshed = await refreshLeaderboards(circle);
-          setCircle(refreshed.state);
-          setBoards(refreshed.boards);
-          setVaultInput('');
-          setError(null);
+          setCircle(refreshed.state); setBoards(refreshed.boards);
+          setVaultInput(''); setError(null);
         } catch (e) {
           const msg = e instanceof Error ? e.message : '';
           if (/deposit_my_vault|Could not find the function|schema cache/i.test(msg)) {
             vaultDeposit(cents);
-            try {
-              await syncThen();
-            } catch {
-              /* sync best-effort */
-            }
+            try { await syncThen(); } catch { /* best-effort */ }
             const g = useGame.getState();
             if (g.vault < cents) {
-              setError(
-                'Coffrage refusé par le cloud. Colle les migrations SQL vault (deposit_my_vault).',
-              );
-            } else {
-              setVaultInput('');
-              setError(null);
-            }
-          } else {
-            setError(msg || 'Dépôt impossible');
-          }
-        } finally {
-          setBusy(false);
-        }
+              setError('Coffrage refusé par le cloud. Colle les migrations SQL vault (deposit_my_vault).');
+            } else { setVaultInput(''); setError(null); }
+          } else { setError(msg || 'Dépôt impossible'); }
+        } finally { setBusy(false); }
         return;
       }
       vaultDeposit(cents);
@@ -230,7 +234,15 @@ export function CirclePanel() {
     if (circle?.cloud && isSupabaseConfigured()) {
       setBusy(true);
       try {
-        await ensureCircleMembership(circle, { force: true });
+        if (ledgerAuthoritative) {
+          const key = `vault:withdraw:${crypto.randomUUID()}`;
+          const res = await ledgerWithdrawVault(cents, key);
+          applyCanonicalWallet(walletFromLedger(res), { notice: `Retiré du coffre. Crédit : ${fmt(res.balance)}.` });
+          setVaultInput(''); setError(null);
+          const refreshed = await refreshLeaderboards(circle!);
+          setCircle(refreshed.state); setBoards(refreshed.boards);
+          return;
+        }
         let cloudBal = 0;
         let cloudVault = 0;
         let cloudPeak = 0;
@@ -391,6 +403,15 @@ export function CirclePanel() {
     setSendBusy(true);
     setError(null);
     try {
+      if (ledgerAuthoritative) {
+        const tid = crypto.randomUUID();
+        const res = await ledgerSendVault(sendTo, cents, tid);
+        applyCanonicalWallet(walletFromLedger(res));
+        const refreshed = await refreshLeaderboards(circle!);
+        setCircle(refreshed.state); setBoards(refreshed.boards);
+        setVaultInput('');
+        return;
+      }
       const gPeek = useGame.getState();
       const incoming = await peekIncomingVault(gPeek.vault, gPeek.balance);
       if (incoming !== useGame.getState().vault) {

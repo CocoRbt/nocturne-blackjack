@@ -43,7 +43,7 @@ returns void
 language plpgsql
 as $$
 begin
-  perform set_config('app.current_user_id', p_uid::text, true);
-  perform set_config('app.current_role', 'authenticated', true);
+  perform set_config('app.current_user_id', p_uid::text, false);
+  perform set_config('app.current_role', 'authenticated', false);
 end;
 $$;
