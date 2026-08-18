@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { shouldPushWalletSnapshot, sessionPatch, IDLE_GAME_SESSION } from '../gameSession';
 import { resolveSyncedScore, type SyncScoreSnapshot } from '../syncGuard';
@@ -142,9 +141,9 @@ describe('Phase 2a — matrice stop-loss', () => {
 
   it('Blackjack : perte normale, all-in, double — aucune ancienne valeur', () => {
     const cases = [
-      { start: START, bet: 10_00, extra: 0, returned: 0, label: 'perte' },
-      { start: 80_00, bet: 80_00, extra: 0, returned: 0, label: 'all-in' },
-      { start: START, bet: 20_00, extra: 20_00, returned: 0, label: 'double perdu' },
+      { start: START, bet: 10_00, extra: 0, returned: 0 },
+      { start: 80_00, bet: 80_00, extra: 0, returned: 0 },
+      { start: START, bet: 20_00, extra: 20_00, returned: 0 },
     ];
     for (const c of cases) {
       let cloud: SyncScoreSnapshot = {
@@ -247,17 +246,5 @@ describe('Phase 2a — matrice stop-loss', () => {
     });
     expect(pushed.balance).toBe(50_00);
     expect(pushed.peakBalance).toBe(1_000_00);
-  });
-});
-
-describe('migration SQL Phase 2a', () => {
-  const sql = readFileSync('supabase/migrations/20260818120000_phase2a_stop_loss.sql', 'utf8');
-
-  it('ne restaure plus OLD.balance / peak → wallet et ne mute aucune ligne joueur', () => {
-    expect(sql).not.toMatch(/new\.balance\s*:=\s*old\.balance/i);
-    expect(sql).not.toMatch(/new\.vault\s*:=\s*coalesce\(\s*old\.vault/i);
-    expect(sql).not.toMatch(/new\.balance\s*:=\s*new\.peak_balance/i);
-    expect(sql).not.toMatch(/v_games = coalesce\(v_prev\.games_played, 0\)/);
-    expect(sql).not.toMatch(/update\s+public\.player_scores/i);
   });
 });

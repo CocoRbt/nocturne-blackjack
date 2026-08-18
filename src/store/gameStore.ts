@@ -1402,7 +1402,7 @@ export const useGame = create<GameState>((set, get) => {
 
     vaultDeposit(amountCents) {
       const s = get();
-      if (s.round) {
+      if (s.round || s.gameSessionActive) {
         set({ notice: 'Terminez la manche avant d’utiliser le coffre.' });
         return;
       }
@@ -1427,7 +1427,7 @@ export const useGame = create<GameState>((set, get) => {
 
     vaultWithdraw(amountCents) {
       const s = get();
-      if (s.round) {
+      if (s.round || s.gameSessionActive) {
         set({ notice: 'Terminez la manche avant d’utiliser le coffre.' });
         return;
       }

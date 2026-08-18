@@ -20,6 +20,7 @@ import { mergeBoardMembers, boardsAreEmpty } from './boardMerge';
 import { enqueueScorePush, getSyncEpoch, markScoreDirty } from './scoreSync';
 import { peakWealthCents, sanitizeScoreForPush, wealthCents } from './wealth';
 import { shouldApplyCloudWallet } from './walletReconcile';
+import { shouldPushWalletSnapshot } from './gameSession';
 import { useGame } from '../store/gameStore';
 
 const CIRCLE_CHANGED = 'nocturne-circle-changed';
@@ -329,7 +330,14 @@ export async function restoreCircleFromCloud(
   }
 }
 
-export async function pushScore(state: LocalCircleState, seed: Omit<CircleMemberScore, 'nickname' | 'updatedAt'>): Promise<LocalCircleState> {
+export async function pushScore(
+  state: LocalCircleState,
+  seed: Omit<CircleMemberScore, 'nickname' | 'updatedAt'>,
+  opts?: { force?: boolean },
+): Promise<LocalCircleState> {
+  if (!opts?.force && !shouldPushWalletSnapshot(useGame.getState())) {
+    return state;
+  }
   let result = state;
   await enqueueScorePush(async () => {
     const epoch = getSyncEpoch();

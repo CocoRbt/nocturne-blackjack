@@ -80,7 +80,7 @@ Ce n’est **pas** `screen !== 'lobby'` : on peut être sur Mines/Plinko sans mi
 | Mines / Crash / Plinko / Slots / Craps | `*Debit` + hold (playing / vol / billes / spin+bonus / jeton) | `*Credit` / fin d’écran |
 | Plinko multi-balles | depth = nombre de billes débitées | chaque landing −1 |
 
-Pendant ON : heartbeat **pull** toujours (les autres voient les fins de parties), **aucun push** wallet.
+Pendant ON : heartbeat **et** `pushScore` (sauf jackpot `force`) ne poussent pas le wallet. Pull classement conservé. Coffre / envoi cercle refusés.
 
 `restoreWipedPlayable` n’est plus appelé au boot ni à `hydrateFromCloud`.
 

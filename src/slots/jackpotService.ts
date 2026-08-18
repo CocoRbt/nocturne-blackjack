@@ -106,7 +106,7 @@ export async function claimJackpot(
   const circle = loadCircle()
   if (circle?.cloud && isSupabaseConfigured()) {
     try {
-      await pushScore(circle, scoreSeed())
+      await pushScore(circle, scoreSeed(), { force: true })
       const res = await claimStampedeJackpot(tier, betCents)
       const g = useGame.getState()
       g.applyVaultServerState(
