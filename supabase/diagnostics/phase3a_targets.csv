@@ -1,0 +1,10 @@
+profile_id,pseudo,current_balance,current_vault,current_peak,target_balance,target_vault,target_peak,stats_target,source_preuve,confiance,decision_requise
+aff69e30-69c6-480d-9cf0-80384dafac1b,Aubin,9000,0,48000,UNKNOWN,0,UNKNOWN,UNKNOWN / MANUAL,"aucun snapshot <= T0 ; uniquement données post-T0 (18:01–18:36 UTC le 17/08)",low,YES
+08846d54-1d68-4ed2-ba0d-c58e25825638,I2S,10000,0,10000,10000,0,10000,"SAFE CURRENT VALUE (stats 0)", "updated_at=2026-07-30 19:32:33+00 < T0 ; aucun snapshot contradictoire",high,NO
+a30d8791-5fa5-4a7c-89d6-7f459095b0f6,KikiLoki,1304569500,0,1904569500,121100000,0,121100000,MANUAL / UNKNOWN,"valeurs définitives confirmées manuellement avant bug",high,NO
+d1609022-3303-4259-b563-2c38f5b9022d,Lea,9262,50000000,50009262,9262,0,3170654,UNKNOWN,"47 snapshots <= T0 ; dernier solde 9262 ; max snapshot 3170654",medium-high,NO
+9596457a-0fd3-4db7-a34c-ce0a3d745463,Lea2,250,100000000,100000250,250,0,28000,UNKNOWN,"22 snapshots <= T0 ; dernier solde 250 ; max snapshot 28000",medium,NO
+018a50d7-4d53-46ab-a176-f6d37710f135,Lofty,10000,0,16612,10000,0,16612,"SAFE CURRENT VALUE","updated_at=2026-08-13 19:04:31+00 < T0 ; 11 snapshots <= T0 compatibles",high,NO
+7997ace8-c050-49f1-afd8-e4bb9c817cc3,Selmex,10000,50000000,50010000,10000,0,2060512,UNKNOWN,"profil actif confirmé ; 109 snapshots <= T0 ; dernier solde 10000 ; max snapshot 2060512",high_balance_medium_peak,NO
+3afdb4e8-33ff-4148-9c26-17a3ea8cfbe3,Vincent,10000,0,910536621,100000,0,UNKNOWN,UNKNOWN,"balance manuelle validée 1000 cr ; snapshots uniquement post-bug ; peak actuel corrompu",high_balance_none_peak,YES
+12a585fb-bff6-4748-8e95-14ce2d3022b9,ZaaariX,3299602,50000000,53299602,3299602,0,3299602,UNKNOWN,"90 snapshots <= T0 ; dernier solde 3299602 ; max snapshot 3299602",high,NO
