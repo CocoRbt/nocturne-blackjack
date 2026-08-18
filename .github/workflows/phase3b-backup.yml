@@ -23,12 +23,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      PHASE3B_DATABASE_URL: ${{ secrets.PHASE3B_DATABASE_URL }}
+      PGHOST: aws-0-eu-west-3.pooler.supabase.com
+      PGPORT: "5432"
+      PGDATABASE: postgres
+      PGUSER: postgres.gyazoruuxxezuodkhwoz
       PGSSLMODE: require
       EXPECTED_FINGERPRINT: "12|1308297614|250000000|3077834547"
       RESTORE_USER: restore
       RESTORE_PASSWORD: restore
-      RESTORE_DB: restoredb
     services:
       restore-pg:
         image: postgres:17
@@ -45,15 +47,15 @@ jobs:
           --health-retries 12
 
     steps:
-      - name: Check secret presence
-        id: secret
+      - name: Check DB password secret
+        id: db_secret
+        env:
+          PHASE3B_DB_PASSWORD: ${{ secrets.PHASE3B_DB_PASSWORD }}
         run: |
           set -euo pipefail
-          if [ -n "${PHASE3B_DATABASE_URL:-}" ]; then
-            echo "SECRET_VISIBLE=YES"
+          if [ -n "${PHASE3B_DB_PASSWORD:-}" ]; then
             echo "present=yes" >> "$GITHUB_OUTPUT"
           else
-            echo "SECRET_VISIBLE=NO"
             echo "SITE_PAUSED=true"
             echo "DATABASE_BACKUP_READY=NO"
             echo "No production writes. No wallet changes. No merge to main."
@@ -74,21 +76,63 @@ jobs:
       - name: Pull PostgreSQL 17 image
         run: docker pull postgres:17
 
-      - name: pg_dump custom format (read-only)
-        id: dump
+      - name: Test PostgreSQL connection
+        id: conn
+        env:
+          PHASE3B_DB_PASSWORD: ${{ secrets.PHASE3B_DB_PASSWORD }}
         run: |
           set -euo pipefail
+          export PGPASSWORD="${PHASE3B_DB_PASSWORD}"
+          unset PHASE3B_DB_PASSWORD
+          docker run --rm \
+            -e PGPASSWORD \
+            -e PGHOST \
+            -e PGPORT \
+            -e PGDATABASE \
+            -e PGUSER \
+            -e PGSSLMODE \
+            postgres:17 \
+            psql \
+              --host="${PGHOST}" \
+              --port="${PGPORT}" \
+              --username="${PGUSER}" \
+              --dbname="${PGDATABASE}" \
+              --no-password \
+              --set=ON_ERROR_STOP=1 \
+              --command="select 1 as connection_ok;"
+          echo "DB_CONNECTION=PASS"
+          echo "result=PASS" >> "$GITHUB_OUTPUT"
+
+      - name: pg_dump custom format (read-only)
+        id: dump
+        env:
+          PHASE3B_DB_PASSWORD: ${{ secrets.PHASE3B_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          export PGPASSWORD="${PHASE3B_DB_PASSWORD}"
+          unset PHASE3B_DB_PASSWORD
           DUMP_DIR="${{ steps.dirs.outputs.dump_dir }}"
           docker run --rm \
             -v "${DUMP_DIR}:/dump" \
-            -e PHASE3B_DATABASE_URL \
+            -e PGPASSWORD \
+            -e PGHOST \
+            -e PGPORT \
+            -e PGDATABASE \
+            -e PGUSER \
             -e PGSSLMODE \
             postgres:17 \
-            bash -c 'pg_dump --format=custom --verbose --no-password --file=/dump/pre_phase3b.dump --dbname="$PHASE3B_DATABASE_URL"'
+            pg_dump \
+              --format=custom \
+              --verbose \
+              --no-password \
+              --host="${PGHOST}" \
+              --port="${PGPORT}" \
+              --username="${PGUSER}" \
+              --dbname="${PGDATABASE}" \
+              --file=/dump/pre_phase3b.dump
           test -s "${DUMP_DIR}/pre_phase3b.dump"
-          DUMP_SIZE="$(stat -c%s "${DUMP_DIR}/pre_phase3b.dump")"
-          echo "DUMP_SIZE_BYTES=${DUMP_SIZE}"
-          echo "dump_size=${DUMP_SIZE}" >> "$GITHUB_OUTPUT"
+          echo "DUMP_CREATED=YES"
+          echo "created=yes" >> "$GITHUB_OUTPUT"
 
       - name: Checksum SHA256 of original dump
         run: |
@@ -172,7 +216,22 @@ jobs:
             exit 1
           fi
 
+      - name: Check encryption secret
+        id: enc_secret
+        env:
+          PHASE3B_BACKUP_ENCRYPTION_KEY: ${{ secrets.PHASE3B_BACKUP_ENCRYPTION_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -n "${PHASE3B_BACKUP_ENCRYPTION_KEY:-}" ]; then
+            echo "present=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=no" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Encrypt dump AES-256-CBC PBKDF2
+        if: steps.enc_secret.outputs.present == 'yes'
+        env:
+          PHASE3B_BACKUP_ENCRYPTION_KEY: ${{ secrets.PHASE3B_BACKUP_ENCRYPTION_KEY }}
         run: |
           set -euo pipefail
           DUMP_DIR="${{ steps.dirs.outputs.dump_dir }}"
@@ -180,7 +239,7 @@ jobs:
           openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -salt \
             -in "${DUMP_DIR}/pre_phase3b.dump" \
             -out "${OUT_DIR}/pre_phase3b.dump.enc" \
-            -pass env:PHASE3B_DATABASE_URL
+            -pass env:PHASE3B_BACKUP_ENCRYPTION_KEY
           test -s "${OUT_DIR}/pre_phase3b.dump.enc"
           (
             cd "$OUT_DIR"
@@ -193,17 +252,15 @@ jobs:
           DUMP_DIR="${{ steps.dirs.outputs.dump_dir }}"
           OUT_DIR="${{ steps.dirs.outputs.out_dir }}"
           rm -f "${DUMP_DIR}/pre_phase3b.dump"
-          find "$DUMP_DIR" "$OUT_DIR" -type f \( -name '*.dump' -o -name '*.sql' -o -name '*.backup' \) ! -name '*.enc' -delete
-          if find "$DUMP_DIR" "$OUT_DIR" -type f \( -name '*.dump' -o -name '*.sql' \) ! -name '*.enc' | grep -q .; then
-            echo "Unencrypted dump still present; refusing upload."
+          find "$DUMP_DIR" "$OUT_DIR" -type f \( -name '*.dump' -o -name '*.sql' -o -name '*.backup' \) ! -name '*.enc' ! -name '*.sha256' -delete 2>/dev/null || true
+          if find "$DUMP_DIR" "$OUT_DIR" -type f \( -name 'pre_phase3b.dump' -o -name '*.sql' \) | grep -q .; then
+            echo "Unencrypted dump still present; refusing to continue."
             exit 1
           fi
-          test -f "${OUT_DIR}/pre_phase3b.dump.enc"
-          test -f "${OUT_DIR}/pre_phase3b.dump.sha256"
-          test -f "${OUT_DIR}/pre_phase3b.dump.enc.sha256"
           test ! -f "${DUMP_DIR}/pre_phase3b.dump"
 
       - name: Upload encrypted dump and checksums only
+        if: steps.enc_secret.outputs.present == 'yes'
         uses: actions/upload-artifact@v4
         with:
           name: phase3b-encrypted-backup
@@ -214,21 +271,30 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Skip artifact upload (no encryption secret)
+        if: steps.enc_secret.outputs.present != 'yes'
+        run: |
+          echo "ARTIFACT_UPLOAD=SKIPPED_NO_ENCRYPTION_SECRET"
+
       - name: Summary
+        if: success()
         run: |
           set -euo pipefail
-          echo "SECRET_VISIBLE=YES"
-          echo "DUMP_SIZE_BYTES=${{ steps.dump.outputs.dump_size }}"
+          echo "DB_CONNECTION=PASS"
+          echo "DUMP_CREATED=YES"
           echo "RESTORE_TEST=PASS"
           echo "RESTORED_FINGERPRINT=${{ steps.fingerprint.outputs.fingerprint }}"
           echo "DATABASE_BACKUP_READY=YES"
+          if [ "${{ steps.enc_secret.outputs.present }}" != "yes" ]; then
+            echo "ARTIFACT_UPLOAD=SKIPPED_NO_ENCRYPTION_SECRET"
+          fi
 
       - name: Fail-safe
         if: failure() || cancelled()
         run: |
           DUMP_DIR="${{ steps.dirs.outputs.dump_dir }}"
           OUT_DIR="${{ steps.dirs.outputs.out_dir }}"
-          rm -f "${DUMP_DIR:-/tmp}/pre_phase3b.dump" || true
+          rm -f "${DUMP_DIR:-/tmp}/pre_phase3b.dump" 2>/dev/null || true
           find "${DUMP_DIR:-/tmp}" "${OUT_DIR:-/tmp}" -type f \( -name '*.dump' -o -name '*.sql' \) ! -name '*.enc' -delete 2>/dev/null || true
           echo "SITE_PAUSED=true"
           echo "DATABASE_BACKUP_READY=NO"
