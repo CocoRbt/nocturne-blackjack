@@ -108,6 +108,8 @@ interface GameState {
   gameSessionHold: boolean;
   /** Session financière active : aucun push wallet heartbeat. */
   gameSessionActive: boolean;
+  /** Profil migré ledger : le wallet legacy ne doit plus être poussé. */
+  ledgerAuthoritative: boolean;
   screen: 'lobby' | 'table' | 'mines' | 'craps' | 'crash' | 'plinko' | 'slots';
   tableId: string;
   soundMuted: boolean;
@@ -204,6 +206,20 @@ interface GameState {
     payload: { balance: number; vault: number; peakBalance?: number },
     notice?: string,
     opts?: { dirty?: boolean; force?: boolean },
+  ): void;
+  /**
+   * Solde canonique ledger (Phase 2b). N’écrit pas via sync_my_score.
+   * S’applique même pendant une session financière (c’est la source serveur).
+   */
+  applyCanonicalWallet(
+    payload: {
+      balance: number;
+      vault: number;
+      peakBalance?: number;
+      gamesPlayed?: number;
+      gamesBeforePeak?: number;
+    },
+    opts?: { beginSession?: boolean; endSession?: boolean; notice?: string },
   ): void;
   /** Fixe le coffre après un envoi serveur (source de vérité). */
   setVaultFromServer(vaultCents: number, notice?: string): void;
@@ -640,6 +656,7 @@ export const useGame = create<GameState>((set, get) => {
     gamesPlayed: initialGamesPlayed,
     gamesBeforePeak: initialGamesBeforePeak,
     refills: saved?.refills ?? 0,
+    ledgerAuthoritative: false,
     ...IDLE_GAME_SESSION,
     // BJ table needs a sabot frais — on ne restaure que les salons.
     screen:
@@ -1482,6 +1499,35 @@ export const useGame = create<GameState>((set, get) => {
       void vaultCents;
     },
 
+    applyCanonicalWallet(payload, opts) {
+      const s = get();
+      const balance = Math.max(0, Math.floor(payload.balance));
+      const vault = Math.max(0, Math.floor(payload.vault));
+      const peakBalance = Math.max(
+        typeof payload.peakBalance === 'number' ? Math.floor(payload.peakBalance) : 0,
+        balance + vault,
+      );
+      let depth = s.financialSessionDepth;
+      if (opts?.beginSession) depth = beginFinancialSession(depth);
+      if (opts?.endSession) depth = endFinancialSession(depth);
+      set({
+        balance,
+        vault,
+        peakBalance,
+        ledgerAuthoritative: true,
+        gamesPlayed:
+          typeof payload.gamesPlayed === 'number' ? Math.max(0, Math.floor(payload.gamesPlayed)) : s.gamesPlayed,
+        gamesBeforePeak:
+          typeof payload.gamesBeforePeak === 'number'
+            ? Math.max(0, Math.floor(payload.gamesBeforePeak))
+            : s.gamesBeforePeak,
+        ...(opts?.notice ? { notice: opts.notice } : {}),
+        ...patchSession({ financialSessionDepth: depth }),
+      });
+      persist();
+      clearScoreDirty();
+    },
+
     applyVaultServerState(payload, notice, opts) {
       const s = get();
       if (!opts?.force && (s.gameSessionActive || s.round)) {
@@ -1499,6 +1545,7 @@ export const useGame = create<GameState>((set, get) => {
         balance,
         vault,
         peakBalance,
+        ledgerAuthoritative: false,
         ...(notice ? { notice } : {}),
       });
       persist();
@@ -1529,6 +1576,7 @@ export const useGame = create<GameState>((set, get) => {
         balance: STARTING_BALANCE,
         peakBalance: Math.max(s.peakBalance, STARTING_BALANCE),
         refills: s.refills + 1,
+        ledgerAuthoritative: false,
         notice: 'Crédit reconstitué.',
       });
       persist();
@@ -1572,6 +1620,7 @@ export const useGame = create<GameState>((set, get) => {
         balance: nextBalance,
         vault: nextVault,
         peakBalance,
+        ledgerAuthoritative: false,
         gamesPlayed: payload.gamesPlayed ?? s.gamesPlayed,
         gamesBeforePeak: payload.gamesBeforePeak ?? s.gamesBeforePeak,
         stats: {

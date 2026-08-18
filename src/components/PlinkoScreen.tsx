@@ -1,6 +1,13 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { notifyDefi } from '../defis/track';
+import {
+  plinkoDrop,
+  plinkoSettle,
+  recoverMyRounds,
+  shouldUseLedger,
+  walletFromLedger,
+} from '../cercle/ledgerApi';
 import { fmt, fmtMult } from '../lib/format';
 import { pathToSlot, rollPath } from '../plinko/engine';
 import {
@@ -46,6 +53,8 @@ type LiveBall = {
   bornAt: number;
   landed: boolean;
   paid: boolean;
+  /** Round serveur (ledger). Absent en mode local. */
+  roundId?: string;
 };
 
 type BallLayout = {
@@ -335,6 +344,23 @@ export function PlinkoScreen() {
   const paidIds = useRef<Set<number>>(new Set());
   const plinkoCreditRef = useRef(plinkoCredit);
   plinkoCreditRef.current = plinkoCredit;
+  const applyCanonicalWallet = useGame((s) => s.applyCanonicalWallet);
+
+  useEffect(() => {
+    if (!shouldUseLedger('plinko')) return;
+    let cancelled = false;
+    void recoverMyRounds()
+      .then((res) => {
+        if (cancelled) return;
+        applyCanonicalWallet(walletFromLedger(res));
+      })
+      .catch(() => {
+        /* hors-ligne / pas encore migré */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [applyCanonicalWallet]);
 
   const liveCount = balls.filter((b) => !b.landed).length;
   const flying = liveCount > 0;
@@ -428,7 +454,19 @@ export function PlinkoScreen() {
       if (newlyPaid.length > 0) {
         for (const b of newlyPaid) {
           paidIds.current.add(b.id);
-          plinkoCreditRef.current(b.payout);
+          if (b.roundId && shouldUseLedger('plinko')) {
+            const rid = b.roundId;
+            void plinkoSettle(rid)
+              .then((res) => {
+                useGame.getState().applyCanonicalWallet(walletFromLedger(res), { endSession: true });
+              })
+              .catch((err: unknown) => {
+                const msg = err instanceof Error ? err.message : 'Settlement Plinko impossible';
+                useGame.setState({ notice: msg });
+              });
+          } else {
+            plinkoCreditRef.current(b.payout);
+          }
           notifyDefi({ type: 'plinko_drop', mult: b.multiplier });
           histId.current += 1;
           setHistory((h) =>
@@ -481,32 +519,63 @@ export function PlinkoScreen() {
   const onDrop = () => {
     const stake = Math.min(bet, useGame.getState().balance);
     if (stake < 1_00) return;
-    if (!plinkoDebit(stake)) return;
 
-    const path = rollPath(rows);
-    const slot = pathToSlot(path);
-    const multiplier = multiplierAt(rows, risk, slot);
-    const payout = payoutCents(stake, multiplier);
-    ballId.current += 1;
-    const ball: LiveBall = {
-      id: ballId.current,
-      bet: stake,
-      rows,
-      risk,
-      path,
-      slot,
-      multiplier,
-      payout,
-      bornAt: performance.now(),
-      landed: false,
-      paid: false,
+    const launch = (
+      path: readonly boolean[],
+      extra?: { roundId?: string; multiplier?: number; payout?: number; slot?: number },
+    ) => {
+      const slot = extra?.slot ?? pathToSlot(path);
+      const multiplier = extra?.multiplier ?? multiplierAt(rows, risk, slot);
+      const payout = extra?.payout ?? payoutCents(stake, multiplier);
+      ballId.current += 1;
+      const ball: LiveBall = {
+        id: ballId.current,
+        bet: stake,
+        rows,
+        risk,
+        path,
+        slot,
+        multiplier,
+        payout,
+        bornAt: performance.now(),
+        landed: false,
+        paid: false,
+        roundId: extra?.roundId,
+      };
+      notifyDefi({ type: 'plinko_start' });
+      setBalls((prev) => {
+        const next = [...prev, ball];
+        ballsRef.current = next;
+        return next;
+      });
     };
-    notifyDefi({ type: 'plinko_start' });
-    setBalls((prev) => {
-      const next = [...prev, ball];
-      ballsRef.current = next;
-      return next;
-    });
+
+    if (shouldUseLedger('plinko')) {
+      const roundId = crypto.randomUUID();
+      void plinkoDrop({ roundId, stake, rows, risk })
+        .then((res) => {
+          applyCanonicalWallet(walletFromLedger(res), { beginSession: true });
+          const path = Array.isArray(res.round?.path) ? res.round.path : [];
+          if (path.length < 8) {
+            useGame.setState({ notice: 'Résultat Plinko serveur incomplet.' });
+            return;
+          }
+          launch(path, {
+            roundId: res.round.round_id,
+            multiplier: Number(res.round.multiplier),
+            payout: res.round.payout,
+            slot: Number(res.round.slot),
+          });
+        })
+        .catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : 'Drop Plinko refusé';
+          useGame.setState({ notice: msg });
+        });
+      return;
+    }
+
+    if (!plinkoDebit(stake)) return;
+    launch(rollPath(rows));
   };
 
   const table = paytable(rows, risk);

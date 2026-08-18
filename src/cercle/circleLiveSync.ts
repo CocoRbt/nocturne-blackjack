@@ -40,7 +40,7 @@ async function syncOnce(opts?: { push?: boolean }): Promise<void> {
   let next = state;
   if (shouldPush) {
     const g = useGame.getState();
-    if (!shouldPushWalletSnapshot(g)) {
+    if (g.ledgerAuthoritative || !shouldPushWalletSnapshot(g)) {
       await refreshLeaderboards(state);
       notifyCircleChanged();
       return;

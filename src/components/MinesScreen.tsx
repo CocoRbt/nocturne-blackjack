@@ -11,8 +11,19 @@ import {
   shouldShowGem,
   shouldShowMine,
   startRound,
+  type MinesPhase,
   type MinesRound,
 } from '../mines/engine';
+import {
+  getMyOpenRounds,
+  minesCashout,
+  minesReveal,
+  minesStart,
+  recoverMyRounds,
+  shouldUseLedger,
+  walletFromLedger,
+  type MinesRoundDto,
+} from '../cercle/ledgerApi';
 import { notifyDefi } from '../defis/track';
 import { minesMultiplier, payoutCents } from '../mines/math';
 import { useGame } from '../store/gameStore';
@@ -80,11 +91,26 @@ function MineIcon() {
   );
 }
 
+function dtoToMinesRound(dto: MinesRoundDto): MinesRound {
+  const ended = dto.state === 'resolved' || dto.state === 'settled' || dto.state === 'void';
+  const phase: MinesPhase = !ended ? 'playing' : dto.hit_mine ? 'busted' : 'cashed';
+  return {
+    phase,
+    bet: dto.stake,
+    mines: dto.mines,
+    mineSet: new Set(dto.mine_set ?? []),
+    revealed: dto.revealed ?? [],
+    multiplier: Number(dto.multiplier) || 1,
+    nextMultiplier: Number(dto.next_multiplier) || 0,
+  };
+}
+
 export function MinesScreen() {
   const balance = useGame((s) => s.balance);
   const leaveMines = useGame((s) => s.leaveMines);
   const minesDebit = useGame((s) => s.minesDebit);
   const minesCredit = useGame((s) => s.minesCredit);
+  const applyCanonicalWallet = useGame((s) => s.applyCanonicalWallet);
   const notice = useGame((s) => s.notice);
   const dismissNotice = useGame((s) => s.dismissNotice);
 
@@ -93,6 +119,7 @@ export function MinesScreen() {
   const [betDraft, setBetDraft] = useState(() => centsToInput(5_00));
   const [betFocused, setBetFocused] = useState(false);
   const [round, setRound] = useState<MinesRound>(() => createIdleRound(3));
+  const [ledgerRoundId, setLedgerRoundId] = useState<string | null>(null);
   const [flash, setFlash] = useState<'win' | 'lose' | null>(null);
   const [lastPayout, setLastPayout] = useState(0);
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -108,6 +135,32 @@ export function MinesScreen() {
     setGameSessionActive(playing);
     return () => setGameSessionActive(false);
   }, [playing, setGameSessionActive]);
+
+  useEffect(() => {
+    if (!shouldUseLedger('mines')) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const recovered = await recoverMyRounds();
+        if (cancelled) return;
+        applyCanonicalWallet(walletFromLedger(recovered));
+        const open = await getMyOpenRounds();
+        const mine = open.rounds?.find((r) => r.game === 'mines' && r.state === 'open');
+        if (mine && mine.game === 'mines' && !cancelled) {
+          setLedgerRoundId(mine.round_id);
+          setRound(dtoToMinesRound(mine));
+          setMines(mine.mines);
+          setBet(mine.stake);
+          useGame.getState().applyCanonicalWallet(walletFromLedger(recovered), { beginSession: true });
+        }
+      } catch {
+        /* hors-ligne */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [applyCanonicalWallet]);
 
   const commitBet = (nextCents: number) => {
     const clamped = Math.max(1_00, Math.min(balance, Math.floor(nextCents)));
@@ -149,6 +202,23 @@ export function MinesScreen() {
   const onStart = () => {
     const stake = Math.min(bet, balance);
     if (stake < 1_00) return;
+    if (shouldUseLedger('mines')) {
+      const roundId = crypto.randomUUID();
+      void minesStart({ roundId, stake, mines })
+        .then((res) => {
+          applyCanonicalWallet(walletFromLedger(res), { beginSession: true });
+          setLedgerRoundId(res.round.round_id);
+          setFlash(null);
+          setLastPayout(0);
+          setRound(dtoToMinesRound(res.round));
+          notifyDefi({ type: 'mines_start' });
+        })
+        .catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : 'Mise Mines refusée';
+          useGame.setState({ notice: msg });
+        });
+      return;
+    }
     if (!minesDebit(stake)) return;
     setFlash(null);
     setLastPayout(0);
@@ -159,6 +229,32 @@ export function MinesScreen() {
   const onReveal = useCallback(
     (index: number) => {
       if (round.phase !== 'playing') return;
+      if (shouldUseLedger('mines') && ledgerRoundId) {
+        void minesReveal(ledgerRoundId, index)
+          .then((res) => {
+            const next = dtoToMinesRound(res.round);
+            setRound(next);
+            if (res.round.hit_mine || next.phase === 'busted') {
+              applyCanonicalWallet(walletFromLedger(res), { endSession: true });
+              setFlash('lose');
+              setLastPayout(0);
+              return;
+            }
+            if (next.phase === 'cashed' && res.round.payout > 0) {
+              applyCanonicalWallet(walletFromLedger(res), { endSession: true });
+              setLastPayout(res.round.payout);
+              setFlash('win');
+              notifyDefi({ type: 'mines_cashout', mult: next.multiplier });
+              return;
+            }
+            applyCanonicalWallet(walletFromLedger(res));
+          })
+          .catch((err: unknown) => {
+            const msg = err instanceof Error ? err.message : 'Révélation refusée';
+            useGame.setState({ notice: msg });
+          });
+        return;
+      }
       const result = revealTile(round, index);
       setRound(result.round);
       if (result.hitMine) {
@@ -174,10 +270,26 @@ export function MinesScreen() {
         notifyDefi({ type: 'mines_cashout', mult: result.round.multiplier });
       }
     },
-    [round, minesCredit],
+    [round, minesCredit, ledgerRoundId, applyCanonicalWallet],
   );
 
   const onCashOut = () => {
+    if (shouldUseLedger('mines') && ledgerRoundId) {
+      void minesCashout(ledgerRoundId)
+        .then((res) => {
+          const next = dtoToMinesRound(res.round);
+          setRound(next);
+          applyCanonicalWallet(walletFromLedger(res), { endSession: true });
+          setLastPayout(res.round.payout);
+          setFlash('win');
+          notifyDefi({ type: 'mines_cashout', mult: next.multiplier });
+        })
+        .catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : 'Encaissement refusé';
+          useGame.setState({ notice: msg });
+        });
+      return;
+    }
     const { round: next, payout } = cashOut(round);
     if (payout <= 0) return;
     setRound(next);
