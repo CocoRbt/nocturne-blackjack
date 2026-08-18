@@ -204,8 +204,9 @@ export async function crashStart(input: {
     p_auto_cashout: input.autoCashout ?? null,
   });
 }
-export async function crashCashout(roundId: string, requestedMult: number): Promise<LedgerCrashOp> {
-  return rpc('crash_cashout', { p_round_id: roundId, p_requested_mult: requestedMult });
+/** Phase 2d : le serveur détermine le mult par temps serveur — pas de mult client. */
+export async function crashCashout(roundId: string): Promise<LedgerCrashOp> {
+  return rpc('crash_cashout', { p_round_id: roundId });
 }
 export async function crashResolveLoss(roundId: string): Promise<LedgerCrashOp> {
   return rpc('crash_resolve_loss', { p_round_id: roundId });
@@ -224,8 +225,9 @@ export async function slotsSpin(input: {
     p_mode: input.mode ?? 'base',
   });
 }
-export async function slotsSettle(roundId: string, totalMult: number): Promise<LedgerSlotsOp> {
-  return rpc('slots_settle', { p_round_id: roundId, p_total_mult: totalMult });
+/** Phase 2d : le mult est calculé 100% serveur depuis les stops. Pas de param mult. */
+export async function slotsSettle(roundId: string): Promise<LedgerSlotsOp> {
+  return rpc('slots_settle', { p_round_id: roundId });
 }
 
 // Craps

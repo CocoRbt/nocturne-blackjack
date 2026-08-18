@@ -40,13 +40,13 @@ begin
   -- Duplicate start
   v_res := public.crash_start(v_round_id, 500, null);
   if v_res->>'status' <> 'duplicate' then raise exception 'TEST FAIL crash dup start'; end if;
-  -- Cashout avant crash
-  v_res := public.crash_cashout(v_round_id, 1.5);
+  -- Cashout : utilise resolve_loss (à t=0 le mult est ~1.00, trop tôt pour cashout)
+  v_res := public.crash_resolve_loss(v_round_id);
   if v_res->'round'->>'state' <> 'settled' then
-    raise exception 'TEST FAIL crash cashout state=%', v_res->'round';
+    raise exception 'TEST FAIL crash resolve_loss state=%', v_res->'round';
   end if;
   -- Duplicate settle
-  v_res := public.crash_cashout(v_round_id, 1.5);
+  v_res := public.crash_resolve_loss(v_round_id);
   if v_res->>'status' <> 'duplicate' then raise exception 'TEST FAIL crash dup cashout'; end if;
   -- Loss
   v_round_id := gen_random_uuid();
@@ -73,12 +73,12 @@ begin
   v_res := public.slots_spin(v_round_id, 200, 0, 0, 'base');
   if v_res->>'status' <> 'duplicate' then raise exception 'TEST FAIL slots dup spin'; end if;
   -- Settle
-  v_res := public.slots_settle(v_round_id, 0.5);
+  v_res := public.slots_settle(v_round_id);
   if (v_res->'round'->>'state') <> 'settled' then
     raise exception 'TEST FAIL slots settle state=%', v_res->'round';
   end if;
   -- Duplicate settle
-  v_res := public.slots_settle(v_round_id, 0.5);
+  v_res := public.slots_settle(v_round_id);
   if v_res->>'status' <> 'duplicate' then raise exception 'TEST FAIL slots dup settle'; end if;
   -- Free spin (pas de BET) — créditer d'abord le solde serveur
   v_bal := (select balance from public.player_scores where profile_id = v_a);
@@ -91,14 +91,14 @@ begin
 
   -- === CRAPS ===
   v_round_id := gen_random_uuid();
-  v_res := public.craps_place_bet(v_round_id, 400);
+  v_res := public.craps_place_bet(v_round_id, 400, null);
   if (v_res->'round'->>'phase') <> 'come_out' then
     raise exception 'TEST FAIL craps come_out phase=%', v_res->'round';
   end if;
   -- Roll jusqu'à la fin (max 20 jets pour éviter boucle infinie)
   v_n := 0;
   loop
-    v_res := public.craps_roll(v_round_id);
+    v_res := public.craps_roll(v_round_id, null);
     v_ended := coalesce((v_res->>'ended')::boolean, false);
     v_n := v_n + 1;
     exit when v_ended or v_n >= 20;
@@ -108,7 +108,7 @@ begin
   end if;
   -- Take back : nouvelle manche non encore lancée
   v_round_id := gen_random_uuid();
-  v_res := public.craps_place_bet(v_round_id, 200);
+  v_res := public.craps_place_bet(v_round_id, 200, null);
   v_res := public.craps_take_back(v_round_id);
   if (v_res->'round'->>'state') <> 'settled' then raise exception 'TEST FAIL craps take_back'; end if;
 
@@ -128,7 +128,7 @@ begin
   if v_res->>'status' <> 'duplicate' then raise exception 'TEST FAIL bj dup deal'; end if;
   -- Actions si encore ouvert
   if (select state from public.game_rounds where id = v_round_id) = 'open' then
-    v_res := public.bj_action(v_round_id, 'stand');
+    v_res := public.bj_action(v_round_id, 'stand', null);
     if (v_res->'round'->>'state') <> 'settled' then
       raise exception 'TEST FAIL bj stand not settled';
     end if;
