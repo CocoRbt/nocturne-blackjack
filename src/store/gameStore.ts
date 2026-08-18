@@ -203,7 +203,7 @@ interface GameState {
   applyVaultServerState(
     payload: { balance: number; vault: number; peakBalance?: number },
     notice?: string,
-    opts?: { dirty?: boolean },
+    opts?: { dirty?: boolean; force?: boolean },
   ): void;
   /** Fixe le coffre après un envoi serveur (source de vérité). */
   setVaultFromServer(vaultCents: number, notice?: string): void;
@@ -1483,6 +1483,10 @@ export const useGame = create<GameState>((set, get) => {
     },
 
     applyVaultServerState(payload, notice, opts) {
+      const s = get();
+      if (!opts?.force && (s.gameSessionActive || s.round)) {
+        return;
+      }
       const balance = Math.max(0, Math.floor(payload.balance));
       const vault = Math.max(0, Math.floor(payload.vault));
       const peakBalance = mergeRecordPeak(
@@ -1519,7 +1523,6 @@ export const useGame = create<GameState>((set, get) => {
       if (s.round) return;
       if (s.gameSessionActive) return;
       /** Seulement à crédit épuisé (< 1) — on remet à 100, on n’ajoute pas. */
-      if (s.balance >= 1_00) return;
       if (s.balance >= 1_00) return;
       sounds.play('chipStack');
       set({

@@ -19,7 +19,15 @@ select
     or pg_get_functiondef('public.enforce_score_invariants()'::regprocedure) ilike '%new.balance := new.peak_balance%'
   ) as failed;
 
--- 3) enforce_wealth_peak existe toujours (record-only, autorisé Phase 2a).
+-- 3) ensure_circle_membership ne recolle plus peak → balance (millionnaire).
+select
+  'ensure_circle_membership restores peak to balance' as check,
+  (
+    pg_get_functiondef('public.ensure_circle_membership(text, text)'::regprocedure) ilike '%peak_balance - coalesce(s.vault%'
+    or pg_get_functiondef('public.ensure_circle_membership(text, text)'::regprocedure) ilike '%peak_balance >= 100000000%'
+  ) as failed;
+
+-- 4) enforce_wealth_peak existe toujours (record-only, autorisé Phase 2a).
 select
   tgname,
   pg_get_triggerdef(oid) as def

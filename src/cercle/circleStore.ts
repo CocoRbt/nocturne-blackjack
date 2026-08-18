@@ -378,40 +378,43 @@ export async function pushScore(
           typeof synced.vault === 'number' &&
           (synced.balance !== mergedSeed.balance || synced.vault !== mergedSeed.vault)
         ) {
-          const decision = shouldApplyCloudWallet({
-            localBalance: mergedSeed.balance,
-            localVault: mergedSeed.vault,
-            cloudBalance: synced.balance,
-            cloudVault: synced.vault,
-          });
-          // Jamais écraser un patrimoine local plus riche (sync qui refuse un gain).
-          if (decision === 'apply') {
-            useGame.getState().applyVaultServerState(
-              {
+          const live = useGame.getState();
+          if (!live.gameSessionActive && !live.round) {
+            const decision = shouldApplyCloudWallet({
+              localBalance: live.balance,
+              localVault: live.vault,
+              cloudBalance: synced.balance,
+              cloudVault: synced.vault,
+            });
+            // Jamais écraser un patrimoine local plus riche (sync qui refuse un gain).
+            if (decision === 'apply') {
+              useGame.getState().applyVaultServerState(
+                {
+                  balance: synced.balance,
+                  vault: synced.vault,
+                  peakBalance:
+                    typeof synced.peak_balance === 'number'
+                      ? synced.peak_balance
+                      : mergedSeed.peakBalance,
+                },
+                Math.abs(
+                  wealthCents(synced.balance, synced.vault) -
+                    wealthCents(live.balance, live.vault),
+                ) <= 1
+                  ? 'Coffre aligné avec le cloud.'
+                  : 'Coffre mis à jour depuis le cloud.',
+                { dirty: false },
+              );
+              reconciledSeed = {
+                ...mergedSeed,
                 balance: synced.balance,
                 vault: synced.vault,
                 peakBalance:
                   typeof synced.peak_balance === 'number'
                     ? synced.peak_balance
                     : mergedSeed.peakBalance,
-              },
-              Math.abs(
-                wealthCents(synced.balance, synced.vault) -
-                  wealthCents(mergedSeed.balance, mergedSeed.vault),
-              ) <= 1
-                ? 'Coffre aligné avec le cloud.'
-                : 'Coffre mis à jour depuis le cloud.',
-              { dirty: false },
-            );
-            reconciledSeed = {
-              ...mergedSeed,
-              balance: synced.balance,
-              vault: synced.vault,
-              peakBalance:
-                typeof synced.peak_balance === 'number'
-                  ? synced.peak_balance
-                  : mergedSeed.peakBalance,
-            };
+              };
+            }
           }
         }
         const boards = await fetchLeaderboards();

@@ -116,6 +116,7 @@ export async function claimJackpot(
           peakBalance: res.peak_balance,
         },
         `Jackpot ${label} · +${Math.floor(res.amount / 100)} crédits`,
+        { dirty: false, force: true },
       )
       return {
         amountCents: res.amount,
