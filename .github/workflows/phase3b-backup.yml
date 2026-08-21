@@ -113,30 +113,35 @@ jobs:
           PHASE3B_DB_PASSWORD: ${{ secrets.PHASE3B_DB_PASSWORD }}
         run: |
           set -euo pipefail
-          export PGPASSWORD="${PHASE3B_DB_PASSWORD}"
+          ENCODED_PASSWORD="$(node -e 'process.stdout.write(encodeURIComponent(process.env.PHASE3B_DB_PASSWORD))')"
+          export PHASE3B_DSN="postgresql://${PGUSER}:${ENCODED_PASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}?sslmode=${PGSSLMODE}&connect_timeout=${PGCONNECT_TIMEOUT}"
           unset PHASE3B_DB_PASSWORD
+          unset ENCODED_PASSWORD
           DUMP_DIR="${{ steps.dirs.outputs.dump_dir }}"
-          docker run --rm \
-            -v "${DUMP_DIR}:/dump" \
-            -e PGPASSWORD \
-            -e PGHOST \
-            -e PGPORT \
-            -e PGDATABASE \
-            -e PGUSER \
-            -e PGSSLMODE \
-            -e PGCONNECT_TIMEOUT \
-            postgres:17 \
-            pg_dump \
-              --format=custom \
-              --verbose \
-              --no-owner \
-              --no-acl \
-              --no-password \
-              --host="${PGHOST}" \
-              --port="${PGPORT}" \
-              --username="${PGUSER}" \
-              --dbname="${PGDATABASE}" \
-              --file=/dump/pre_phase3b.dump
+          for attempt in 1 2 3; do
+            rm -f "${DUMP_DIR}/pre_phase3b.dump"
+            if docker run --rm \
+              -v "${DUMP_DIR}:/dump" \
+              -e PHASE3B_DSN \
+              postgres:17 \
+              bash -ceu 'pg_dump \
+                --format=custom \
+                --verbose \
+                --no-owner \
+                --no-acl \
+                --no-password \
+                --dbname="$PHASE3B_DSN" \
+                --file=/dump/pre_phase3b.dump'; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "pg_dump failed after ${attempt} attempts."
+              exit 1
+            fi
+            echo "pg_dump attempt ${attempt} failed; retrying without changing connection parameters."
+            sleep $((attempt * 5))
+          done
+          unset PHASE3B_DSN
           test -s "${DUMP_DIR}/pre_phase3b.dump"
           echo "DUMP_CREATED=YES"
           echo "created=yes" >> "$GITHUB_OUTPUT"
