@@ -4,6 +4,7 @@
 name: phase3b-backup
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - cursor/phase3a-wallet-migration-d1df
@@ -28,6 +29,7 @@ jobs:
       PGDATABASE: postgres
       PGUSER: postgres.gyazoruuxxezuodkhwoz
       PGSSLMODE: require
+      PGCONNECT_TIMEOUT: "20"
       EXPECTED_FINGERPRINT: "12|1308297614|250000000|3077834547"
       RESTORE_USER: restore
       RESTORE_PASSWORD: restore
@@ -55,6 +57,7 @@ jobs:
           set -euo pipefail
           if [ -n "${PHASE3B_DB_PASSWORD:-}" ]; then
             echo "present=yes" >> "$GITHUB_OUTPUT"
+            echo "DB_SECRET=AVAILABLE"
           else
             echo "SITE_PAUSED=true"
             echo "DATABASE_BACKUP_READY=NO"
@@ -91,6 +94,7 @@ jobs:
             -e PGDATABASE \
             -e PGUSER \
             -e PGSSLMODE \
+            -e PGCONNECT_TIMEOUT \
             postgres:17 \
             psql \
               --host="${PGHOST}" \
@@ -120,10 +124,13 @@ jobs:
             -e PGDATABASE \
             -e PGUSER \
             -e PGSSLMODE \
+            -e PGCONNECT_TIMEOUT \
             postgres:17 \
             pg_dump \
               --format=custom \
               --verbose \
+              --no-owner \
+              --no-acl \
               --no-password \
               --host="${PGHOST}" \
               --port="${PGPORT}" \
@@ -145,6 +152,7 @@ jobs:
           ) | tee "${OUT_DIR}/pre_phase3b.dump.sha256"
 
       - name: Restore dump into temporary PostgreSQL 17
+        id: restore
         run: |
           set -euo pipefail
           DUMP_DIR="${{ steps.dirs.outputs.dump_dir }}"
@@ -192,6 +200,17 @@ jobs:
                 --table=player_scores \
                 /dump/pre_phase3b.dump
           fi
+          FINAL_HAS_TABLE="$(docker run --rm --network host \
+            -e PGPASSWORD="${RESTORE_PASSWORD}" \
+            postgres:17 \
+            psql -h 127.0.0.1 -p 5432 -U "${RESTORE_USER}" -d nocturne_restore -tA -c \
+            "select count(*) from information_schema.tables where table_schema = 'public' and table_name = 'player_scores';")"
+          if [ "${FINAL_HAS_TABLE}" != "1" ]; then
+            echo "RESTORE_TEST=FAIL"
+            echo "Temporary restore is missing public.player_scores."
+            exit 1
+          fi
+          echo "restored=yes" >> "$GITHUB_OUTPUT"
 
       - name: Verify restored fingerprint
         id: fingerprint
@@ -260,6 +279,7 @@ jobs:
           test ! -f "${DUMP_DIR}/pre_phase3b.dump"
 
       - name: Upload encrypted dump and checksums only
+        id: artifact_upload
         if: steps.enc_secret.outputs.present == 'yes'
         uses: actions/upload-artifact@v4
         with:
@@ -284,10 +304,27 @@ jobs:
           echo "DUMP_CREATED=YES"
           echo "RESTORE_TEST=PASS"
           echo "RESTORED_FINGERPRINT=${{ steps.fingerprint.outputs.fingerprint }}"
-          echo "DATABASE_BACKUP_READY=YES"
-          if [ "${{ steps.enc_secret.outputs.present }}" != "yes" ]; then
+          if [ "${{ steps.enc_secret.outputs.present }}" = "yes" ]; then
+            echo "ARTIFACT_UPLOAD=UPLOADED_ENCRYPTED_ONLY"
+          else
             echo "ARTIFACT_UPLOAD=SKIPPED_NO_ENCRYPTION_SECRET"
           fi
+          echo "DATABASE_BACKUP_READY=YES"
+          {
+            echo "## Phase 3B backup verification"
+            echo ""
+            echo "- SITE_PAUSED: true"
+            echo "- DB_CONNECTION: PASS"
+            echo "- DUMP_CREATED: YES"
+            echo "- RESTORE_TEST: PASS"
+            echo "- RESTORED_FINGERPRINT: ${{ steps.fingerprint.outputs.fingerprint }}"
+            if [ "${{ steps.enc_secret.outputs.present }}" = "yes" ]; then
+              echo "- ARTIFACT_UPLOAD: UPLOADED_ENCRYPTED_ONLY"
+            else
+              echo "- ARTIFACT_UPLOAD: SKIPPED_NO_ENCRYPTION_SECRET"
+            fi
+            echo "- DATABASE_BACKUP_READY: YES"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Fail-safe
         if: failure() || cancelled()
