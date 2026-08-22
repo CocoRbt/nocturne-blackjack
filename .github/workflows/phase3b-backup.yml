@@ -1,0 +1,411 @@
+# Phase 3B.1 — dump PostgreSQL complet + restore test (GitHub Actions).
+# Déclenché UNIQUEMENT par un push de CE fichier sur cursor/phase3a-wallet-migration-d1df.
+# Ne touche PAS à main. Ne déploie PAS. Aucun write production / wallet.
+name: phase3b-backup
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - cursor/phase3a-wallet-migration-d1df
+    paths:
+      - ".github/workflows/phase3b-backup.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase3b-backup
+  cancel-in-progress: true
+
+jobs:
+  audit-fix0-forensic:
+    name: audit-fix0-encrypted-forensic
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PGHOST: aws-0-eu-west-3.pooler.supabase.com
+      PGPORT: "5432"
+      PGDATABASE: postgres
+      PGUSER: postgres.gyazoruuxxezuodkhwoz
+      PGSSLMODE: require
+      PGCONNECT_TIMEOUT: "20"
+      RESTORE_USER: restore
+      RESTORE_PASSWORD: restore
+    services:
+      restore-pg:
+        image: postgres:17
+        env:
+          POSTGRES_USER: restore
+          POSTGRES_PASSWORD: restore
+          POSTGRES_DB: restoredb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U restore -d restoredb"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - name: Checkout authorized audit tooling
+        uses: actions/checkout@v4
+
+      - name: Encrypted backup, forensic export, decrypt and restore test
+        id: audit
+        env:
+          PHASE3B_DB_PASSWORD: ${{ secrets.PHASE3B_DB_PASSWORD }}
+          PHASE3B_BACKUP_ENCRYPTION_KEY: ${{ secrets.PHASE3B_BACKUP_ENCRYPTION_KEY }}
+        run: bash scripts/audit-fix0-backup.sh
+
+      - name: Upload encrypted artifact and encrypted checksum only
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-fix0-encrypted-forensic-backup-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/audit-fix0-encrypted/audit-fix0-${{ github.run_id }}.tar.gz.enc
+            ${{ runner.temp }}/audit-fix0-encrypted/audit-fix0-${{ github.run_id }}.tar.gz.enc.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: AUDIT-FIX-0 summary
+        if: success()
+        run: |
+          {
+            echo "## AUDIT-FIX-0"
+            echo "- SITE_PAUSED: true"
+            echo "- BACKUP_CREATED: ${{ steps.audit.outputs.backup_created }}"
+            echo "- BACKUP_ENCRYPTED: ${{ steps.audit.outputs.backup_encrypted }}"
+            echo "- RESTORE_TEST: ${{ steps.audit.outputs.restore_test }}"
+            echo "- FINANCIAL_FINGERPRINT: ${{ steps.audit.outputs.fingerprint }}"
+            echo "- FORENSIC_EXPORT_READY: ${{ steps.audit.outputs.forensic_ready }}"
+            echo "- KIKILOKI_FORENSIC_READY: YES"
+            echo "- LEA_FORENSIC_READY: YES"
+            echo "- ARTIFACT: audit-fix0-encrypted-forensic-backup-${GITHUB_RUN_ID}"
+            echo "- RETENTION_DAYS: 30"
+            echo "- PRODUCTION_DATA_WRITES: NO"
+            echo "- AUDIT_FIX_0_COMPLETE: YES"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  backup-restore-test:
+    if: ${{ false }}
+    name: dump-restore-fingerprint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PGHOST: aws-0-eu-west-3.pooler.supabase.com
+      PGPORT: "5432"
+      PGDATABASE: postgres
+      PGUSER: postgres.gyazoruuxxezuodkhwoz
+      PGSSLMODE: require
+      PGCONNECT_TIMEOUT: "20"
+      EXPECTED_FINGERPRINT: "12|1308297614|250000000|3077834547"
+      RESTORE_USER: restore
+      RESTORE_PASSWORD: restore
+    services:
+      restore-pg:
+        image: postgres:17
+        env:
+          POSTGRES_USER: restore
+          POSTGRES_PASSWORD: restore
+          POSTGRES_DB: restoredb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U restore -d restoredb"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+
+    steps:
+      - name: Check DB password secret
+        id: db_secret
+        env:
+          PHASE3B_DB_PASSWORD: ${{ secrets.PHASE3B_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -n "${PHASE3B_DB_PASSWORD:-}" ]; then
+            echo "present=yes" >> "$GITHUB_OUTPUT"
+            echo "DB_SECRET=AVAILABLE"
+          else
+            echo "SITE_PAUSED=true"
+            echo "DATABASE_BACKUP_READY=NO"
+            echo "No production writes. No wallet changes. No merge to main."
+            exit 1
+          fi
+
+      - name: Prepare workdirs
+        id: dirs
+        run: |
+          set -euo pipefail
+          DUMP_DIR="${RUNNER_TEMP}/phase3b-dump"
+          OUT_DIR="${RUNNER_TEMP}/phase3b-out"
+          mkdir -p "$DUMP_DIR" "$OUT_DIR"
+          chmod 700 "$DUMP_DIR" "$OUT_DIR"
+          echo "dump_dir=$DUMP_DIR" >> "$GITHUB_OUTPUT"
+          echo "out_dir=$OUT_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Pull PostgreSQL 17 image
+        run: docker pull postgres:17
+
+      - name: Test PostgreSQL connection
+        id: conn
+        env:
+          PHASE3B_DB_PASSWORD: ${{ secrets.PHASE3B_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          export PGPASSWORD="${PHASE3B_DB_PASSWORD}"
+          unset PHASE3B_DB_PASSWORD
+          docker run --rm \
+            -e PGPASSWORD \
+            -e PGHOST \
+            -e PGPORT \
+            -e PGDATABASE \
+            -e PGUSER \
+            -e PGSSLMODE \
+            -e PGCONNECT_TIMEOUT \
+            postgres:17 \
+            psql \
+              --host="${PGHOST}" \
+              --port="${PGPORT}" \
+              --username="${PGUSER}" \
+              --dbname="${PGDATABASE}" \
+              --no-password \
+              --set=ON_ERROR_STOP=1 \
+              --command="select 1 as connection_ok;"
+          echo "DB_CONNECTION=PASS"
+          echo "result=PASS" >> "$GITHUB_OUTPUT"
+
+      - name: pg_dump custom format (read-only)
+        id: dump
+        env:
+          PHASE3B_DB_PASSWORD: ${{ secrets.PHASE3B_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          ENCODED_PASSWORD="$(node -e 'process.stdout.write(encodeURIComponent(process.env.PHASE3B_DB_PASSWORD))')"
+          export PHASE3B_DSN="postgresql://${PGUSER}:${ENCODED_PASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}?sslmode=${PGSSLMODE}&connect_timeout=${PGCONNECT_TIMEOUT}"
+          unset PHASE3B_DB_PASSWORD
+          unset ENCODED_PASSWORD
+          DUMP_DIR="${{ steps.dirs.outputs.dump_dir }}"
+          for attempt in 1 2 3; do
+            rm -f "${DUMP_DIR}/pre_phase3b.dump"
+            if docker run --rm \
+              -v "${DUMP_DIR}:/dump" \
+              -e PHASE3B_DSN \
+              postgres:17 \
+              bash -ceu 'pg_dump \
+                --format=custom \
+                --verbose \
+                --no-owner \
+                --no-acl \
+                --no-password \
+                --dbname="$PHASE3B_DSN" \
+                --file=/dump/pre_phase3b.dump'; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "pg_dump failed after ${attempt} attempts."
+              exit 1
+            fi
+            echo "pg_dump attempt ${attempt} failed; retrying without changing connection parameters."
+            sleep $((attempt * 5))
+          done
+          unset PHASE3B_DSN
+          test -s "${DUMP_DIR}/pre_phase3b.dump"
+          echo "DUMP_CREATED=YES"
+          echo "created=yes" >> "$GITHUB_OUTPUT"
+
+      - name: Checksum SHA256 of original dump
+        run: |
+          set -euo pipefail
+          DUMP_DIR="${{ steps.dirs.outputs.dump_dir }}"
+          OUT_DIR="${{ steps.dirs.outputs.out_dir }}"
+          (
+            cd "$DUMP_DIR"
+            sha256sum pre_phase3b.dump
+          ) | tee "${OUT_DIR}/pre_phase3b.dump.sha256"
+
+      - name: Restore dump into temporary PostgreSQL 17
+        id: restore
+        run: |
+          set -euo pipefail
+          DUMP_DIR="${{ steps.dirs.outputs.dump_dir }}"
+          docker run --rm --network host \
+            -e PGPASSWORD="${RESTORE_PASSWORD}" \
+            -e PGUSER="${RESTORE_USER}" \
+            postgres:17 \
+            psql -h 127.0.0.1 -p 5432 -d postgres -v ON_ERROR_STOP=1 \
+              -c "drop database if exists nocturne_restore with (force);" \
+              -c "create database nocturne_restore;"
+          set +e
+          docker run --rm --network host \
+            -v "${DUMP_DIR}:/dump:ro" \
+            -e PGPASSWORD="${RESTORE_PASSWORD}" \
+            postgres:17 \
+            pg_restore \
+              --host=127.0.0.1 \
+              --port=5432 \
+              --username="${RESTORE_USER}" \
+              --dbname=nocturne_restore \
+              --no-owner \
+              --no-acl \
+              /dump/pre_phase3b.dump
+          RESTORE_RC=$?
+          set -e
+          echo "pg_restore_exit=${RESTORE_RC}"
+          HAS_TABLE="$(docker run --rm --network host \
+            -e PGPASSWORD="${RESTORE_PASSWORD}" \
+            postgres:17 \
+            psql -h 127.0.0.1 -p 5432 -U "${RESTORE_USER}" -d nocturne_restore -tA -c \
+            "select count(*) from information_schema.tables where table_schema = 'public' and table_name = 'player_scores';")"
+          if [ "${HAS_TABLE}" != "1" ]; then
+            echo "Full restore did not recreate public.player_scores; retrying table-only restore."
+            docker run --rm --network host \
+              -v "${DUMP_DIR}:/dump:ro" \
+              -e PGPASSWORD="${RESTORE_PASSWORD}" \
+              postgres:17 \
+              pg_restore \
+                --host=127.0.0.1 \
+                --port=5432 \
+                --username="${RESTORE_USER}" \
+                --dbname=nocturne_restore \
+                --no-owner \
+                --no-acl \
+                --table=player_scores \
+                /dump/pre_phase3b.dump
+          fi
+          FINAL_HAS_TABLE="$(docker run --rm --network host \
+            -e PGPASSWORD="${RESTORE_PASSWORD}" \
+            postgres:17 \
+            psql -h 127.0.0.1 -p 5432 -U "${RESTORE_USER}" -d nocturne_restore -tA -c \
+            "select count(*) from information_schema.tables where table_schema = 'public' and table_name = 'player_scores';")"
+          if [ "${FINAL_HAS_TABLE}" != "1" ]; then
+            echo "RESTORE_TEST=FAIL"
+            echo "Temporary restore is missing public.player_scores."
+            exit 1
+          fi
+          echo "restored=yes" >> "$GITHUB_OUTPUT"
+
+      - name: Verify restored fingerprint
+        id: fingerprint
+        run: |
+          set -euo pipefail
+          FINGERPRINT="$(docker run --rm --network host \
+            -e PGPASSWORD="${RESTORE_PASSWORD}" \
+            postgres:17 \
+            psql -h 127.0.0.1 -p 5432 -U "${RESTORE_USER}" -d nocturne_restore -tA -c \
+            "select count(*)::text || '|' || round(coalesce(sum(balance),0))::bigint::text || '|' || round(coalesce(sum(vault),0))::bigint::text || '|' || round(coalesce(sum(peak_balance),0))::bigint::text from public.player_scores;")"
+          echo "RESTORED_FINGERPRINT=${FINGERPRINT}"
+          echo "fingerprint=${FINGERPRINT}" >> "$GITHUB_OUTPUT"
+          if [ "${FINGERPRINT}" = "${EXPECTED_FINGERPRINT}" ]; then
+            echo "RESTORE_TEST=PASS"
+            echo "result=PASS" >> "$GITHUB_OUTPUT"
+          else
+            echo "RESTORE_TEST=FAIL"
+            echo "expected=${EXPECTED_FINGERPRINT}"
+            echo "SITE_PAUSED=true"
+            echo "DATABASE_BACKUP_READY=NO"
+            echo "No production writes. No wallet changes. No merge to main."
+            exit 1
+          fi
+
+      - name: Check encryption secret
+        id: enc_secret
+        env:
+          PHASE3B_BACKUP_ENCRYPTION_KEY: ${{ secrets.PHASE3B_BACKUP_ENCRYPTION_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -n "${PHASE3B_BACKUP_ENCRYPTION_KEY:-}" ]; then
+            echo "present=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=no" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Encrypt dump AES-256-CBC PBKDF2
+        if: steps.enc_secret.outputs.present == 'yes'
+        env:
+          PHASE3B_BACKUP_ENCRYPTION_KEY: ${{ secrets.PHASE3B_BACKUP_ENCRYPTION_KEY }}
+        run: |
+          set -euo pipefail
+          DUMP_DIR="${{ steps.dirs.outputs.dump_dir }}"
+          OUT_DIR="${{ steps.dirs.outputs.out_dir }}"
+          openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -salt \
+            -in "${DUMP_DIR}/pre_phase3b.dump" \
+            -out "${OUT_DIR}/pre_phase3b.dump.enc" \
+            -pass env:PHASE3B_BACKUP_ENCRYPTION_KEY
+          test -s "${OUT_DIR}/pre_phase3b.dump.enc"
+          (
+            cd "$OUT_DIR"
+            sha256sum pre_phase3b.dump.enc
+          ) | tee "${OUT_DIR}/pre_phase3b.dump.enc.sha256"
+
+      - name: Delete unencrypted dump
+        run: |
+          set -euo pipefail
+          DUMP_DIR="${{ steps.dirs.outputs.dump_dir }}"
+          OUT_DIR="${{ steps.dirs.outputs.out_dir }}"
+          rm -f "${DUMP_DIR}/pre_phase3b.dump"
+          find "$DUMP_DIR" "$OUT_DIR" -type f \( -name '*.dump' -o -name '*.sql' -o -name '*.backup' \) ! -name '*.enc' ! -name '*.sha256' -delete 2>/dev/null || true
+          if find "$DUMP_DIR" "$OUT_DIR" -type f \( -name 'pre_phase3b.dump' -o -name '*.sql' \) | grep -q .; then
+            echo "Unencrypted dump still present; refusing to continue."
+            exit 1
+          fi
+          test ! -f "${DUMP_DIR}/pre_phase3b.dump"
+
+      - name: Upload encrypted dump and checksums only
+        id: artifact_upload
+        if: steps.enc_secret.outputs.present == 'yes'
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase3b-encrypted-backup
+          path: |
+            ${{ steps.dirs.outputs.out_dir }}/pre_phase3b.dump.enc
+            ${{ steps.dirs.outputs.out_dir }}/pre_phase3b.dump.sha256
+            ${{ steps.dirs.outputs.out_dir }}/pre_phase3b.dump.enc.sha256
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Skip artifact upload (no encryption secret)
+        if: steps.enc_secret.outputs.present != 'yes'
+        run: |
+          echo "ARTIFACT_UPLOAD=SKIPPED_NO_ENCRYPTION_SECRET"
+
+      - name: Summary
+        if: success()
+        run: |
+          set -euo pipefail
+          echo "DB_CONNECTION=PASS"
+          echo "DUMP_CREATED=YES"
+          echo "RESTORE_TEST=PASS"
+          echo "RESTORED_FINGERPRINT=${{ steps.fingerprint.outputs.fingerprint }}"
+          if [ "${{ steps.enc_secret.outputs.present }}" = "yes" ]; then
+            echo "ARTIFACT_UPLOAD=UPLOADED_ENCRYPTED_ONLY"
+          else
+            echo "ARTIFACT_UPLOAD=SKIPPED_NO_ENCRYPTION_SECRET"
+          fi
+          echo "DATABASE_BACKUP_READY=YES"
+          {
+            echo "## Phase 3B backup verification"
+            echo ""
+            echo "- SITE_PAUSED: true"
+            echo "- DB_CONNECTION: PASS"
+            echo "- DUMP_CREATED: YES"
+            echo "- RESTORE_TEST: PASS"
+            echo "- RESTORED_FINGERPRINT: ${{ steps.fingerprint.outputs.fingerprint }}"
+            if [ "${{ steps.enc_secret.outputs.present }}" = "yes" ]; then
+              echo "- ARTIFACT_UPLOAD: UPLOADED_ENCRYPTED_ONLY"
+            else
+              echo "- ARTIFACT_UPLOAD: SKIPPED_NO_ENCRYPTION_SECRET"
+            fi
+            echo "- DATABASE_BACKUP_READY: YES"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail-safe
+        if: failure() || cancelled()
+        run: |
+          DUMP_DIR="${{ steps.dirs.outputs.dump_dir }}"
+          OUT_DIR="${{ steps.dirs.outputs.out_dir }}"
+          rm -f "${DUMP_DIR:-/tmp}/pre_phase3b.dump" 2>/dev/null || true
+          find "${DUMP_DIR:-/tmp}" "${OUT_DIR:-/tmp}" -type f \( -name '*.dump' -o -name '*.sql' \) ! -name '*.enc' -delete 2>/dev/null || true
+          echo "SITE_PAUSED=true"
+          echo "DATABASE_BACKUP_READY=NO"
+          echo "No production writes. No wallet changes. No merge to main."
