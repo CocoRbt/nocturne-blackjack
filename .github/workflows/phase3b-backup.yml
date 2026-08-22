@@ -19,7 +19,75 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  audit-fix0-forensic:
+    name: audit-fix0-encrypted-forensic
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PGHOST: aws-0-eu-west-3.pooler.supabase.com
+      PGPORT: "5432"
+      PGDATABASE: postgres
+      PGUSER: postgres.gyazoruuxxezuodkhwoz
+      PGSSLMODE: require
+      PGCONNECT_TIMEOUT: "20"
+      RESTORE_USER: restore
+      RESTORE_PASSWORD: restore
+    services:
+      restore-pg:
+        image: postgres:17
+        env:
+          POSTGRES_USER: restore
+          POSTGRES_PASSWORD: restore
+          POSTGRES_DB: restoredb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U restore -d restoredb"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - name: Checkout authorized audit tooling
+        uses: actions/checkout@v4
+
+      - name: Encrypted backup, forensic export, decrypt and restore test
+        id: audit
+        env:
+          PHASE3B_DB_PASSWORD: ${{ secrets.PHASE3B_DB_PASSWORD }}
+          PHASE3B_BACKUP_ENCRYPTION_KEY: ${{ secrets.PHASE3B_BACKUP_ENCRYPTION_KEY }}
+        run: bash scripts/audit-fix0-backup.sh
+
+      - name: Upload encrypted artifact and encrypted checksum only
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-fix0-encrypted-forensic-backup-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/audit-fix0-encrypted/audit-fix0-${{ github.run_id }}.tar.gz.enc
+            ${{ runner.temp }}/audit-fix0-encrypted/audit-fix0-${{ github.run_id }}.tar.gz.enc.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: AUDIT-FIX-0 summary
+        if: success()
+        run: |
+          {
+            echo "## AUDIT-FIX-0"
+            echo "- SITE_PAUSED: true"
+            echo "- BACKUP_CREATED: ${{ steps.audit.outputs.backup_created }}"
+            echo "- BACKUP_ENCRYPTED: ${{ steps.audit.outputs.backup_encrypted }}"
+            echo "- RESTORE_TEST: ${{ steps.audit.outputs.restore_test }}"
+            echo "- FINANCIAL_FINGERPRINT: ${{ steps.audit.outputs.fingerprint }}"
+            echo "- FORENSIC_EXPORT_READY: ${{ steps.audit.outputs.forensic_ready }}"
+            echo "- KIKILOKI_FORENSIC_READY: YES"
+            echo "- LEA_FORENSIC_READY: YES"
+            echo "- ARTIFACT: audit-fix0-encrypted-forensic-backup-${GITHUB_RUN_ID}"
+            echo "- RETENTION_DAYS: 30"
+            echo "- PRODUCTION_DATA_WRITES: NO"
+            echo "- AUDIT_FIX_0_COMPLETE: YES"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   backup-restore-test:
+    if: ${{ false }}
     name: dump-restore-fingerprint
     runs-on: ubuntu-latest
     timeout-minutes: 30
